@@ -414,5 +414,35 @@ public class RobotMapManager {
             return false;
         }
     }
+
+    public static JsonObject getPlaceByName(String mapName, String placeName) {
+        if (TextUtils.isEmpty(placeName)) return null;
+        try {
+            JsonObject mapData = buildMapDataJson(mapName);
+            if (mapData != null && mapData.has("places")) {
+                com.google.gson.JsonArray places = mapData.getAsJsonArray("places");
+                for (com.google.gson.JsonElement el : places) {
+                    JsonObject p = el.getAsJsonObject();
+                    if (p.has("name") && placeName.equalsIgnoreCase(p.get("name").getAsString())) {
+                        return p;
+                    }
+                }
+                // Try fuzzy/case-insensitive contains match for charging/standby
+                for (com.google.gson.JsonElement el : places) {
+                    JsonObject p = el.getAsJsonObject();
+                    if (p.has("name")) {
+                        String name = p.get("name").getAsString().toLowerCase();
+                        String target = placeName.toLowerCase();
+                        if (name.contains(target) || target.contains(name)) {
+                            return p;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "getPlaceByName error: " + t.getMessage());
+        }
+        return null;
+    }
 }
 

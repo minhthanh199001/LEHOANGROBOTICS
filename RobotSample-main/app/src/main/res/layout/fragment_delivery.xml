@@ -52,7 +52,23 @@
                     android:textSize="14sp"
                     android:clickable="true"
                     android:focusable="true"
-                    android:layout_marginEnd="8dp" />
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_localization_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:background="@drawable/bg_circle_cancel"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:text="⚠️ MẤT VỊ TRÍ"
+                    android:textColor="#FCA5A5"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="6dp" />
 
                 <TextView
                     android:id="@+id/btn_language"
@@ -501,6 +517,47 @@
                     android:text="Gửi robot về vị trí ban đầu"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 1.5: Lấy lại vị trí (Relocalize) -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_relocalize"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_relocalize"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="📍"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_relocalize"
+                    android:layout_centerVertical="true"
+                    android:text="Lấy lại vị trí (Trạm sạc / Điểm chờ)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
             </RelativeLayout>
 

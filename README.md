@@ -21,6 +21,14 @@ Dự án bao gồm 2 phân hệ chính hoạt động kết hợp qua giao thứ
   - Tông màu xanh đen vũ trụ sâu thẳm kết hợp kính mờ trong suốt (Frosted Acrylic), viền phát sáng Neon Cyan tinh tế.
   - Quản lý 3 kệ khay thức ăn (Tầng 1, Tầng 2, Tầng 3) với cơ chế chạm 1 chạm: chọn khay $\rightarrow$ chọn điểm đến $\rightarrow$ tự động gán và nhảy sang khay kế tiếp.
   - Hỗ trợ 2 chế độ giao hàng: `"Giao hàng chậm"` (chống tràn nước, súp) và `"Giao hàng nhanh"`.
+- **Hệ thống chống mất vị trí & Lấy lại vị trí siêu tốc (Relocalization System v3.1):**
+  - **Cách 1 - Tự động lưu & Phục hồi vị trí (Auto Pose Restore):** Định kỳ 5s tự động ghi nhận tọa độ chính xác $(X, Y, \theta)$ vào bộ nhớ Flash. Khi khởi động lại hoặc mở App, nếu SLAM chưa định vị, App tự động bơm tọa độ hạt vào bộ lọc particle filter, giúp robot nhận diện bản đồ tức thì mà không cần đẩy robot đi đâu.
+  - **Cách 2 - Nút bấm 1-chạm "Lấy lại vị trí" (1-Tap Relocalization):** Khi mất vị trí, huy hiệu cảnh báo nhấp nháy `⚠️ MẤT VỊ TRÍ` trên thanh trạng thái hoặc nút menu `📍 Lấy lại vị trí` cho phép phục hồi ngay vị trí tại:
+    1. Trạm Sạc (*Charging Dock*)
+    2. Điểm Chờ (*Stand-by Point*)
+    3. Tọa độ lưu gần nhất trước khi tắt nguồn
+    4. Bất kỳ điểm Station nào trên bản đồ tầng hiện tại
+    5. Kích hoạt quét Laser xoay 360° tự động tìm vị trí.
 - **Menu trượt thông minh (Slide-in Drawer HUD):** Gửi robot về trạm sạc/trạm chờ (*Stand-by Point*), chuyển đổi 4 chế độ hoạt động (*Vận chuyển, Khuyến mãi, Du thuyền, Thu hồi dĩa*), cài đặt tốc độ chi tiết.
 - **Tích hợp giọng nói tiếng Việt (TTS):** Phát âm thanh thông báo tên bàn, lời chào khi đến nơi và hướng dẫn khách lấy món tại từng tầng.
 
@@ -44,11 +52,11 @@ dotnet run
 cd RobotSample-main
 .\gradlew.bat assembleDebug
 ```
-File APK xuất ra tại: `LeHoangRobot_v3.0.apk`
+File APK xuất ra tại: `LeHoangRobot_v3.1.apk` (và `LeHoangRobot_v3.0.apk`)
 
 Cài đặt trực tiếp lên robot qua ADB:
 ```powershell
-adb install -r LeHoangRobot_v3.0.apk
+adb install -r LeHoangRobot_v3.1.apk
 ```
 
 ---
@@ -78,3 +86,4 @@ LEHOANGROBOTICS/
 
 **Phát triển bởi:** Lê Hoàng Robotics  
 **Bản quyền © 2026 LE HOANG ROBOTICS. All Rights Reserved.**
+

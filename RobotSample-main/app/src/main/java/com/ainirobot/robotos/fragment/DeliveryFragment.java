@@ -25,11 +25,13 @@ import androidx.fragment.app.Fragment;
 import com.ainirobot.coreservice.client.Definition;
 import com.ainirobot.coreservice.client.RobotApi;
 import com.ainirobot.coreservice.client.listener.ActionListener;
+import com.ainirobot.coreservice.client.listener.CommandListener;
 import com.ainirobot.robotos.MainActivity;
 import com.ainirobot.robotos.R;
 import com.ainirobot.robotos.bridge.RobotBridgeManager;
 import com.ainirobot.robotos.bridge.RobotBridgeServer;
 import com.ainirobot.robotos.bridge.RobotMapManager;
+import com.ainirobot.robotos.bridge.RobotPosePersistenceManager;
 import com.ainirobot.robotos.bridge.TTSPlayer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -73,6 +75,7 @@ public class DeliveryFragment extends Fragment {
     private View mPanelDeliveryConfig;
     private TextView mBtnMenuDots;
     private TextView mBtnLocationFloor;
+    private TextView mTvLocalizationStatus;
     private TextView mBtnLanguage;
     private TextView mBtnModeTray;
     private TextView mTvClockTime;
@@ -101,6 +104,7 @@ public class DeliveryFragment extends Fragment {
     private TextView mBtnDrawerPower;
     private TextView mBtnDrawerClose;
     private RelativeLayout mBtnMenuReturnHome;
+    private RelativeLayout mBtnMenuRelocalize;
     private RelativeLayout mBtnMenuSwitchMode;
     private RelativeLayout mBtnMenuSettings;
     private RelativeLayout mBtnMenuMusic;
@@ -161,6 +165,10 @@ public class DeliveryFragment extends Fragment {
     private float mSpeedReturn = 0.6f;
     private int mTableWaitTimeSec = 30;
 
+    // Localization State & Monitor
+    private boolean mIsEstimateValid = false;
+    private Runnable mLocalizationCheckerRunnable;
+
     public static DeliveryFragment newInstance() {
         return new DeliveryFragment();
     }
@@ -173,6 +181,22 @@ public class DeliveryFragment extends Fragment {
         updateClock();
         loadStationsFromMap();
         refreshTrayShelvesUi();
+
+        // Khởi tạo Pose Persistence Manager & Bắt đầu tự động theo dõi vị trí
+        if (getContext() != null) {
+            RobotPosePersistenceManager.init(getContext());
+            RobotPosePersistenceManager.getInstance().startPeriodicTracking();
+        }
+
+        // Delay 1.5s để CoreService ổn định, sau đó tự động khôi phục vị trí (Cách 1) và bật giám sát định vị
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                performAutoPoseRestore();
+                startLocalizationMonitor();
+            }
+        }, 1500);
+
         return root;
     }
 
@@ -187,6 +211,7 @@ public class DeliveryFragment extends Fragment {
         mPanelDeliveryConfig = root.findViewById(R.id.panel_delivery_config);
         mBtnMenuDots = root.findViewById(R.id.btn_menu_dots);
         mBtnLocationFloor = root.findViewById(R.id.btn_location_floor);
+        mTvLocalizationStatus = root.findViewById(R.id.tv_localization_status);
         mBtnLanguage = root.findViewById(R.id.btn_language);
         mBtnModeTray = root.findViewById(R.id.btn_mode_tray);
         mTvClockTime = root.findViewById(R.id.tv_clock_time);
@@ -215,6 +240,7 @@ public class DeliveryFragment extends Fragment {
         mBtnDrawerPower = root.findViewById(R.id.btn_drawer_power);
         mBtnDrawerClose = root.findViewById(R.id.btn_drawer_close);
         mBtnMenuReturnHome = root.findViewById(R.id.btn_menu_return_home);
+        mBtnMenuRelocalize = root.findViewById(R.id.btn_menu_relocalize);
         mBtnMenuSwitchMode = root.findViewById(R.id.btn_menu_switch_mode);
         mBtnMenuSettings = root.findViewById(R.id.btn_menu_settings);
         mBtnMenuMusic = root.findViewById(R.id.btn_menu_music);
@@ -332,6 +358,23 @@ public class DeliveryFragment extends Fragment {
             }
         });
 
+        mBtnLocationFloor.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                showQuickRelocalizeDialog();
+                return true;
+            }
+        });
+
+        if (mTvLocalizationStatus != null) {
+            mTvLocalizationStatus.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showQuickRelocalizeDialog();
+                }
+            });
+        }
+
         mBtnLanguage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -412,6 +455,16 @@ public class DeliveryFragment extends Fragment {
                 navigateRobotTo("Stand-by Point");
             }
         });
+
+        if (mBtnMenuRelocalize != null) {
+            mBtnMenuRelocalize.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    closeLeftDrawer();
+                    showQuickRelocalizeDialog();
+                }
+            });
+        }
 
         mBtnMenuSwitchMode.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -898,6 +951,228 @@ public class DeliveryFragment extends Fragment {
                 .show();
     }
 
+    // ==========================================
+    // CÁCH 1 & CÁCH 2: RELOCALIZATION & POSE RESTORE
+    // ==========================================
+
+    private void performAutoPoseRestore() {
+        if (RobotPosePersistenceManager.getInstance() == null || !RobotPosePersistenceManager.getInstance().hasSavedPose()) {
+            return;
+        }
+        RobotPosePersistenceManager.getInstance().checkAndAutoRestorePose(new RobotPosePersistenceManager.RelocalizeCallback() {
+            @Override
+            public void onResult(final boolean success, final String message) {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (success) {
+                            updateLocalizationBadge(true);
+                            Toast.makeText(getContext(), "✅ Đã tự động khôi phục vị trí robot!", Toast.LENGTH_SHORT).show();
+                            TTSPlayer.playVietnameseText("Đã tự động khôi phục vị trí robot", null);
+                        } else {
+                            Log.w(TAG, "Không thể tự động khôi phục: " + message);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void startLocalizationMonitor() {
+        if (mLocalizationCheckerRunnable != null) {
+            mHandler.removeCallbacks(mLocalizationCheckerRunnable);
+        }
+        mLocalizationCheckerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (RobotApi.getInstance().isApiConnectedService()) {
+                        RobotApi.getInstance().isRobotEstimate(0, new CommandListener() {
+                            @Override
+                            public void onResult(int res, final String msg) {
+                                final boolean localized = "true".equalsIgnoreCase(msg);
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        updateLocalizationBadge(localized);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                } catch (Throwable ignored) {}
+                mHandler.postDelayed(this, 4000);
+            }
+        };
+        mHandler.post(mLocalizationCheckerRunnable);
+    }
+
+    private void updateLocalizationBadge(boolean localized) {
+        mIsEstimateValid = localized;
+        if (mTvLocalizationStatus != null) {
+            if (localized) {
+                mTvLocalizationStatus.setVisibility(View.GONE);
+            } else {
+                mTvLocalizationStatus.setVisibility(View.VISIBLE);
+                mTvLocalizationStatus.setText("⚠️ MẤT VỊ TRÍ");
+            }
+        }
+    }
+
+    /**
+     * Cách 2: Hộp thoại 1-chạm định vị tại Trạm Sạc / Điểm Chờ / Khôi phục vị trí đã lưu
+     */
+    private void showQuickRelocalizeDialog() {
+        if (getContext() == null) return;
+        List<String> options = new ArrayList<>();
+        options.add("⚡ 1-Chạm: Định vị tại Trạm Sạc (Charging Dock)");
+        options.add("🏠 1-Chạm: Định vị tại Điểm Chờ (Stand-by Point)");
+        if (RobotPosePersistenceManager.getInstance() != null && RobotPosePersistenceManager.getInstance().hasSavedPose()) {
+            options.add("💾 Khôi phục vị trí lưu gần nhất (" + RobotPosePersistenceManager.getInstance().getLastPlaceName() + ")");
+        }
+        options.add("📍 Chọn điểm bất kỳ trên bản đồ...");
+        options.add("🔄 Tự động xoay 360° quét Laser tìm vị trí");
+
+        final CharSequence[] items = options.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("📍 LẤY LẠI VỊ TRÍ ROBOT")
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String chosen = items[which].toString();
+                        if (chosen.contains("Trạm Sạc")) {
+                            relocalizeToChargingDock();
+                        } else if (chosen.contains("Điểm Chờ")) {
+                            relocalizeToStandbyPoint();
+                        } else if (chosen.contains("Khôi phục vị trí lưu")) {
+                            relocalizeToLastSavedPose();
+                        } else if (chosen.contains("Chọn điểm bất kỳ")) {
+                            showRelocalizePickStationDialog();
+                        } else if (chosen.contains("360°")) {
+                            performAuto360ScanRelocalize();
+                        }
+                    }
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    private void relocalizeToChargingDock() {
+        JsonObject place = RobotMapManager.getPlaceByName(mCurrentMap, "Charging");
+        float x = 0.6f;
+        float y = -0.31f;
+        float theta = 0.0f;
+        if (place != null) {
+            x = (float) place.get("x").getAsDouble();
+            y = (float) place.get("y").getAsDouble();
+            theta = (float) place.get("theta").getAsDouble();
+        }
+        relocalizeRobotTo(x, y, theta, "Trạm Sạc (Charging Dock)");
+    }
+
+    private void relocalizeToStandbyPoint() {
+        JsonObject place = RobotMapManager.getPlaceByName(mCurrentMap, "Stand-by");
+        float x = 2.0f;
+        float y = 6.01f;
+        float theta = 0.0f;
+        if (place != null) {
+            x = (float) place.get("x").getAsDouble();
+            y = (float) place.get("y").getAsDouble();
+            theta = (float) place.get("theta").getAsDouble();
+        }
+        relocalizeRobotTo(x, y, theta, "Điểm Chờ (Stand-by Point)");
+    }
+
+    private void relocalizeToLastSavedPose() {
+        if (RobotPosePersistenceManager.getInstance() == null || !RobotPosePersistenceManager.getInstance().hasSavedPose()) {
+            Toast.makeText(getContext(), "Chưa có vị trí lưu trước đó", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        float x = RobotPosePersistenceManager.getInstance().getLastX();
+        float y = RobotPosePersistenceManager.getInstance().getLastY();
+        float theta = RobotPosePersistenceManager.getInstance().getLastTheta();
+        String place = RobotPosePersistenceManager.getInstance().getLastPlaceName();
+        relocalizeRobotTo(x, y, theta, "Vị trí đã lưu (" + place + ")");
+    }
+
+    private void showRelocalizePickStationDialog() {
+        try {
+            JsonObject mapData = RobotMapManager.buildMapDataJson(mCurrentMap);
+            if (mapData != null && mapData.has("places")) {
+                com.google.gson.JsonArray places = mapData.getAsJsonArray("places");
+                final List<JsonObject> placeObjects = new ArrayList<>();
+                List<String> names = new ArrayList<>();
+                for (com.google.gson.JsonElement el : places) {
+                    JsonObject p = el.getAsJsonObject();
+                    placeObjects.add(p);
+                    String name = p.get("name").getAsString();
+                    double px = p.get("x").getAsDouble();
+                    double py = p.get("y").getAsDouble();
+                    names.add("📍 " + name + " (X=" + px + ", Y=" + py + ")");
+                }
+
+                final CharSequence[] items = names.toArray(new CharSequence[0]);
+                new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                        .setTitle("Chọn điểm đặt vị trí:")
+                        .setItems(items, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                JsonObject p = placeObjects.get(which);
+                                float x = (float) p.get("x").getAsDouble();
+                                float y = (float) p.get("y").getAsDouble();
+                                float theta = (float) p.get("theta").getAsDouble();
+                                String name = p.get("name").getAsString();
+                                relocalizeRobotTo(x, y, theta, name);
+                            }
+                        })
+                        .setNegativeButton("Hủy", null)
+                        .show();
+                return;
+            }
+        } catch (Throwable ignored) {}
+        Toast.makeText(getContext(), "Không tìm thấy danh sách điểm trên bản đồ", Toast.LENGTH_SHORT).show();
+    }
+
+    private void performAuto360ScanRelocalize() {
+        TTSPlayer.playVietnameseText("Đang thiết lập lại định vị và quét Laser 360 độ...", null);
+        Toast.makeText(getContext(), "🔄 Đang reset và quét laser định vị...", Toast.LENGTH_LONG).show();
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                RobotApi.getInstance().resetPoseEstimate(0, new CommandListener() {
+                    @Override
+                    public void onResult(int res, String msg) {
+                        Log.i(TAG, "resetPoseEstimate: " + res + " " + msg);
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void relocalizeRobotTo(final float x, final float y, final float theta, final String label) {
+        TTSPlayer.playVietnameseText("Đang định vị tại " + label, null);
+        Toast.makeText(getContext(), "📍 Đang thiết lập vị trí: " + label + "...", Toast.LENGTH_SHORT).show();
+
+        if (RobotPosePersistenceManager.getInstance() != null) {
+            RobotPosePersistenceManager.getInstance().applyPoseEstimate(x, y, theta, label, new RobotPosePersistenceManager.RelocalizeCallback() {
+                @Override
+                public void onResult(final boolean success, final String message) {
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (success) {
+                                updateLocalizationBadge(true);
+                                Toast.makeText(getContext(), "✅ Định vị thành công tại " + label + "!", Toast.LENGTH_LONG).show();
+                                TTSPlayer.playVietnameseText("Định vị thành công", null);
+                            } else {
+                                Toast.makeText(getContext(), "⚠️ Không thể định vị: " + message, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
     // Delivery Process
     private void startDelivery(float speed, String modeName) {
         mCurrentSpeed = speed;
@@ -1120,6 +1395,13 @@ public class DeliveryFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (mLocalizationCheckerRunnable != null) {
+            mHandler.removeCallbacks(mLocalizationCheckerRunnable);
+            mLocalizationCheckerRunnable = null;
+        }
+        if (RobotPosePersistenceManager.getInstance() != null) {
+            RobotPosePersistenceManager.getInstance().stopPeriodicTracking();
+        }
         if (mArrivalTimer != null) {
             mArrivalTimer.cancel();
             mArrivalTimer = null;
