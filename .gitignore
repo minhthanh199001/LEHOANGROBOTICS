@@ -1,0 +1,41 @@
+# Visual Studio & C# / .NET
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Android & Gradle
+.gradle/
+**/build/
+build/
+local.properties
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Python & Temporary
+__pycache__/
+*.pyc
+*.log
+extracted_docx/
+.vscode/
+
+# Old / intermediate APKs & temp screenshots
+app-debug.apk
+LeHoangRobot_v1.0.apk
+LeHoangRobot_v2.0.apk
+LeHoangRobot_v2.apk
+screen_*.png
+robot_screen*.png
+screen3.png
+app_screen.png
+
+# Keep latest release APK and core assets
+!LeHoangRobot_v3.0.apk
+!LEHOANG.png

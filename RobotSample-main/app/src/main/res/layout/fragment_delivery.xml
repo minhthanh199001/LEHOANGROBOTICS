@@ -1,0 +1,1297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_orion_gradient">
+
+    <!-- 1. MAIN DELIVERY SELECTION UI (FUTURISTIC FROSTED GLASS KIOSK) -->
+    <LinearLayout
+        android:id="@+id/panel_delivery_config"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="16dp">
+
+        <!-- TOP STATUS BAR -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:layout_marginBottom="14dp">
+
+            <!-- Left Action Icons: ..., Location, Language, Tray Mode -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_menu_dots"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="•••"
+                    android:textColor="#E0F2FE"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/btn_location_floor"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="📍"
+                    android:textColor="#BAE6FD"
+                    android:textSize="14sp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/btn_language"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="文/A"
+                    android:textColor="#BAE6FD"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/btn_mode_tray"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="🍱"
+                    android:textColor="#BAE6FD"
+                    android:textSize="14sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Right Status: Time, Wifi, Battery -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_card_frosted_container"
+                android:paddingHorizontal="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_clock_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="15:44"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📶"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_battery_pill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋 72%"
+                    android:textColor="#7DD3FC"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <!-- UPPER SECTION: 3 STACKED HOLOGRAPHIC TRAY SHELVES -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <!-- 3 Vertical Tray Shelves -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- TẦNG 1 (KHAY 1 - TRÊN CÙNG) -->
+                <RelativeLayout
+                    android:id="@+id/shelf_tray_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="62dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_tray_shelf_active"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="14dp">
+
+                    <!-- Left: Micro tag TẦNG 1 & Clear button -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btn_clear_tray_1"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:gravity="center"
+                            android:text="✕"
+                            android:textColor="#FCA5A5"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/bg_circle_cancel"
+                            android:visibility="gone"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_tray_badge"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            android:text="TẦNG 1"
+                            android:textColor="#38BDF8"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Status or Station Name in center -->
+                    <TextView
+                        android:id="@+id/tv_tray_1_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="Xin hãy lựa chọn"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <!-- TẦNG 2 (KHAY 2 - Ở GIỮA) -->
+                <RelativeLayout
+                    android:id="@+id/shelf_tray_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="62dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_tray_shelf_normal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="14dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btn_clear_tray_2"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:gravity="center"
+                            android:text="✕"
+                            android:textColor="#FCA5A5"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/bg_circle_cancel"
+                            android:visibility="gone"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_tray_badge"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            android:text="TẦNG 2"
+                            android:textColor="#7DD3FC"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_tray_2_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="tầng2 Nhấn để thêm"
+                        android:textColor="#BAE6FD"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <!-- TẦNG 3 (KHAY 3 - DƯỚI CÙNG) -->
+                <RelativeLayout
+                    android:id="@+id/shelf_tray_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="62dp"
+                    android:background="@drawable/bg_tray_shelf_normal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="14dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btn_clear_tray_3"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:gravity="center"
+                            android:text="✕"
+                            android:textColor="#FCA5A5"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/bg_circle_cancel"
+                            android:visibility="gone"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_tray_badge"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            android:text="TẦNG 3"
+                            android:textColor="#7DD3FC"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_tray_3_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="tầng3 Nhấn để thêm"
+                        android:textColor="#BAE6FD"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- Floating uniform/hanger icon on right side -->
+            <TextView
+                android:id="@+id/btn_tray_floating_bell"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="👕"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:clickable="true"
+                android:focusable="true" />
+        </RelativeLayout>
+
+        <!-- MIDDLE SECTION: DESTINATIONS ENCLOSED IN FROSTED GLASS CONTAINER -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_card_frosted_container"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp">
+
+            <!-- Section Header with Glowing Dot -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="● "
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Vui lòng chọn: điểm đến"
+                    android:textColor="#E0F2FE"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Stations Scrollable Grid -->
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/container_station_buttons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- BOTTOM ACTION BUTTONS ROW: "Giao hàng chậm" & "Giao hàng nhanh" -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Giao hàng chậm (Futuristic Amber Frosted Capsule) -->
+            <Button
+                android:id="@+id/btn_slow_delivery"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_btn_delivery_slow"
+                android:text="&quot;Giao hàng chậm&quot;"
+                android:textColor="#FEF3C7"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <!-- Giao hàng nhanh (Futuristic Emerald-Cyan Frosted Capsule) -->
+            <Button
+                android:id="@+id/btn_fast_delivery"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_btn_delivery_fast"
+                android:text="&quot;Giao hàng nhanh&quot;"
+                android:textColor="#ECFDF5"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 2. LEFT SLIDE-IN DRAWER MENU OVERLAY (MATCHES PHOTO 3) -->
+    <RelativeLayout
+        android:id="@+id/panel_left_drawer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <!-- Scrim background (click to close) -->
+        <View
+            android:id="@+id/view_drawer_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Drawer Content (Left side, ~60% width) -->
+        <LinearLayout
+            android:id="@+id/container_drawer_content"
+            android:layout_width="265dp"
+            android:layout_height="match_parent"
+            android:layout_alignParentStart="true"
+            android:background="@drawable/bg_drawer_panel"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="20dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <!-- Top Row: Power Button & Close with Countdown -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:id="@+id/btn_drawer_power"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentStart="true"
+                    android:background="@drawable/bg_pill_power"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="⏻ Nút nguồn"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/btn_drawer_close"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentEnd="true"
+                    android:background="@drawable/bg_pill_close_countdown"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="✕ 30"
+                    android:textColor="#38BDF8"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </RelativeLayout>
+
+            <!-- Menu Item 1: Gửi robot về vị trí ban đầu -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_return_home"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_return_home"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⤺"
+                    android:textColor="#38BDF8"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_return_home"
+                    android:layout_centerVertical="true"
+                    android:text="Gửi robot về vị trí ban đầu"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 2: Chế độ chuyển đổi -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_switch_mode"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_switch_mode"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⊞"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_switch_mode"
+                    android:layout_centerVertical="true"
+                    android:text="Chế độ chuyển đổi"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 3: Cài đặt -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_settings"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_settings"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⚙"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_settings"
+                    android:layout_centerVertical="true"
+                    android:text="Cài đặt"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Bottom Item 1: Âm nhạc -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_music"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="8dp">
+
+                <TextView
+                    android:id="@+id/ic_music"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="🎵"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_music_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_music"
+                    android:layout_centerVertical="true"
+                    android:text="Không có"
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/btn_music_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_pill_power"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="Chuyển"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </RelativeLayout>
+
+            <!-- Bottom Item 2: Lịch sử giao -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_history"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:paddingHorizontal="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_history"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="🕒"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_history"
+                    android:layout_centerVertical="true"
+                    android:text="Xem lịch sử giao..."
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="16sp" />
+            </RelativeLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- 3. MODE SWITCH OVERLAY (MATCHES PHOTO 2) -->
+    <LinearLayout
+        android:id="@+id/panel_mode_switch"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_orion_gradient"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <!-- Top Header: Back Button & Title -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:id="@+id/btn_mode_back"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="❮"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="Chế độ chuyển đổi"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nhấp để chọn chế độ bạn muốn chuyển đổi"
+            android:textColor="#E0F2FE"
+            android:textSize="16sp"
+            android:layout_marginBottom="36dp" />
+
+        <!-- 4 Mode Big Circular Buttons (2x2 Grid) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="32dp">
+
+            <!-- Mode 1: Vận chuyển (Food Delivery) -->
+            <LinearLayout
+                android:id="@+id/mode_btn_transport"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+
+                <RelativeLayout
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_mode_circle_pink"
+                        android:gravity="center"
+                        android:text="🍽️"
+                        android:textSize="36sp" />
+
+                    <!-- Active Tag: Sử dụng -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentBottom="true"
+                        android:layout_centerHorizontal="true"
+                        android:background="@drawable/bg_mode_tag_using"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="1dp"
+                        android:text="● Sử dụng"
+                        android:textColor="#0284C7"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Vận chuyển"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Mode 2: Khuyến mãi (Promotion/Greeting) -->
+            <LinearLayout
+                android:id="@+id/mode_btn_promo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:background="@drawable/bg_mode_circle_cyan"
+                    android:gravity="center"
+                    android:text="👤"
+                    android:textSize="36sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Khuyến mãi"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Mode 3: Du thuyền (Cruise/Patrol) -->
+            <LinearLayout
+                android:id="@+id/mode_btn_cruise"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:background="@drawable/bg_mode_circle_yellow"
+                    android:gravity="center"
+                    android:text="〰️"
+                    android:textSize="36sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Du thuyền"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Mode 4: Bộ sưu tập (Dish Bussing) -->
+            <LinearLayout
+                android:id="@+id/mode_btn_collection"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:background="@drawable/bg_mode_circle_blue"
+                    android:gravity="center"
+                    android:text="🥣"
+                    android:textSize="36sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bộ sưu tập"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 4. SETTINGS OVERLAY (MATCHES PHOTO 1) -->
+    <LinearLayout
+        android:id="@+id/panel_settings"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_orion_gradient"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <!-- Top Header: Back Button & Title -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/btn_settings_back"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="❮"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="Cài đặt"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cài đặt giao hàng"
+            android:textColor="#93C5FD"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Row 1: Tốc độ giao hàng nhanh -->
+                <RelativeLayout
+                    android:id="@+id/row_speed_fast"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Cài đặt tốc độ giao hàng nhanh"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_speed_fast"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="0.7m/s ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 2: Tốc độ giao các món nước -->
+                <RelativeLayout
+                    android:id="@+id/row_speed_water"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Cài đặt tốc độ giao các món nước"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_speed_water"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="0.5m/s ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 3: Tốc độ trở về -->
+                <RelativeLayout
+                    android:id="@+id/row_speed_return"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Thiết lập tốc độ trở về vị trí ban đầu"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_speed_return"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="0.6m/s ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 4: Danh mục điểm đến -->
+                <RelativeLayout
+                    android:id="@+id/row_dest_categories"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Danh mục điểm đến"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- Row 5: Đặt điểm xuất phát -->
+                <RelativeLayout
+                    android:id="@+id/row_start_point"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Đặt điểm xuất phát"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="Điểm xuất phát ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 6: Nhấn vào màn hình để dừng -->
+                <RelativeLayout
+                    android:id="@+id/row_stop_screen_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Nhấn vào màn hình để xác nhận dừng"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_stop_confirm"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="5 giây ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 7: Thời gian chờ tại bàn -->
+                <RelativeLayout
+                    android:id="@+id/row_table_wait_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Thời gian chờ tại bàn"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_table_wait_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="30 giây ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Row 8: Khoảng thời gian phát sóng -->
+                <RelativeLayout
+                    android:id="@+id/row_broadcast_interval"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Khoảng thời gian phát sóng trên đường"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_val_broadcast_interval"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="15 giây ›"
+                        android:textColor="#BAE6FD"
+                        android:textSize="14sp" />
+                </RelativeLayout>
+
+                <!-- Dev SDK tools shortcut button -->
+                <Button
+                    android:id="@+id/btn_open_dev_tools"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_btn_delivery_fast"
+                    android:text="🛠️ Mở công cụ kỹ thuật Robot SDK (Dev Tools)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- 5. FULLSCREEN DELIVERING IN-PROGRESS OVERLAY -->
+    <LinearLayout
+        android:id="@+id/overlay_delivering"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FA08101E"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <!-- Robot Cyber Eyes -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="32dp">
+
+            <TextView
+                android:id="@+id/tv_robot_eye_left"
+                android:layout_width="96dp"
+                android:layout_height="50dp"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="●  ●"
+                android:textColor="#38BDF8"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginEnd="28dp" />
+
+            <TextView
+                android:id="@+id/tv_robot_eye_right"
+                android:layout_width="96dp"
+                android:layout_height="50dp"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="●  ●"
+                android:textColor="#38BDF8"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_delivery_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ROBOT ĐANG GIAO HÀNG..."
+            android:textColor="#BAE6FD"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tv_delivery_current_target"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ĐANG TỚI: CAFE"
+            android:textColor="#67E8F9"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_delivery_tray_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Giao món Tầng 1"
+            android:textColor="#94A3B8"
+            android:textSize="17sp"
+            android:layout_marginBottom="28dp" />
+
+        <TextView
+            android:id="@+id/tv_delivery_arrival_prompt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kính mời quý khách nhận món tại Tầng 1"
+            android:textColor="#F0FDF4"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone" />
+
+        <!-- Customer confirmation button -->
+        <Button
+            android:id="@+id/btn_confirm_taken"
+            android:layout_width="280dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_btn_delivery_fast"
+            android:text="✅ ĐÃ LẤY MÓN - TIẾP TỤC"
+            android:textColor="#ECFDF5"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Abort button -->
+        <Button
+            android:id="@+id/btn_abort_delivery"
+            android:layout_width="180dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_circle_icon"
+            android:text="🛑 Dừng lại"
+            android:textColor="#FCA5A5"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+</FrameLayout>

@@ -1,0 +1,220 @@
+{
+  "t\u0103ng 2-1110154527": [
+    {
+      "Name": "Stand-by Point",
+      "X": 2,
+      "Y": 6.01,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Point",
+      "X": 0.6,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Pole",
+      "X": 0,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Positioning Point",
+      "X": 1.46,
+      "Y": 0.66,
+      "Theta": 0
+    },
+    {
+      "Name": "ChoTM2",
+      "X": 2.14,
+      "Y": 5.97,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongTM2",
+      "X": 4.52,
+      "Y": 6.12,
+      "Theta": 0
+    },
+    {
+      "Name": "tivi",
+      "X": 1.44,
+      "Y": 1.31,
+      "Theta": 0
+    },
+    {
+      "Name": "cafe",
+      "X": 1.12,
+      "Y": -1.16,
+      "Theta": 0
+    },
+    {
+      "Name": "ph\u00F2ng h\u1ECDp",
+      "X": 1.69,
+      "Y": 8.38,
+      "Theta": 0
+    }
+  ],
+  "t\u1EA7ng 2-1110154527": [
+    {
+      "Name": "Stand-by Point",
+      "X": 2,
+      "Y": 6.01,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Point",
+      "X": 0.6,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Pole",
+      "X": 0,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Positioning Point",
+      "X": 1.46,
+      "Y": 0.66,
+      "Theta": 0
+    },
+    {
+      "Name": "ChoTM2",
+      "X": 2.14,
+      "Y": 5.97,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongTM2",
+      "X": 4.52,
+      "Y": 6.12,
+      "Theta": 0
+    },
+    {
+      "Name": "tivi",
+      "X": 1.44,
+      "Y": 1.31,
+      "Theta": 0
+    },
+    {
+      "Name": "cafe",
+      "X": 1.12,
+      "Y": -1.16,
+      "Theta": 0
+    },
+    {
+      "Name": "ph\u00F2ng h\u1ECDp",
+      "X": 1.69,
+      "Y": 8.38,
+      "Theta": 0
+    }
+  ],
+  "2-0916091752": [
+    {
+      "Name": "1",
+      "X": -0.46,
+      "Y": -1.26,
+      "Theta": 0
+    },
+    {
+      "Name": "2",
+      "X": 2.47,
+      "Y": -2.13,
+      "Theta": 0
+    },
+    {
+      "Name": "3",
+      "X": 5.39,
+      "Y": -2.42,
+      "Theta": 0
+    },
+    {
+      "Name": "4",
+      "X": -2.54,
+      "Y": -2.39,
+      "Theta": 0
+    },
+    {
+      "Name": "5",
+      "X": -3.74,
+      "Y": -0.21,
+      "Theta": 0
+    },
+    {
+      "Name": "Stand-by Point",
+      "X": 0.12,
+      "Y": -1.46,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Point",
+      "X": 0.6,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "ChoTM2",
+      "X": 2.14,
+      "Y": 5.97,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongTM2",
+      "X": 4.52,
+      "Y": 6.12,
+      "Theta": 0
+    }
+  ],
+  "MT1map-0721090621": [
+    {
+      "Name": "Charging Point",
+      "X": -0.15,
+      "Y": -0.13,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Pole",
+      "X": -0.73,
+      "Y": -0.26,
+      "Theta": 0
+    },
+    {
+      "Name": "Stand-by Point",
+      "X": 0.35,
+      "Y": 7.7,
+      "Theta": 0
+    },
+    {
+      "Name": "B1",
+      "X": 0.31,
+      "Y": 4.82,
+      "Theta": 0
+    },
+    {
+      "Name": "B2",
+      "X": 1.01,
+      "Y": 3.02,
+      "Theta": 0
+    },
+    {
+      "Name": "B3",
+      "X": 1.18,
+      "Y": 1.22,
+      "Theta": 0
+    },
+    {
+      "Name": "ChoThangMay_T1",
+      "X": 0.5,
+      "Y": 8,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongThangMay_T1",
+      "X": 0.5,
+      "Y": 8.8,
+      "Theta": 0
+    }
+  ]
+}

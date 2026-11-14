@@ -1,0 +1,46 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using LeHoangControlCenter.ViewModels;
+
+namespace LeHoangControlCenter;
+
+/// <summary>
+/// Interaction logic for MainWindow.xaml
+/// </summary>
+public partial class MainWindow : Window
+{
+    public MainWindow()
+    {
+        InitializeComponent();
+        this.KeyDown += MainWindow_KeyDown;
+    }
+
+    private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            if (DataContext is MainViewModel vm)
+            {
+                _ = vm.EmergencyStopAsync();
+            }
+            e.Handled = true;
+        }
+    }
+
+    private void OnDirectionButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button btn && btn.CommandParameter is string dir && DataContext is MainViewModel vm)
+        {
+            vm.StartHoldMove(dir);
+        }
+    }
+
+    private void OnDirectionButtonUp(object sender, MouseEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.StopHoldMove();
+        }
+    }
+}
