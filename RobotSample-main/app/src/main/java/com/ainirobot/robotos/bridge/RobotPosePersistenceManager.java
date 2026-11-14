@@ -172,11 +172,24 @@ public class RobotPosePersistenceManager {
      */
     public void applyPoseEstimate(final float x, final float y, final float theta, final String label, final RelocalizeCallback callback) {
         try {
-            JSONObject params = new JSONObject();
+            final JSONObject params = new JSONObject();
             params.put(Definition.JSON_NAVI_POSITION_X, x);
             params.put(Definition.JSON_NAVI_POSITION_Y, y);
             params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
 
+            // 1. Nếu có tên điểm cụ thể, gọi setLocation trước để SLAM map theo tên trạm
+            if (!TextUtils.isEmpty(label) && !label.contains("Tự động") && !label.contains("Vị trí")) {
+                try {
+                    RobotApi.getInstance().setLocation(0, label, new CommandListener() {
+                        @Override
+                        public void onResult(int res, String msg) {
+                            Log.i(TAG, "setLocation (" + label + ") kết quả: " + res + ", msg=" + msg);
+                        }
+                    });
+                } catch (Throwable ignored) {}
+            }
+
+            // 2. Gọi setPoseEstimate
             RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
                 @Override
                 public void onResult(int res, String msg) {
@@ -184,9 +197,26 @@ public class RobotPosePersistenceManager {
                     Log.i(TAG, "setPoseEstimate kết quả: " + res + ", message=" + msg + " (" + label + ")");
                     if (ok) {
                         savePose(x, y, theta, label);
-                    }
-                    if (callback != null) {
-                        callback.onResult(ok, msg);
+                        if (callback != null) callback.onResult(true, msg);
+                    } else {
+                        // Thử fallback sang setForceEstimate (Cưỡng bức định vị hạt)
+                        try {
+                            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
+                                @Override
+                                public void onResult(int resForce, String msgForce) {
+                                    boolean okForce = (resForce == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgForce));
+                                    Log.i(TAG, "setForceEstimate kết quả: " + resForce + ", msg=" + msgForce);
+                                    if (okForce) {
+                                        savePose(x, y, theta, label);
+                                    }
+                                    if (callback != null) {
+                                        callback.onResult(okForce, msgForce);
+                                    }
+                                }
+                            });
+                        } catch (Throwable t) {
+                            if (callback != null) callback.onResult(false, msg);
+                        }
                     }
                 }
             });

@@ -1133,19 +1133,130 @@ public class DeliveryFragment extends Fragment {
         Toast.makeText(getContext(), "Không tìm thấy danh sách điểm trên bản đồ", Toast.LENGTH_SHORT).show();
     }
 
+    private boolean mIsScanning360 = false;
+    private AlertDialog mScan360ProgressDialog = null;
+
     private void performAuto360ScanRelocalize() {
-        TTSPlayer.playVietnameseText("Đang thiết lập lại định vị và quét Laser 360 độ...", null);
-        Toast.makeText(getContext(), "🔄 Đang reset và quét laser định vị...", Toast.LENGTH_LONG).show();
+        if (mIsScanning360) return;
+        mIsScanning360 = true;
+
+        TTSPlayer.playVietnameseText("Robot bắt đầu xoay 360 độ để quét Laser tìm lại vị trí...", null);
+
+        // 1. Nếu có tọa độ lưu gần nhất, nạp tọa độ mồi trước vào thuật toán
+        if (RobotPosePersistenceManager.getInstance() != null && RobotPosePersistenceManager.getInstance().hasSavedPose()) {
+            float sx = RobotPosePersistenceManager.getInstance().getLastX();
+            float sy = RobotPosePersistenceManager.getInstance().getLastY();
+            float sth = RobotPosePersistenceManager.getInstance().getLastTheta();
+            try {
+                org.json.JSONObject params = new org.json.JSONObject();
+                params.put(Definition.JSON_NAVI_POSITION_X, sx);
+                params.put(Definition.JSON_NAVI_POSITION_Y, sy);
+                params.put(Definition.JSON_NAVI_POSITION_THETA, sth);
+                RobotApi.getInstance().setPoseEstimate(0, params.toString(), null);
+            } catch (Throwable ignored) {}
+        }
+
+        // 2. Kích hoạt thuật toán resetEstimate (Action ID 24) chính thức của OrionStar với 5 lần thử
         try {
             if (RobotApi.getInstance().isApiConnectedService()) {
-                RobotApi.getInstance().resetPoseEstimate(0, new CommandListener() {
+                RobotApi.getInstance().resetEstimate(0, 5, new CommandListener() {
                     @Override
                     public void onResult(int res, String msg) {
-                        Log.i(TAG, "resetPoseEstimate: " + res + " " + msg);
+                        Log.i(TAG, "resetEstimate result: " + res + ", msg=" + msg);
                     }
                 });
             }
         } catch (Throwable ignored) {}
+
+        // 3. Ra lệnh cho khung gầm robot quay nhẹ nhàng tại chỗ (20 độ/giây) để Laser quét các vách tường
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                RobotApi.getInstance().turnLeft(0, 20.0f, new CommandListener() {
+                    @Override
+                    public void onResult(int res, String msg) {
+                        Log.i(TAG, "turnLeft result: " + res + ", msg=" + msg);
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
+
+        // 4. Hiển thị Dialog thông báo tiến trình quét
+        if (getContext() != null) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK);
+            builder.setTitle("🔄 Đang quét Laser 360° tìm vị trí");
+            builder.setMessage("Robot đang từ từ xoay quanh để đối chiếu Laser với bản đồ...\n\nQuá trình này mất khoảng 10 - 18 giây.");
+            builder.setCancelable(false);
+            builder.setNegativeButton("Dừng quét", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    stop360ScanRelocalize(false);
+                }
+            });
+            mScan360ProgressDialog = builder.show();
+        }
+
+        // 5. Vòng lặp kiểm tra định vị mỗi 1.2 giây trong tối đa 20 giây
+        final long startTime = System.currentTimeMillis();
+        final Runnable checkScanRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!mIsScanning360) return;
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (RobotApi.getInstance().isApiConnectedService()) {
+                    RobotApi.getInstance().isRobotEstimate(0, new CommandListener() {
+                        @Override
+                        public void onResult(int res, String msg) {
+                            if ("true".equalsIgnoreCase(msg)) {
+                                // ĐÃ TÌM THẤY VỊ TRÍ!
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        stop360ScanRelocalize(true);
+                                    }
+                                });
+                                return;
+                            }
+                        }
+                    });
+                }
+
+                if (elapsed > 20000) {
+                    // Hết thời gian xoay 360 độ (1 vòng hoàn chỉnh) mà chưa nhận diện được
+                    stop360ScanRelocalize(false);
+                } else {
+                    mHandler.postDelayed(this, 1200);
+                }
+            }
+        };
+        mHandler.postDelayed(checkScanRunnable, 2000);
+    }
+
+    private void stop360ScanRelocalize(boolean success) {
+        mIsScanning360 = false;
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                RobotApi.getInstance().stopMove(0, null);
+            }
+        } catch (Throwable ignored) {}
+
+        if (mScan360ProgressDialog != null && mScan360ProgressDialog.isShowing()) {
+            mScan360ProgressDialog.dismiss();
+            mScan360ProgressDialog = null;
+        }
+
+        if (success) {
+            updateLocalizationBadge(true);
+            if (RobotPosePersistenceManager.getInstance() != null) {
+                RobotPosePersistenceManager.getInstance().pollAndSaveCurrentPose("Quét 360° thành công");
+            }
+            Toast.makeText(getContext(), "✅ Đã tìm thấy vị trí Robot thành công!", Toast.LENGTH_LONG).show();
+            TTSPlayer.playVietnameseText("Đã tìm thấy vị trí robot thành công!", null);
+        } else {
+            Toast.makeText(getContext(), "⚠️ Không thể nhận diện vị trí tự động. Hãy dùng nút 'Định vị tại Trạm Sạc / Điểm Chờ'.", Toast.LENGTH_LONG).show();
+            TTSPlayer.playVietnameseText("Không thể xác định vị trí. Vui lòng bấm định vị tại Trạm Sạc hoặc Điểm Chờ.", null);
+            showQuickRelocalizeDialog();
+        }
     }
 
     private void relocalizeRobotTo(final float x, final float y, final float theta, final String label) {
@@ -1395,6 +1506,9 @@ public class DeliveryFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (mIsScanning360) {
+            stop360ScanRelocalize(false);
+        }
         if (mLocalizationCheckerRunnable != null) {
             mHandler.removeCallbacks(mLocalizationCheckerRunnable);
             mLocalizationCheckerRunnable = null;

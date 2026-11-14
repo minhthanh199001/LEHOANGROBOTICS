@@ -103,6 +103,18 @@ public class RobotMapManager {
         return list;
     }
 
+    public static String getCurrentMapName() {
+        try {
+            if (GlobalData.getInstance() != null) {
+                String m = GlobalData.getInstance().getCurrentMapName();
+                if (!TextUtils.isEmpty(m)) return m;
+            }
+        } catch (Throwable ignored) {}
+        List<String> list = getAvailableMapList();
+        if (!list.isEmpty()) return list.get(0);
+        return "tăng 2-1110154527";
+    }
+
     public static JsonObject buildMapDataJson(String currentMap) {
         JsonObject root = new JsonObject();
         root.addProperty("type", "MAP_DATA");

@@ -1041,10 +1041,17 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public void ToggleRelocalizeMode()
         {
+            if (!IsConnected)
+            {
+                System.Windows.MessageBox.Show($"Robot hiện CHƯA KẾT NỐI!\n\nVui lòng kiểm tra địa chỉ IP Robot ({RobotIp}:{RobotPort}) và bấm nút 'KẾT NỐI' ở góc trên bên phải trước khi đặt lại vị trí.", "Chưa kết nối Robot", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                AddLog("[CẢNH BÁO] Không thể đặt lại vị trí vì chưa kết nối tới Robot.");
+                return;
+            }
+
             IsRelocalizeMode = !IsRelocalizeMode;
             if (IsRelocalizeMode)
             {
-                AddLog("📍 [CHẾ ĐỘ ĐỊNH VỊ] Đã bật chế độ Đặt lại vị trí. Bấm vào bất kỳ đâu trên bản đồ để đặt robot tại điểm đó!");
+                AddLog("📍 [CHẾ ĐỘ ĐỊNH VỊ] Đã bật chế độ Đặt lại vị trí. Hãy click chuột lên bản đồ tại chỗ robot đang đứng!");
             }
             else
             {
@@ -1055,6 +1062,12 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public async Task SetPoseEstimateAsync(object? param = null)
         {
+            if (!IsConnected)
+            {
+                System.Windows.MessageBox.Show("Chưa kết nối tới Robot! Vui lòng bấm 'KẾT NỐI' ở góc trên bên phải.", "Chưa kết nối", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
             double x = ManualTargetX;
             double y = ManualTargetY;
             double theta = PoseTheta * Math.PI / 180.0;
@@ -1065,6 +1078,12 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public async Task SetLocationAsync(object? param = null)
         {
+            if (!IsConnected)
+            {
+                System.Windows.MessageBox.Show("Chưa kết nối tới Robot! Vui lòng bấm 'KẾT NỐI' ở góc trên bên phải.", "Chưa kết nối", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
             string placeName = "";
             if (param is MapPlaceItem place) placeName = place.Name;
             else if (param is string s) placeName = s;
@@ -1077,7 +1096,14 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public async Task ResetEstimateAsync()
         {
-            AddLog("[ĐỊNH VỊ] Yêu cầu robot tự động quét Lidar tìm lại vị trí trên bản đồ...");
+            if (!IsConnected)
+            {
+                System.Windows.MessageBox.Show($"Robot hiện CHƯA KẾT NỐI!\n\nVui lòng kiểm tra địa chỉ IP Robot ({RobotIp}:{RobotPort}) và bấm nút 'KẾT NỐI' ở góc trên bên phải trước khi gửi lệnh quét định vị.", "Chưa kết nối Robot", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                AddLog("[CẢNH BÁO] Chưa kết nối tới Robot. Không thể gửi lệnh quét định vị.");
+                return;
+            }
+
+            AddLog("[ĐỊNH VỊ] Yêu cầu robot tự động xoay 360° quét Laser tìm lại vị trí trên bản đồ...");
             await _robotService.SendCommandAsync(new ResetEstimateCommand());
         }
 

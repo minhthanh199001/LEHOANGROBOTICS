@@ -655,9 +655,9 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="⚠️ ROBOT ĐANG MẤT ĐỊNH VỊ TRÊN BẢN ĐỒ!" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <Button Command="{Binding ToggleRelocalizeModeCommand}" Content="{Binding RelocalizeModeText}" Style="{StaticResource CyberButton}" Background="#DC2626" FontSize="10" Padding="8,3" Margin="0,0,6,0" ToolTip="Bấm chuột trên bản đồ để đặt lại vị trí" />
-                                    <Button Command="{Binding ResetEstimateCommand}" Content="🔍 Tự quét Lidar" Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="8,3" />
+                                    <TextBlock Text="⚠️ MẤT ĐỊNH VỊ!" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Button Command="{Binding ToggleRelocalizeModeCommand}" Content="{Binding RelocalizeModeText}" Style="{StaticResource CyberButton}" Background="#DC2626" FontSize="10" Padding="6,3" Margin="0,0,6,0" ToolTip="Bấm vào đây rồi click chuột lên bản đồ tại chỗ robot đang đứng để định vị lại" />
+                                    <Button Command="{Binding ResetEstimateCommand}" Content="🔄 Quét Laser 360°" Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="6,3" ToolTip="Yêu cầu robot tự động xoay 360 độ và quét Laser đối chiếu bản đồ để tìm lại vị trí" />
                                 </StackPanel>
                             </Border>
 

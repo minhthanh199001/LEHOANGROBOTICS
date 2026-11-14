@@ -416,11 +416,25 @@ public class RobotCommandHandler {
             params.put(Definition.JSON_NAVI_POSITION_Y, y);
             params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
 
+            final org.json.JSONObject finalParams = params;
             RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
                 @Override
                 public void onResult(int result, String message) {
                     boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
                     Log.i(TAG, "setPoseEstimate onResult: " + result + ", msg=" + message);
+                    if (!ok) {
+                        try {
+                            RobotApi.getInstance().setForceEstimate(0, finalParams.toString(), new CommandListener() {
+                                @Override
+                                public void onResult(int resF, String msgF) {
+                                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
+                                    Log.i(TAG, "setForceEstimate onResult: " + resF + ", msg=" + msgF);
+                                    sendResult(client, msgId, "CMD_SET_POSE_ESTIMATE", okF, resF, msgF);
+                                }
+                            });
+                            return;
+                        } catch (Throwable ignored) {}
+                    }
                     sendResult(client, msgId, "CMD_SET_POSE_ESTIMATE", ok, result, message);
                 }
             });
@@ -440,6 +454,22 @@ public class RobotCommandHandler {
         }
 
         try {
+            // Cố gắng lấy tọa độ từ RobotMapManager để nạp kèm nếu có
+            try {
+                String currentMap = RobotMapManager.getCurrentMapName();
+                JsonObject place = RobotMapManager.getPlaceByName(currentMap, placeName);
+                if (place != null) {
+                    float px = (float) place.get("x").getAsDouble();
+                    float py = (float) place.get("y").getAsDouble();
+                    float pth = (float) place.get("theta").getAsDouble();
+                    org.json.JSONObject p = new org.json.JSONObject();
+                    p.put(Definition.JSON_NAVI_POSITION_X, px);
+                    p.put(Definition.JSON_NAVI_POSITION_Y, py);
+                    p.put(Definition.JSON_NAVI_POSITION_THETA, pth);
+                    RobotApi.getInstance().setPoseEstimate(0, p.toString(), null);
+                }
+            } catch (Throwable ignored) {}
+
             RobotApi.getInstance().setLocation(0, placeName, new CommandListener() {
                 @Override
                 public void onResult(int result, String message) {
@@ -455,18 +485,59 @@ public class RobotCommandHandler {
     }
 
     private void handleResetEstimate(final WebSocket client, final String msgId) {
-        Log.i(TAG, "Executing RESET_ESTIMATE (Auto search relocalization)");
+        Log.i(TAG, "Executing RESET_ESTIMATE (Action 24 + Chassis 360 rotation)");
+        TTSPlayer.playVietnameseText("Robot bắt đầu xoay để quét Laser tìm lại vị trí...", null);
+
         try {
-            RobotApi.getInstance().resetPoseEstimate(0, new CommandListener() {
+            // 1. Gọi thuật toán resetEstimate (Action ID 24)
+            RobotApi.getInstance().resetEstimate(0, 5, new CommandListener() {
                 @Override
                 public void onResult(int result, String message) {
-                    boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
-                    Log.i(TAG, "resetPoseEstimate onResult: " + result + ", msg=" + message);
-                    sendResult(client, msgId, "CMD_RESET_ESTIMATE", ok, result, message);
+                    Log.i(TAG, "resetEstimate onResult: " + result + ", msg=" + message);
                 }
             });
+
+            // 2. Quay khung gầm robot nhẹ nhàng để Laser quét các vách xung quanh
+            RobotApi.getInstance().turnLeft(0, 20.0f, null);
+
+            // 3. Vòng lặp kiểm tra định vị trong 18 giây
+            final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+            final long startTime = System.currentTimeMillis();
+            final Runnable checkRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    RobotApi.getInstance().isRobotEstimate(0, new CommandListener() {
+                        @Override
+                        public void onResult(int res, String msg) {
+                            if ("true".equalsIgnoreCase(msg)) {
+                                try {
+                                    RobotApi.getInstance().stopMove(0, null);
+                                } catch (Throwable ignored) {}
+                                TTSPlayer.playVietnameseText("Đã tìm thấy vị trí robot thành công!", null);
+                                sendResult(client, msgId, "CMD_RESET_ESTIMATE", true, 0, "Succeed");
+                                return;
+                            }
+                        }
+                    });
+
+                    if (elapsed >= 18000) {
+                        try {
+                            RobotApi.getInstance().stopMove(0, null);
+                        } catch (Throwable ignored) {}
+                        sendResult(client, msgId, "CMD_RESET_ESTIMATE", false, -1, "Timeout 360 scan");
+                    } else {
+                        handler.postDelayed(this, 1200);
+                    }
+                }
+            };
+            handler.postDelayed(checkRunnable, 1500);
+
         } catch (Throwable t) {
-            Log.e(TAG, "resetPoseEstimate exception: " + t.getMessage(), t);
+            Log.e(TAG, "resetEstimate exception: " + t.getMessage(), t);
+            try {
+                RobotApi.getInstance().stopMove(0, null);
+            } catch (Throwable ignored) {}
             sendResult(client, msgId, "CMD_RESET_ESTIMATE", false, -1, t.getMessage());
         }
     }
