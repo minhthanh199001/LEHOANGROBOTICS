@@ -1,0 +1,2532 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lê Hoàng Robotics — Cloud Fleet Control Portal</title>
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <script src="js/signalr.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --border-color: rgba(56, 189, 248, 0.2);
+      --border-glow: rgba(6, 182, 212, 0.4);
+      --cyan: #00f2fe;
+      --cyan-bright: #38bdf8;
+      --accent: #06b6d4;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #8b5cf6;
+      --text-main: #f8fafc;
+      --text-dim: #94a3b8;
+      --font-cyber: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      color: var(--text-main);
+      font-family: var(--font-cyber);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOP HEADER BAR */
+    .top-header {
+      background: rgba(10, 16, 30, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.35);
+      border: 1px solid rgba(0, 242, 254, 0.4);
+      background: #000;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #00f2fe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* FILTER CONTROLS */
+    .filters-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .custom-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      padding: 7px 14px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 170px;
+    }
+
+    .custom-select:hover, .custom-select:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+    }
+
+    /* STATUS PILL */
+    .cloud-status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--emerald);
+      letter-spacing: 0.8px;
+      transition: all 0.3s;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulseGlow 1.8s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+    }
+
+    /* CONTAINER & KPI TILES */
+    .app-container {
+      padding: 20px 24px;
+      max-width: 1800px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-glow);
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--cyan), transparent);
+    }
+
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .kpi-icon {
+      font-size: 1.3rem;
+    }
+
+    .kpi-value {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin: 8px 0 4px;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* MAIN CONTENT SPLIT */
+    .main-workspace {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 20px;
+      flex: 1;
+      min-height: 620px;
+    }
+
+    @media (max-width: 1150px) {
+      .main-workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* PANEL BASE */
+    .cyber-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    }
+
+    .panel-header {
+      padding: 14px 20px;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+
+    .panel-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-tool {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #cbd5e1;
+      font-size: 0.8rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn-tool:hover {
+      background: rgba(56, 189, 248, 0.2);
+      color: #fff;
+      border-color: var(--cyan);
+    }
+
+    /* HIGH-IMPACT CLOUD REMOTE CONTROLS */
+    .btn-action-estop {
+      background: linear-gradient(135deg, #DC2626, #991B1B);
+      border: 1px solid #EF4444;
+      color: #FFFFFF;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: pulseEstopGlow 2.5s infinite;
+    }
+    .btn-action-estop:hover {
+      background: linear-gradient(135deg, #EF4444, #B91C1C);
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+    }
+    @keyframes pulseEstopGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); }
+      50% { box-shadow: 0 0 22px rgba(239, 68, 68, 0.75); }
+    }
+
+    .btn-action-charge {
+      background: linear-gradient(135deg, #D97706, #B45309);
+      border: 1px solid #F59E0B;
+      color: #FFFFFF;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-action-charge:hover {
+      background: linear-gradient(135deg, #F59E0B, #D97706);
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.65);
+    }
+
+    .btn-action-resume {
+      background: linear-gradient(135deg, #059669, #047857);
+      border: 1px solid #10B981;
+      color: #FFFFFF;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+    }
+    .btn-action-resume:hover {
+      background: linear-gradient(135deg, #10B981, #059669);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+    }
+
+    /* IN-CARD QUICK ACTION BUTTONS */
+    .robot-card.selected {
+      border-color: var(--cyan) !important;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.35);
+    }
+    .robot-card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .btn-card-action {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .btn-card-charge {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #FBBF24;
+    }
+    .btn-card-charge:hover {
+      background: rgba(245, 158, 11, 0.35);
+      color: #FFF;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+    .btn-card-estop {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #F87171;
+    }
+    .btn-card-estop:hover {
+      background: rgba(239, 68, 68, 0.35);
+      color: #FFF;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+    .btn-card-select {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.3);
+      color: #38BDF8;
+    }
+    .btn-card-select:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: #FFF;
+    }
+
+    /* QUICK STATIONS WRAPPER IN DISPATCH TAB */
+    .stations-quick-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .btn-station-chip {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #E2E8F0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-station-chip:hover {
+      background: rgba(0, 242, 254, 0.18);
+      border-color: #00F2FE;
+      color: #FFF;
+      transform: translateY(-1px);
+    }
+
+    /* FLOATING QUICK POPOVER FOR STATIONS */
+    .station-popover {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(0, 242, 254, 0.45);
+      border-radius: 8px;
+      padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 242, 254, 0.2);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 230px;
+      pointer-events: auto;
+      animation: popoverFadeIn 0.2s ease-out;
+    }
+    @keyframes popoverFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .station-popover-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .station-popover-desc {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+    .station-popover-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .hud-status-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.2);
+      color: #10B981;
+      margin-left: 6px;
+    }
+
+
+    /* 2D MAP CANVAS */
+    .map-container {
+      position: relative;
+      flex: 1;
+      background: #020617;
+      min-height: 480px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #floorCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #floorCanvas:active {
+      cursor: grabbing;
+    }
+
+    .canvas-hud {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(10, 16, 30, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: flex;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .canvas-hud b {
+      color: var(--cyan-bright);
+    }
+
+    .canvas-controls {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .canvas-btn {
+      width: 34px;
+      height: 34px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #fff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+    }
+
+    .canvas-btn:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+    }
+
+    /* RIGHT TABS */
+    .tabs-nav {
+      display: flex;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      color: var(--cyan);
+      background: rgba(6, 182, 212, 0.08);
+    }
+
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+
+    .tab-content {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 580px;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* ROBOT CARD */
+    .robot-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .robot-card:hover {
+      border-color: var(--cyan-bright);
+      box-shadow: 0 4px 16px rgba(0, 242, 254, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .robot-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .robot-name-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .robot-avatar {
+      width: 38px;
+      height: 38px;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .robot-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .robot-model {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-online {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .status-charging {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .status-offline {
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-dim);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .robot-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      background: rgba(2, 6, 23, 0.5);
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
+    .battery-bar-container {
+      width: 90px;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    .battery-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    .robot-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-action {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #e2e8f0;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+
+    .btn-action.btn-danger {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .btn-action.btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--red);
+      color: #fff;
+    }
+
+    /* DISPATCH FORM */
+    .dispatch-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      background: rgba(2, 6, 23, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #f8fafc;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.35);
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+
+    /* ALERTS LOG LIST */
+    .alert-item {
+      background: rgba(2, 6, 23, 0.7);
+      border-left: 3px solid var(--cyan);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .alert-item.alert-WARNING {
+      border-left-color: var(--amber);
+    }
+
+    .alert-item.alert-ERROR {
+      border-left-color: var(--red);
+    }
+
+    .alert-item.alert-SUCCESS {
+      border-left-color: var(--emerald);
+    }
+
+    .alert-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+
+    .alert-msg {
+      font-size: 0.82rem;
+      color: #e2e8f0;
+    }
+
+    /* TOAST */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--cyan);
+      border-radius: 10px;
+      padding: 12px 18px;
+      color: #fff;
+      font-size: 0.85rem;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      animation: slideIn 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* FOOTER */
+    .app-footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      background: rgba(10, 16, 30, 0.6);
+    }
+
+    /* USER PROFILE MENU */
+    .user-avatar-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      outline: none;
+    }
+
+    .user-avatar-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      border: 1.5px solid var(--cyan-bright);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .user-avatar-circle:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.6);
+    }
+
+    .user-avatar-circle.large {
+      width: 44px;
+      height: 44px;
+      font-size: 1.1rem;
+    }
+
+    .user-dropdown-panel {
+      position: absolute;
+      top: 48px;
+      right: 0;
+      width: 290px;
+      background: rgba(11, 19, 43, 0.98);
+      border: 1.5px solid var(--cyan);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75);
+      border-radius: 12px;
+      padding: 16px;
+      backdrop-filter: blur(16px);
+      z-index: 1000;
+      animation: fadeInDown 0.2s ease;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user-dropdown-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .user-full-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .user-username {
+      font-size: 0.78rem;
+      color: var(--cyan);
+      margin-top: 2px;
+    }
+
+    .user-role-card {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .user-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+    }
+
+    .user-info-label {
+      color: var(--text-dim);
+    }
+
+    .user-info-val {
+      color: #e2e8f0;
+      font-weight: 600;
+      max-width: 170px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role-badge {
+      background: rgba(2, 132, 199, 0.25);
+      border: 1px solid var(--accent);
+      color: var(--cyan-bright);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .quick-switch-title {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .quick-switch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .btn-user-switch {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: #cbd5e1;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+
+    .btn-user-switch:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+
+    .user-dropdown-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+    }
+
+    .btn-logout {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 7px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--red);
+      color: #fff;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: #0b132b;
+      border: 1.5px solid var(--cyan);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      animation: zoomIn 0.25s ease;
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .btn-close-modal:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="top-header">
+    <div class="brand-section">
+      <img src="img/logo.png" alt="Le Hoang Logo" class="brand-logo">
+      <div>
+        <div class="brand-title">LÊ HOÀNG ROBOTICS <span style="font-size: 0.8rem; color: var(--cyan); font-weight: 500;">☁️ CLOUD</span></div>
+        <div class="brand-subtitle">Central Fleet Management System</div>
+      </div>
+    </div>
+
+    <div class="filters-section">
+      <!-- Organization Filter -->
+      <select id="selOrg" class="custom-select" onchange="onOrgFilterChanged()">
+        <option value="">🏢 Tất cả tổ chức</option>
+      </select>
+
+      <!-- Site Filter -->
+      <select id="selSite" class="custom-select" onchange="onSiteFilterChanged()">
+        <option value="">📍 Tất cả chi nhánh</option>
+      </select>
+
+      <!-- Connection Pill -->
+      <div id="cloudStatusPill" class="cloud-status-pill">
+        <div id="statusDot" class="status-dot"></div>
+        <span id="statusText">CLOUD CONNECTED</span>
+      </div>
+
+      <!-- User Profile Badge & Menu (Identical to Desktop App "QH") -->
+      <div class="user-menu-wrapper" style="position: relative;">
+        <button id="userAvatarBtn" class="user-avatar-btn" onclick="toggleUserDropdown()" title="Hồ sơ tài khoản & Đổi người dùng">
+          <div class="user-avatar-circle">
+            <span id="userInitials">QH</span>
+          </div>
+        </button>
+
+        <!-- Dropdown Popup -->
+        <div id="userDropdown" class="user-dropdown-panel" style="display: none;">
+          <div class="user-dropdown-header">
+            <div class="user-avatar-circle large">
+              <span id="userDropdownInitials">QH</span>
+            </div>
+            <div>
+              <div id="userFullName" class="user-full-name">Quản trị viên LH</div>
+              <div id="userUsername" class="user-username">@admin</div>
+            </div>
+          </div>
+
+          <div class="user-role-card">
+            <div class="user-info-row">
+              <span class="user-info-label">Vai trò:</span>
+              <span id="userRoleBadge" class="user-role-badge">SuperAdmin</span>
+            </div>
+            <div class="user-info-row">
+              <span class="user-info-label">Tổ chức:</span>
+              <span id="userOrgName" class="user-info-val">Lê Hoàng Robotics Corp</span>
+            </div>
+            <div class="user-info-row">
+              <span class="user-info-label">Chi nhánh:</span>
+              <span id="userSiteName" class="user-info-val">Toàn hệ thống</span>
+            </div>
+          </div>
+
+          <div class="user-quick-switch-section">
+            <div class="quick-switch-title">Đổi tài khoản nhanh:</div>
+            <div class="quick-switch-grid">
+              <button class="btn-user-switch" onclick="switchUserQuick('admin')">👑 Admin</button>
+              <button class="btn-user-switch" onclick="switchUserQuick('vinpearl_admin')">🏢 Vinpearl</button>
+              <button class="btn-user-switch" onclick="switchUserQuick('vlm81_manager')">📍 Landmark 81</button>
+              <button class="btn-user-switch" onclick="switchUserQuick('operator')">🤖 Vận hành</button>
+            </div>
+          </div>
+
+          <div class="user-dropdown-footer">
+            <button class="btn-logout" onclick="openLoginModal()">🚪 Đăng nhập tài khoản khác</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP CONTENT -->
+  <div class="app-container">
+
+    <!-- KPI ROW -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Tổng Robot Chuỗi</span>
+          <span class="kpi-icon">🤖</span>
+        </div>
+        <div class="kpi-value" id="kpiTotalRobots">--</div>
+        <div class="kpi-sub">Đồng bộ đa chi nhánh</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Robot Hoạt Động</span>
+          <span class="kpi-icon" style="color: var(--emerald);">🟢</span>
+        </div>
+        <div class="kpi-value" style="color: var(--emerald);" id="kpiOnlineRobots">--</div>
+        <div class="kpi-sub" id="kpiOnlineRate">Tỷ lệ sẵn sàng: --%</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Đang Sạc Pin</span>
+          <span class="kpi-icon" style="color: var(--amber);">⚡</span>
+        </div>
+        <div class="kpi-value" style="color: var(--amber);" id="kpiChargingRobots">--</div>
+        <div class="kpi-sub">Tự động tại Dock sạc</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Pin Trung Bình</span>
+          <span class="kpi-icon" style="color: var(--cyan);">🔋</span>
+        </div>
+        <div class="kpi-value" style="color: var(--cyan);" id="kpiAvgBattery">--%</div>
+        <div class="kpi-sub">Trạng thái năng lượng toàn đội</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Chi Nhánh Trực Tuyến</span>
+          <span class="kpi-icon" style="color: var(--purple);">🏢</span>
+        </div>
+        <div class="kpi-value" style="color: var(--purple);" id="kpiTotalSites">--</div>
+        <div class="kpi-sub">Điểm triển khai thực tế</div>
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="main-workspace">
+
+      <!-- LEFT: 2D MAP BLUEPRINT -->
+      <div class="cyber-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🗺️</span> Bản Đồ Mặt Bằng Thời Gian Thực
+          </div>
+          <div class="panel-tools">
+            <button class="btn-action-estop" onclick="triggerEmergencyStop()" title="Dừng khẩn cấp tức thời cho robot đang chọn">
+              ⛔ DỪNG KHẨN CẤP
+            </button>
+            <button class="btn-action-charge" onclick="triggerReturnCharge()" title="Gửi lệnh robot quay về trạm sạc tự động">
+              ⚡ VỀ TRẠM SẠC
+            </button>
+            <button class="btn-action-resume" onclick="triggerResume()" title="Khôi phục trạng thái hoạt động">
+              🟢 TIẾP TỤC
+            </button>
+            <button class="btn-tool" onclick="resetMapView()" title="Căn giữa bản đồ">🎯 Căn Giữa</button>
+            <button class="btn-tool" id="btnToggleWaypoints" onclick="toggleWaypoints()" title="Ẩn/Hiện các điểm trạm">📍 Điểm Trạm</button>
+            <button class="btn-tool" onclick="clearTrails()" title="Xóa vệt quỹ đạo di chuyển">🧹 Xóa Vệt</button>
+          </div>
+        </div>
+
+        <div class="map-container" id="mapWrapper">
+          <canvas id="floorCanvas"></canvas>
+
+          <!-- Floating Quick Station Action Popup -->
+          <div id="stationActionModal" class="station-popover" style="display: none;">
+            <div class="station-popover-title">
+              <span id="popoverStationIcon">📍</span> <span id="popoverStationName">cafe</span>
+            </div>
+            <div class="station-popover-desc">
+              Tọa độ: <span id="popoverStationCoords" style="color:var(--cyan); font-weight:600;">X: 0.0m, Y: 0.0m</span><br/>
+              Điều hướng robot <b id="popoverRobotName" style="color:#FFF;">LH-ORIONSTAR-02</b> đến vị trí này?
+            </div>
+            <div class="station-popover-actions">
+              <button class="btn-primary" style="padding: 6px 14px; font-size: 0.8rem;" onclick="confirmStationNavigate()">🚀 Đến Ngay</button>
+              <button class="btn-tool" style="padding: 6px 10px; font-size: 0.8rem;" onclick="closeStationPopover()">Đóng</button>
+            </div>
+          </div>
+
+          <div class="canvas-controls">
+            <button class="canvas-btn" title="Phóng to" onclick="zoomMap(1.2)">+</button>
+            <button class="canvas-btn" title="Thu nhỏ" onclick="zoomMap(0.8)">-</button>
+            <button class="canvas-btn" title="Đặt lại vị trí" onclick="resetMapView()">⟲</button>
+          </div>
+
+          <div class="canvas-hud">
+            <div>Robot: <b id="hudRobotName">LH-ORIONSTAR-02</b> <span id="hudRobotStatus" class="hud-status-badge">🟢 Online</span></div>
+            <div>Tọa độ: <b id="hudCoords">X: 0.00m | Y: 0.00m</b></div>
+            <div>Góc: <b id="hudHeading">0.0°</b></div>
+            <div>Bản đồ: <b id="hudMapName">Tầng 2 - 1110154527</b></div>
+            <div>Trạm: <b id="hudStationCount">11 điểm</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: FLEET MANAGEMENT TABS -->
+      <div class="cyber-panel">
+        <div class="tabs-nav">
+          <button class="tab-btn active" onclick="switchTab('tabRobots', this)">
+            🤖 Đội Xe (<span id="tabBadgeRobots">0</span>)
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabDispatch', this)">
+            ⚡ Điều Khiển
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabAlerts', this)">
+            🔔 Nhật Ký
+          </button>
+        </div>
+
+        <!-- TAB 1: FLEET LIST -->
+        <div id="tabRobots" class="tab-content active">
+          <!-- Robot cards dynamically injected -->
+          <div id="robotCardsList" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+        <!-- TAB 2: REMOTE DISPATCH -->
+        <div id="tabDispatch" class="tab-content">
+          <div class="dispatch-box">
+            <h4 style="color: var(--cyan); font-size: 0.9rem; text-transform: uppercase;">Phát Lệnh Từ Xa Qua Cloud</h4>
+            <p style="font-size: 0.78rem; color: var(--text-dim);">
+              Lệnh được mã hóa và chuyển tiếp tức thời qua SignalR Cloud Hub tới máy tính trạm chi nhánh hoặc trực tiếp robot.
+            </p>
+
+            <!-- FAST 1-CLICK CONTROLS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+              <button class="btn-action-estop" style="justify-content: center; padding: 10px;" onclick="triggerEmergencyStop()">
+                ⛔ DỪNG KHẨN CẤP
+              </button>
+              <button class="btn-action-charge" style="justify-content: center; padding: 10px;" onclick="triggerReturnCharge()">
+                ⚡ VỀ TRẠM SẠC
+              </button>
+            </div>
+            <button class="btn-action-resume" style="width: 100%; justify-content: center; padding: 8px; margin-bottom: 12px;" onclick="triggerResume()">
+              🟢 KHÔI PHỤC HOẠT ĐỘNG (CLEAR E-STOP)
+            </button>
+
+            <div class="form-group">
+              <label>1. Chọn Robot Nhận Lệnh</label>
+              <select id="dispatchSelectRobot" class="form-control" onchange="onDispatchSelectRobotChanged()"></select>
+            </div>
+
+            <div class="form-group">
+              <label>2. Hành Động / Lộ Trình</label>
+              <select id="dispatchAction" class="form-control" onchange="onDispatchActionChanged()">
+                <option value="NAVIGATE">📍 Điều hướng tới Điểm đến</option>
+                <option value="RETURN_HOME">⚡ Quay về Trạm Sạc (Return Dock)</option>
+                <option value="EMERGENCY_STOP">⛔ DỪNG KHẨN CẤP (Emergency Stop)</option>
+                <option value="SPEAK">🔊 Phát giọng nói chào đón (TTS)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="groupDestination">
+              <label>3. Điểm Đến Chỉ Định (Chọn hoặc bấm nhanh bên dưới)</label>
+              <select id="dispatchDestination" class="form-control"></select>
+              <div id="quickStationChips" class="stations-quick-grid"></div>
+            </div>
+
+            <div class="form-group" id="groupSpeech" style="display:none;">
+              <label>Nội dung câu nói (Tiếng Việt / English)</label>
+              <input type="text" id="dispatchSpeechText" class="form-control" value="Kính chào quý khách ghé thăm Lê Hoàng Robotics!">
+            </div>
+
+            <button class="btn-primary" onclick="submitCloudCommand()" style="margin-top: 6px;">
+              🚀 GỬI LỆNH ĐIỀU HÀNH CLOUD
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 3: ALERTS & AUDIT LOGS -->
+        <div id="tabAlerts" class="tab-content">
+          <div id="alertsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <img src="img/logo.png" style="width: 28px; height: 28px; border-radius: 6px;">
+          <span style="font-weight: 800; color: #fff;">ĐĂNG NHẬP CLOUD FLEET</span>
+        </div>
+        <button class="btn-close-modal" onclick="closeLoginModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tên đăng nhập / Username</label>
+          <input type="text" id="loginUsername" class="form-control" placeholder="admin" value="admin">
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="123456" value="123456">
+        </div>
+        <div id="loginError" style="color: var(--red); font-size: 0.78rem; display: none;"></div>
+        <button class="btn-primary" onclick="submitLogin()" style="width: 100%; margin-top: 6px;">
+          🔑 ĐĂNG NHẬP HỆ THỐNG
+        </button>
+
+        <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+          <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 6px;">Tài khoản mẫu:</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn-user-switch" onclick="fillLoginModal('admin')">👑 Admin (123456)</button>
+            <button class="btn-user-switch" onclick="fillLoginModal('vinpearl_admin')">🏢 Vinpearl</button>
+            <button class="btn-user-switch" onclick="fillLoginModal('vlm81_manager')">📍 Landmark 81</button>
+            <button class="btn-user-switch" onclick="fillLoginModal('operator')">🤖 Vận hành</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    © 2026 LÊ HOÀNG ROBOTICS CO., LTD • Hệ Thống Điều Hành & Giám Sát Robot Đa Chi Nhánh Nền Tảng Đám Mây (.NET 8 SignalR Engine)
+  </footer>
+
+  <script>
+    // --- STATE MANAGEMENT ---
+    let fleetData = {
+      summary: {},
+      organizations: [],
+      sites: [],
+      robots: [],
+      alerts: []
+    };
+
+    let selectedOrgId = "";
+    let selectedSiteId = "";
+    let selectedRobotId = "LH-ORIONSTAR-02";
+    let showWaypoints = true;
+    let currentUser = null;
+
+    // Map & Coordinates Info (Synchronized with Desktop App)
+    let mapInfo = {
+      mapName: "tầng 2-1110154527",
+      imageUrl: "img/default_map_hd.png",
+      minX: -5.0,
+      maxX: 8.0,
+      minY: -6.0,
+      maxY: 13.0,
+      stations: []
+    };
+
+    let stations = [];
+    let robotTrails = {}; // robotId -> [{x, y}]
+
+    // Canvas state
+    let canvas, ctx;
+    let mapImage = new Image();
+    let mapLoaded = false;
+    let zoomLevel = 1.0;
+    let panOffset = { x: 0, y: 0 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let hoveredStation = null;
+    let hoveredRobot = null;
+    let radarPulseRadius = 0;
+    let popoverTargetStation = null;
+
+    // --- INITIALIZATION ---
+    window.addEventListener("DOMContentLoaded", () => {
+      initCanvas();
+      fetchMetadata();
+      fetchMapInfo();
+      setupSignalR();
+      startMapAnimation();
+      setInterval(updateClock, 1000);
+    });
+
+    async function fetchMapInfo() {
+      try {
+        const res = await fetch("/api/fleet/map-info");
+        if (res.ok) {
+          const data = await res.json();
+          mapInfo = data;
+          stations = data.stations || [];
+          if (data.imageUrl && mapImage.src.indexOf(data.imageUrl) === -1) {
+            mapImage.src = data.imageUrl;
+          }
+          populateStationChips();
+          populateStationSelect();
+          const hudMap = document.getElementById("hudMapName");
+          if (hudMap) hudMap.innerText = data.mapName;
+          const hudCount = document.getElementById("hudStationCount");
+          if (hudCount) hudCount.innerText = `${stations.length} điểm`;
+        }
+      } catch (err) {
+        console.warn("fetchMapInfo error:", err);
+      }
+    }
+
+    function populateStationChips() {
+      const container = document.getElementById("quickStationChips");
+      if (!container) return;
+      container.innerHTML = "";
+      stations.forEach(st => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-station-chip";
+        btn.innerHTML = `${st.icon || '📍'} ${st.name}`;
+        btn.onclick = () => {
+          const sel = document.getElementById("dispatchDestination");
+          if (sel) sel.value = st.name;
+          triggerNavigateStation(selectedRobotId, st.name);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function populateStationSelect() {
+      const sel = document.getElementById("dispatchDestination");
+      if (!sel) return;
+      sel.innerHTML = "";
+      stations.forEach(st => {
+        sel.innerHTML += `<option value="${st.name}">${st.icon || '📍'} ${st.name}</option>`;
+      });
+    }
+
+    function initCanvas() {
+      canvas = document.getElementById("floorCanvas");
+      ctx = canvas.getContext("2d");
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+
+      mapImage.src = "img/default_map_hd.png";
+      mapImage.onload = () => {
+        mapLoaded = true;
+      };
+      mapImage.onerror = () => {
+        mapLoaded = false;
+      };
+
+      // Mouse drag pan
+      canvas.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        dragStart = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          panOffset.x = e.clientX - dragStart.x;
+          panOffset.y = e.clientY - dragStart.y;
+        }
+
+        // Detect hover over robot or station
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = (e.clientX - rect.left - (canvas.width / 2 + panOffset.x)) / zoomLevel;
+          const mouseY = (e.clientY - rect.top - (canvas.height / 2 + panOffset.y)) / zoomLevel;
+
+          hoveredStation = stations.find(st => {
+            const pt = worldToScreen(st.x, st.y);
+            return Math.hypot(mouseX - pt.x, mouseY - pt.y) < 16;
+          });
+
+          hoveredRobot = getFilteredRobots().find(bot => {
+            const pt = worldToScreen(bot.poseX || 0, bot.poseY || 0);
+            return Math.hypot(mouseX - pt.x, mouseY - pt.y) < 18;
+          });
+
+          canvas.style.cursor = (hoveredStation || hoveredRobot) ? "pointer" : (isDragging ? "grabbing" : "grab");
+        }
+      });
+
+      window.addEventListener("mouseup", (e) => {
+        if (isDragging) {
+          const dist = Math.hypot(e.clientX - (dragStart.x + panOffset.x), e.clientY - (dragStart.y + panOffset.y));
+          if (dist < 6) {
+            handleCanvasClick(e);
+          }
+        }
+        isDragging = false;
+      });
+
+      // Wheel zoom centered on canvas
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.88;
+        zoomMap(factor);
+      });
+    }
+
+    function handleCanvasClick(e) {
+      if (hoveredRobot) {
+        selectRobot(hoveredRobot.id);
+        showToast(`📍 Đã chọn robot: ${hoveredRobot.name}`);
+      } else if (hoveredStation) {
+        openStationPopover(hoveredStation, e.clientX, e.clientY);
+      } else {
+        closeStationPopover();
+      }
+    }
+
+    function openStationPopover(st, clientX, clientY) {
+      popoverTargetStation = st;
+      const modal = document.getElementById("stationActionModal");
+      if (!modal) return;
+      const bot = fleetData.robots.find(r => r.id === selectedRobotId);
+      const botName = bot ? bot.name : (selectedRobotId || "Robot");
+
+      document.getElementById("popoverStationIcon").innerText = st.icon || "📍";
+      document.getElementById("popoverStationName").innerText = st.name;
+      document.getElementById("popoverStationCoords").innerText = `X: ${st.x?.toFixed(2)}m, Y: ${st.y?.toFixed(2)}m`;
+      document.getElementById("popoverRobotName").innerText = botName;
+
+      const wrapperRect = document.getElementById("mapWrapper").getBoundingClientRect();
+      let left = clientX - wrapperRect.left + 15;
+      let top = clientY - wrapperRect.top - 20;
+
+      if (left + 240 > wrapperRect.width) left = wrapperRect.width - 250;
+      if (top + 160 > wrapperRect.height) top = wrapperRect.height - 170;
+      if (left < 10) left = 10;
+      if (top < 10) top = 10;
+
+      modal.style.left = left + "px";
+      modal.style.top = top + "px";
+      modal.style.display = "flex";
+    }
+
+    function closeStationPopover() {
+      const modal = document.getElementById("stationActionModal");
+      if (modal) modal.style.display = "none";
+      popoverTargetStation = null;
+    }
+
+    async function confirmStationNavigate() {
+      if (popoverTargetStation) {
+        await triggerNavigateStation(selectedRobotId, popoverTargetStation.name);
+        closeStationPopover();
+      }
+    }
+
+    function resizeCanvas() {
+      const container = document.getElementById("mapWrapper");
+      if (canvas && container) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+    }
+
+    function zoomMap(factor) {
+      zoomLevel = Math.max(0.4, Math.min(3.5, zoomLevel * factor));
+    }
+
+    function resetMapView() {
+      zoomLevel = 1.0;
+      panOffset = { x: 0, y: 0 };
+    }
+
+    function toggleWaypoints() {
+      showWaypoints = !showWaypoints;
+      const btn = document.getElementById("btnToggleWaypoints");
+      if (btn) btn.style.color = showWaypoints ? "var(--cyan)" : "#64748B";
+      showToast(`Chế độ hiển thị điểm trạm: ${showWaypoints ? 'BẬT' : 'TẮT'}`);
+    }
+
+    function clearTrails() {
+      robotTrails = {};
+      showToast("🧹 Đã xóa vệt quỹ đạo di chuyển!");
+    }
+
+    function addTrailPoint(robotId, worldX, worldY) {
+      if (!robotTrails[robotId]) robotTrails[robotId] = [];
+      const trail = robotTrails[robotId];
+      const last = trail[trail.length - 1];
+      if (!last || Math.hypot(last.x - worldX, last.y - worldY) > 0.08) {
+        trail.push({ x: worldX, y: worldY });
+        if (trail.length > 120) trail.shift();
+      }
+    }
+
+    function worldToScreen(worldX, worldY) {
+      const mapW = 420;
+      const spanX = Math.max(0.1, (mapInfo.maxX || 8.0) - (mapInfo.minX || -5.0));
+      const spanY = Math.max(0.1, (mapInfo.maxY || 13.0) - (mapInfo.minY || -6.0));
+      const mapH = mapW * (spanY / spanX);
+
+      const normX = Math.max(0, Math.min(1, (worldX - (mapInfo.minX || -5.0)) / spanX));
+      const normY = Math.max(0, Math.min(1, ((mapInfo.maxY || 13.0) - worldY) / spanY));
+      return {
+        x: -mapW / 2 + normX * mapW,
+        y: -mapH / 2 + normY * mapH
+      };
+    }
+
+    function startMapAnimation() {
+      radarPulseRadius = (radarPulseRadius + 0.35) % 25;
+      drawMap();
+      requestAnimationFrame(startMapAnimation);
+    }
+
+    // --- CANVAS RENDERING (HTML5) ---
+    function drawMap() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(canvas.width / 2 + panOffset.x, canvas.height / 2 + panOffset.y);
+      ctx.scale(zoomLevel, zoomLevel);
+
+      const mapW = 420;
+      const spanX = Math.max(0.1, (mapInfo.maxX || 8.0) - (mapInfo.minX || -5.0));
+      const spanY = Math.max(0.1, (mapInfo.maxY || 13.0) - (mapInfo.minY || -6.0));
+      const mapH = mapW * (spanY / spanX);
+
+      // 1. Draw floorplan background
+      if (mapLoaded && mapImage.width > 0) {
+        ctx.drawImage(mapImage, -mapW / 2, -mapH / 2, mapW, mapH);
+      } else {
+        // Blueprint grid background
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
+        ctx.lineWidth = 1;
+        for (let x = -200; x <= 200; x += 40) {
+          ctx.beginPath();
+          ctx.moveTo(x, -250);
+          ctx.lineTo(x, 250);
+          ctx.stroke();
+        }
+        for (let y = -250; y <= 250; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(-200, y);
+          ctx.lineTo(200, y);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Draw Trajectory Trails
+      for (const botId in robotTrails) {
+        const trail = robotTrails[botId];
+        if (trail && trail.length > 1) {
+          ctx.beginPath();
+          const first = worldToScreen(trail[0].x, trail[0].y);
+          ctx.moveTo(first.x, first.y);
+          for (let i = 1; i < trail.length; i++) {
+            const pt = worldToScreen(trail[i].x, trail[i].y);
+            ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.strokeStyle = (botId === selectedRobotId) ? "rgba(0, 242, 254, 0.7)" : "rgba(16, 185, 129, 0.4)";
+          ctx.lineWidth = (botId === selectedRobotId) ? 3 : 2;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.stroke();
+        }
+      }
+
+      // 3. Draw Stations
+      if (showWaypoints && stations.length > 0) {
+        stations.forEach(st => {
+          const pt = worldToScreen(st.x, st.y);
+          const isHovered = hoveredStation && hoveredStation.name === st.name;
+
+          ctx.save();
+          ctx.translate(pt.x, pt.y);
+
+          const isCharge = st.type === "charge" || st.type === "dock";
+          const glowColor = isCharge ? "rgba(245, 158, 11, 0.3)" : "rgba(0, 242, 254, 0.3)";
+          const pinColor = isCharge ? "#F59E0B" : "#00F2FE";
+
+          // Glow ring
+          ctx.fillStyle = glowColor;
+          ctx.beginPath();
+          ctx.arc(0, 0, isHovered ? 13 : 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Pin center
+          ctx.fillStyle = pinColor;
+          ctx.beginPath();
+          ctx.arc(0, 0, isHovered ? 6 : 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Text label
+          ctx.font = isHovered ? "bold 11px sans-serif" : "10px sans-serif";
+          ctx.fillStyle = isHovered ? "#FFFFFF" : "#CBD5E1";
+          ctx.textAlign = "center";
+          ctx.shadowColor = "#000000";
+          ctx.shadowBlur = 4;
+          const icon = st.icon || "📍";
+          ctx.fillText(`${icon} ${st.name}`, 0, -10);
+
+          ctx.restore();
+        });
+      }
+
+      // 4. Draw Robots
+      const activeRobots = getFilteredRobots();
+      activeRobots.forEach(bot => {
+        const pt = worldToScreen(bot.poseX || 0, bot.poseY || 0);
+        const isSelected = bot.id === selectedRobotId;
+        const isEmergency = bot.status === "EmergencyStop";
+        const isCharging = bot.status === "Charging" || bot.isCharging;
+
+        let primaryColor = "#10B981"; // Online
+        if (isEmergency) primaryColor = "#EF4444";
+        else if (isCharging) primaryColor = "#F59E0B";
+        else if (bot.status !== "Online") primaryColor = "#64748B";
+
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+
+        // Animated Radar pulse ring for active robot
+        if (isSelected || bot.status === "Online" || isEmergency) {
+          ctx.strokeStyle = primaryColor;
+          ctx.lineWidth = 1.6;
+          ctx.globalAlpha = Math.max(0, 1 - radarPulseRadius / 25);
+          ctx.beginPath();
+          ctx.arc(0, 0, 13 + radarPulseRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+
+        // Selection highlight ring
+        if (isSelected) {
+          ctx.strokeStyle = "#00F2FE";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, 16, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Robot circular body
+        ctx.fillStyle = primaryColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#0B132B";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Direction chevron / arrow
+        ctx.save();
+        ctx.rotate((bot.poseAngle || 0) * Math.PI / 180);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(4, -4);
+        ctx.lineTo(-4, -4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Robot Name label
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#000";
+        ctx.shadowBlur = 4;
+        ctx.fillText(bot.name, 0, 24);
+
+        // Battery & status tag
+        ctx.font = "9px sans-serif";
+        ctx.fillStyle = bot.battery > 20 ? "#10B981" : "#EF4444";
+        const batIcon = isCharging ? "⚡" : "🔋";
+        const statusTag = isEmergency ? " [⛔ E-STOP]" : "";
+        ctx.fillText(`${batIcon} ${bot.battery}%${statusTag}`, 0, 36);
+
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    // --- SIGNALR REAL-TIME CLIENT ---
+    let hubConn;
+    function setupSignalR() {
+      const statusPill = document.getElementById("cloudStatusPill");
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+
+      hubConn = new signalR.HubConnectionBuilder()
+        .withUrl("/fleetHub")
+        .withAutomaticReconnect([0, 2000, 5000, 10000, 20000])
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+
+      hubConn.on("OnInitialStateReceived", (summary, robots, user) => {
+        fleetData.summary = summary;
+        fleetData.robots = robots;
+        if (user) applyUser(user);
+        renderKPIs();
+        renderRobots();
+        robots.forEach(r => addTrailPoint(r.id, r.poseX, r.poseY));
+      });
+
+      hubConn.on("OnCurrentUserUpdated", (user) => {
+        if (user) applyUser(user);
+      });
+
+      hubConn.on("OnTelemetryUpdated", (packet) => {
+        let bot = fleetData.robots.find(r => r.id === packet.robotId);
+        if (bot) {
+          bot.battery = packet.battery;
+          bot.isCharging = packet.isCharging;
+          bot.status = packet.status;
+          bot.poseX = packet.poseX;
+          bot.poseY = packet.poseY;
+          bot.poseAngle = packet.poseAngle;
+          bot.lastSeen = new Date();
+        } else {
+          bot = {
+            id: packet.robotId,
+            name: packet.robotId,
+            battery: packet.battery,
+            isCharging: packet.isCharging,
+            status: packet.status,
+            poseX: packet.poseX,
+            poseY: packet.poseY,
+            poseAngle: packet.poseAngle,
+            lastSeen: new Date()
+          };
+          fleetData.robots.push(bot);
+        }
+
+        addTrailPoint(packet.robotId, packet.poseX, packet.poseY);
+        updateHud(packet);
+        renderKPIs();
+        renderRobots();
+      });
+
+      hubConn.on("OnAlertReceived", (alert) => {
+        fleetData.alerts.unshift(alert);
+        if (fleetData.alerts.length > 50) fleetData.alerts.pop();
+        renderAlerts();
+        showToast(`🔔 [${alert.alertType}] ${alert.message}`);
+      });
+
+      hubConn.onreconnecting(() => {
+        if (statusPill) statusPill.className = "cloud-status-pill disconnected";
+        if (statusDot) statusDot.className = "status-dot red";
+        if (statusText) statusText.innerText = "ĐANG KẾT NỐI LẠI...";
+      });
+
+      hubConn.onreconnected(() => {
+        if (statusPill) statusPill.className = "cloud-status-pill";
+        if (statusDot) statusDot.className = "status-dot";
+        if (statusText) statusText.innerText = "CLOUD CONNECTED";
+        hubConn.invoke("RegisterObserver", selectedSiteId);
+        showToast("✅ Đã kết nối lại Cloud Hub");
+      });
+
+      hubConn.start().then(() => {
+        hubConn.invoke("RegisterObserver", selectedSiteId);
+      }).catch(err => {
+        console.error("SignalR connect error:", err);
+      });
+    }
+
+    // --- REST API METADATA FETCH ---
+    async function fetchMetadata() {
+      try {
+        const [orgRes, siteRes, alertRes] = await Promise.all([
+          fetch("/api/fleet/organizations"),
+          fetch("/api/fleet/sites"),
+          fetch("/api/fleet/alerts")
+        ]);
+
+        if (orgRes.ok) fleetData.organizations = await orgRes.json();
+        if (siteRes.ok) fleetData.sites = await siteRes.json();
+        if (alertRes.ok) fleetData.alerts = await alertRes.json();
+
+        populateFilters();
+        renderAlerts();
+      } catch (err) {
+        console.error("Fetch metadata error:", err);
+      }
+    }
+
+    function populateFilters() {
+      const selOrg = document.getElementById("selOrg");
+      selOrg.innerHTML = '<option value="">🏢 Tất cả tổ chức</option>';
+      fleetData.organizations.forEach(org => {
+        selOrg.innerHTML += `<option value="${org.id}">${org.name}</option>`;
+      });
+
+      populateSiteFilter();
+    }
+
+    function populateSiteFilter() {
+      const selSite = document.getElementById("selSite");
+      selSite.innerHTML = '<option value="">📍 Tất cả chi nhánh</option>';
+      
+      const filtered = selectedOrgId 
+        ? fleetData.sites.filter(s => s.organizationId === selectedOrgId)
+        : fleetData.sites;
+
+      filtered.forEach(site => {
+        selSite.innerHTML += `<option value="${site.id}">${site.name}</option>`;
+      });
+    }
+
+    function onOrgFilterChanged() {
+      selectedOrgId = document.getElementById("selOrg").value;
+      populateSiteFilter();
+      selectedSiteId = "";
+      renderRobots();
+    }
+
+    function onSiteFilterChanged() {
+      selectedSiteId = document.getElementById("selSite").value;
+      renderRobots();
+    }
+
+    function getFilteredRobots() {
+      return fleetData.robots.filter(bot => {
+        if (selectedOrgId && bot.orgId !== selectedOrgId) return false;
+        if (selectedSiteId && bot.siteId !== selectedSiteId) return false;
+        return true;
+      });
+    }
+
+    // --- RENDERING ---
+    function renderKPIs() {
+      const robots = fleetData.robots;
+      const total = robots.length;
+      const online = robots.filter(r => r.status === "Online").length;
+      const charging = robots.filter(r => r.status === "Charging" || r.isCharging).length;
+      
+      let sumBatt = 0;
+      robots.forEach(r => sumBatt += (r.battery || 0));
+      const avgBatt = total > 0 ? Math.round(sumBatt / total) : 0;
+      const onlineRate = total > 0 ? Math.round((online + charging) / total * 100) : 0;
+
+      document.getElementById("kpiTotalRobots").innerText = total;
+      document.getElementById("kpiOnlineRobots").innerText = online;
+      document.getElementById("kpiChargingRobots").innerText = charging;
+      document.getElementById("kpiAvgBattery").innerText = `${avgBatt}%`;
+      document.getElementById("kpiOnlineRate").innerText = `Tỷ lệ sẵn sàng: ${onlineRate}%`;
+      document.getElementById("kpiTotalSites").innerText = fleetData.sites.length || 3;
+    }
+
+    function renderRobots() {
+      const container = document.getElementById("robotCardsList");
+      const dispatchSelect = document.getElementById("dispatchSelectRobot");
+      const robots = getFilteredRobots();
+
+      document.getElementById("tabBadgeRobots").innerText = robots.length;
+
+      container.innerHTML = "";
+      dispatchSelect.innerHTML = "";
+
+      robots.forEach(bot => {
+        const isSelected = bot.id === selectedRobotId;
+        const isEmergency = bot.status === "EmergencyStop";
+        const isCharging = bot.status === "Charging" || bot.isCharging;
+
+        dispatchSelect.innerHTML += `<option value="${bot.id}" ${isSelected ? 'selected' : ''}>${bot.name} (${bot.siteName || 'Chi nhánh'})</option>`;
+
+        let stClass = "status-offline";
+        let stText = "OFFLINE";
+        if (isEmergency) {
+          stClass = "status-offline";
+          stText = "E-STOP ⛔";
+        } else if (bot.status === "Online") {
+          stClass = "status-online";
+          stText = "ONLINE 🟢";
+        } else if (isCharging) {
+          stClass = "status-charging";
+          stText = "CHARGING ⚡";
+        }
+
+        const b = bot.battery || 0;
+        const bColor = b > 50 ? "#10B981" : (b > 20 ? "#F59E0B" : "#EF4444");
+
+        const card = document.createElement("div");
+        card.className = "robot-card" + (isSelected ? " selected" : "");
+        card.onclick = () => selectRobot(bot.id);
+
+        card.innerHTML = `
+          <div class="robot-card-top">
+            <div class="robot-name-group">
+              <div class="robot-avatar">🤖</div>
+              <div>
+                <div class="robot-name">${bot.name}</div>
+                <div class="robot-model">${bot.model} • ${bot.siteName || 'Chi nhánh'}</div>
+              </div>
+            </div>
+            <div class="status-badge ${stClass}">${stText}</div>
+          </div>
+
+          <div class="robot-meta-row">
+            <div>
+              <span class="battery-bar-container">
+                <div class="battery-bar-fill" style="width:${b}%; background:${bColor};"></div>
+              </span>
+              <b>${b}%</b> ${isCharging ? '⚡' : ''}
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">
+              IP: ${bot.ip}
+            </div>
+          </div>
+
+          <!-- DIRECT IN-CARD QUICK ACTIONS -->
+          <div class="robot-card-actions">
+            <button class="btn-card-action btn-card-charge" onclick="event.stopPropagation(); triggerReturnCharge('${bot.id}')" title="Gọi robot về trạm sạc tự động">
+              ⚡ Về Sạc
+            </button>
+            <button class="btn-card-action btn-card-estop" onclick="event.stopPropagation(); triggerEmergencyStop('${bot.id}')" title="Dừng khẩn cấp tức thời">
+              ⛔ E-Stop
+            </button>
+            <button class="btn-card-action btn-card-select" onclick="event.stopPropagation(); selectRobot('${bot.id}')" title="Định vị & chọn robot này">
+              🗺️ Bản Đồ
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderAlerts() {
+      const container = document.getElementById("alertsContainer");
+      container.innerHTML = "";
+      fleetData.alerts.forEach(al => {
+        const timeStr = new Date(al.timestamp).toLocaleTimeString();
+        const div = document.createElement("div");
+        div.className = `alert-item alert-${al.alertType}`;
+        div.innerHTML = `
+          <div class="alert-header">
+            <span style="font-weight:700; color:var(--cyan);">${al.robotName || al.robotId || 'Hệ Thống'}</span>
+            <span style="color:var(--text-dim);">${timeStr}</span>
+          </div>
+          <div class="alert-msg">${al.message}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function selectRobot(robotId) {
+      selectedRobotId = robotId;
+      const bot = fleetData.robots.find(r => r.id === robotId);
+      if (bot) {
+        document.getElementById("hudRobotName").innerText = bot.name;
+        document.getElementById("hudCoords").innerText = `X: ${bot.poseX?.toFixed(2) || 0}m | Y: ${bot.poseY?.toFixed(2) || 0}m`;
+        document.getElementById("hudHeading").innerText = `${bot.poseAngle?.toFixed(1) || 0}°`;
+        if (bot.assignedMap) document.getElementById("hudMapName").innerText = bot.assignedMap;
+        
+        const statusEl = document.getElementById("hudRobotStatus");
+        if (statusEl) {
+          if (bot.status === "EmergencyStop") {
+            statusEl.innerText = "⛔ E-STOP";
+            statusEl.style.color = "#EF4444";
+          } else if (bot.status === "Charging" || bot.isCharging) {
+            statusEl.innerText = "⚡ Đang sạc";
+            statusEl.style.color = "#F59E0B";
+          } else {
+            statusEl.innerText = "🟢 Online";
+            statusEl.style.color = "#10B981";
+          }
+        }
+      }
+      renderRobots();
+    }
+
+    function updateHud(packet) {
+      if (packet.robotId === selectedRobotId) {
+        document.getElementById("hudCoords").innerText = `X: ${packet.poseX?.toFixed(2) || 0}m | Y: ${packet.poseY?.toFixed(2) || 0}m`;
+        document.getElementById("hudHeading").innerText = `${packet.poseAngle?.toFixed(1) || 0}°`;
+        if (packet.mapName) {
+          document.getElementById("hudMapName").innerText = packet.mapName;
+        }
+        const statusEl = document.getElementById("hudRobotStatus");
+        if (statusEl) {
+          if (packet.status === "EmergencyStop") {
+            statusEl.innerText = "⛔ E-STOP";
+            statusEl.style.color = "#EF4444";
+          } else if (packet.isCharging || packet.status === "Charging") {
+            statusEl.innerText = "⚡ Đang sạc";
+            statusEl.style.color = "#F59E0B";
+          } else {
+            statusEl.innerText = "🟢 Online";
+            statusEl.style.color = "#10B981";
+          }
+        }
+      }
+    }
+
+    // --- TAB SWITCHER ---
+    function switchTab(tabId, btn) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    function onDispatchSelectRobotChanged() {
+      const id = document.getElementById("dispatchSelectRobot").value;
+      if (id) selectRobot(id);
+    }
+
+    function onDispatchActionChanged() {
+      const act = document.getElementById("dispatchAction").value;
+      document.getElementById("groupDestination").style.display = act === "NAVIGATE" ? "flex" : "none";
+      document.getElementById("groupSpeech").style.display = act === "SPEAK" ? "flex" : "none";
+    }
+
+    // --- REMOTE COMMAND DISPATCH & QUICK ACTIONS ---
+    async function triggerEmergencyStop(robotId) {
+      const targetId = robotId || selectedRobotId;
+      if (!targetId) {
+        showToast("⚠️ Vui lòng chọn một robot để dừng khẩn cấp!");
+        return;
+      }
+      const bot = fleetData.robots.find(r => r.id === targetId);
+      const name = bot ? bot.name : targetId;
+
+      if (bot) {
+        bot.status = "EmergencyStop";
+        renderRobots();
+        selectRobot(targetId);
+      }
+
+      await sendCommandPacket(targetId, "EMERGENCY_STOP", "USER_ESTOP");
+      showToast(`⛔ ĐÃ KÍCH HOẠT DỪNG KHẨN CẤP [${name}]!`);
+    }
+
+    async function triggerReturnCharge(robotId) {
+      const targetId = robotId || selectedRobotId;
+      if (!targetId) {
+        showToast("⚠️ Vui lòng chọn một robot để quay về trạm sạc!");
+        return;
+      }
+      const bot = fleetData.robots.find(r => r.id === targetId);
+      const name = bot ? bot.name : targetId;
+
+      if (bot) {
+        bot.status = "Charging";
+        bot.isCharging = true;
+        renderRobots();
+        selectRobot(targetId);
+      }
+
+      await sendCommandPacket(targetId, "RETURN_HOME", "START_CHARGE");
+      showToast(`⚡ ĐÃ GỬI LỆNH [${name}] QUAY VỀ TRẠM SẠC!`);
+    }
+
+    async function triggerResume(robotId) {
+      const targetId = robotId || selectedRobotId;
+      if (!targetId) return;
+      const bot = fleetData.robots.find(r => r.id === targetId);
+      const name = bot ? bot.name : targetId;
+
+      if (bot) {
+        bot.status = "Online";
+        renderRobots();
+        selectRobot(targetId);
+      }
+
+      await sendCommandPacket(targetId, "RESUME", "CLEAR_ESTOP");
+      showToast(`🟢 ĐÃ KHÔI PHỤC HOẠT ĐỘNG CHO [${name}]!`);
+    }
+
+    async function triggerNavigateStation(robotId, stationName) {
+      const targetId = robotId || selectedRobotId;
+      if (!targetId || !stationName) return;
+      const bot = fleetData.robots.find(r => r.id === targetId);
+      const name = bot ? bot.name : targetId;
+
+      await sendCommandPacket(targetId, "NAVIGATE", stationName);
+      showToast(`🚀 ĐANG ĐIỀU HƯỚNG [${name}] TỚI [${stationName}]`);
+    }
+
+    async function submitCloudCommand() {
+      const robotId = document.getElementById("dispatchSelectRobot").value;
+      const action = document.getElementById("dispatchAction").value;
+      let param = "";
+
+      if (action === "NAVIGATE") {
+        param = document.getElementById("dispatchDestination").value;
+      } else if (action === "SPEAK") {
+        param = document.getElementById("dispatchSpeechText").value;
+      }
+
+      if (action === "EMERGENCY_STOP") {
+        await triggerEmergencyStop(robotId);
+      } else if (action === "RETURN_HOME") {
+        await triggerReturnCharge(robotId);
+      } else {
+        await sendCommandPacket(robotId, action, param);
+        showToast(`✅ Đã phát lệnh [${action}] tới ${robotId}`);
+      }
+    }
+
+    async function quickCommand(robotId, action, param = "") {
+      if (action === "EMERGENCY_STOP") {
+        await triggerEmergencyStop(robotId);
+      } else if (action === "RETURN_HOME") {
+        await triggerReturnCharge(robotId);
+      } else {
+        await sendCommandPacket(robotId, action, param);
+        showToast(`✅ Đã phát lệnh [${action}] tới ${robotId}`);
+      }
+    }
+
+    async function sendCommandPacket(robotId, action, param) {
+      const cmd = {
+        targetRobotId: robotId,
+        commandType: action,
+        parameter: param,
+        issuer: currentUser?.fullName || "CloudWebAdmin",
+        issuedAt: new Date().toISOString()
+      };
+
+      try {
+        if (hubConn && hubConn.state === signalR.HubConnectionState.Connected) {
+          await hubConn.invoke("SendCommand", cmd);
+        } else {
+          // Fallback to REST API
+          await fetch("/api/fleet/command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cmd)
+          });
+        }
+      } catch (err) {
+        console.error("Command error:", err);
+        showToast(`❌ Không thể gửi lệnh: ${err.message}`);
+      }
+    }
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(text) {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.innerText = text;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 400);
+      }, 3500);
+    }
+
+    function updateClock() {
+      // Periodic clock or UI heartbeat
+    }
+
+    // --- USER PROFILE & AUTHENTICATION (Matching Desktop App) ---
+    function applyUser(user) {
+      if (!user) return;
+      currentUser = user;
+      localStorage.setItem("lehoang_cloud_user", JSON.stringify(user));
+
+      const inits = user.avatarInitials || (user.fullName ? user.fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase() : "QH");
+      const elInit = document.getElementById("userInitials");
+      const elDropInit = document.getElementById("userDropdownInitials");
+      if (elInit) elInit.innerText = inits;
+      if (elDropInit) elDropInit.innerText = inits;
+
+      const elName = document.getElementById("userFullName");
+      if (elName) elName.innerText = user.fullName || "Quản trị viên LH";
+
+      const elUser = document.getElementById("userUsername");
+      if (elUser) elUser.innerText = "@" + (user.username || "admin");
+
+      const elRole = document.getElementById("userRoleBadge");
+      if (elRole) elRole.innerText = user.role || "SuperAdmin";
+
+      const elOrg = document.getElementById("userOrgName");
+      if (elOrg) elOrg.innerText = user.organizationName || "Lê Hoàng Robotics Corp";
+
+      const elSite = document.getElementById("userSiteName");
+      if (elSite) elSite.innerText = user.siteName || "Toàn hệ thống";
+    }
+
+    function toggleUserDropdown() {
+      const drop = document.getElementById("userDropdown");
+      if (!drop) return;
+      drop.style.display = drop.style.display === "block" ? "none" : "block";
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener("click", (e) => {
+      const wrapper = document.querySelector(".user-menu-wrapper");
+      const drop = document.getElementById("userDropdown");
+      if (wrapper && drop && !wrapper.contains(e.target)) {
+        drop.style.display = "none";
+      }
+    });
+
+    async function switchUserQuick(username) {
+      try {
+        const res = await fetch("/api/fleet/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username, password: "123456" })
+        });
+        const data = await res.json();
+        if (data.success && data.user) {
+          applyUser(data.user);
+          toggleUserDropdown();
+          showToast(`👤 Đã chuyển sang tài khoản: ${data.user.fullName} (@${data.user.username})`);
+        } else {
+          showToast(`❌ Không thể chuyển tài khoản: ${data.message || 'Lỗi'}`);
+        }
+      } catch (err) {
+        showToast(`❌ Lỗi kết nối tài khoản: ${err.message}`);
+      }
+    }
+
+    function openLoginModal() {
+      const drop = document.getElementById("userDropdown");
+      if (drop) drop.style.display = "none";
+      const modal = document.getElementById("loginModal");
+      if (modal) modal.style.display = "flex";
+      const err = document.getElementById("loginError");
+      if (err) err.style.display = "none";
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById("loginModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    function fillLoginModal(uname) {
+      document.getElementById("loginUsername").value = uname;
+      document.getElementById("loginPassword").value = "123456";
+    }
+
+    async function submitLogin() {
+      const uname = document.getElementById("loginUsername").value.trim();
+      const pwd = document.getElementById("loginPassword").value.trim();
+      const errEl = document.getElementById("loginError");
+
+      if (!uname || !pwd) {
+        if (errEl) {
+          errEl.innerText = "Vui lòng nhập tên đăng nhập và mật khẩu.";
+          errEl.style.display = "block";
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/fleet/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: uname, password: pwd })
+        });
+        const data = await res.json();
+        if (data.success && data.user) {
+          applyUser(data.user);
+          closeLoginModal();
+          showToast(`🎉 Chào mừng ${data.user.fullName} đã đăng nhập!`);
+        } else {
+          if (errEl) {
+            errEl.innerText = data.message || "Đăng nhập thất bại.";
+            errEl.style.display = "block";
+          }
+        }
+      } catch (e) {
+        if (errEl) {
+          errEl.innerText = "Lỗi kết nối máy chủ: " + e.message;
+          errEl.style.display = "block";
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+

@@ -35,6 +35,32 @@ public class RobotMapManager {
     private static final String TAG = "RobotMapManager";
     private static final String MAP_BASE_PATH = "/sdcard/robot/map";
 
+    public interface OnMapPlacesChangedListener {
+        void onPlacesChanged(String mapName);
+    }
+
+    private static final List<OnMapPlacesChangedListener> sPlacesListeners = new ArrayList<>();
+
+    public static synchronized void addOnMapPlacesChangedListener(OnMapPlacesChangedListener listener) {
+        if (listener != null && !sPlacesListeners.contains(listener)) {
+            sPlacesListeners.add(listener);
+        }
+    }
+
+    public static synchronized void removeOnMapPlacesChangedListener(OnMapPlacesChangedListener listener) {
+        sPlacesListeners.remove(listener);
+    }
+
+    public static synchronized void notifyMapPlacesChanged(String mapName) {
+        for (OnMapPlacesChangedListener l : new ArrayList<>(sPlacesListeners)) {
+            try {
+                l.onPlacesChanged(mapName);
+            } catch (Throwable t) {
+                Log.e(TAG, "Error in onPlacesChanged: " + t.getMessage());
+            }
+        }
+    }
+
     public static String normalizeMapName(String s) {
         if (s == null) return "";
         return s.replace("ă", "a").replace("ầ", "a").replace("ấ", "a").replace("ả", "a").replace("ã", "a").replace("ạ", "a")
@@ -367,6 +393,7 @@ public class RobotMapManager {
             writer.flush();
             writer.close();
             Log.i(TAG, "Successfully persisted place '" + placeName + "' to " + placeFile.getAbsolutePath());
+            notifyMapPlacesChanged(currentMap);
             return true;
         } catch (Throwable t) {
             Log.e(TAG, "saveOrUpdatePlaceToDisk error: " + t.getMessage(), t);
@@ -419,6 +446,7 @@ public class RobotMapManager {
                 writer.flush();
                 writer.close();
                 Log.i(TAG, "Successfully deleted place '" + placeName + "' from " + placeFile.getAbsolutePath());
+                notifyMapPlacesChanged(currentMap);
             }
             return true;
         } catch (Throwable t) {

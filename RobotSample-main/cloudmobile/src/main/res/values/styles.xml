@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.LeHoangCloud" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">#06B6D4</item>
+        <item name="colorPrimaryDark">#070B14</item>
+        <item name="colorAccent">#00F2FE</item>
+        <item name="android:windowBackground">#070B14</item>
+        <item name="android:statusBarColor">#070B14</item>
+        <item name="android:navigationBarColor">#070B14</item>
+    </style>
+</resources>
+

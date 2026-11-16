@@ -25,7 +25,7 @@ public class TTSPlayer {
         void onDone(boolean success, String message);
     }
 
-    public static synchronized void playVietnameseText(final String text, final PlayCallback callback) {
+    public static synchronized void playText(final String text, final String langCode, final PlayCallback callback) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -33,7 +33,8 @@ public class TTSPlayer {
                 boolean downloaded = false;
                 try {
                     String encoded = URLEncoder.encode(text, "UTF-8");
-                    String ttsUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=" + encoded;
+                    String lang = (langCode != null && !langCode.isEmpty()) ? langCode : "vi";
+                    String ttsUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=" + lang + "&client=tw-ob&q=" + encoded;
 
                     File cacheDir = RobotOSApplication.getInstance().getCacheDir();
                     if (!cacheDir.exists()) cacheDir.mkdirs();
@@ -73,6 +74,14 @@ public class TTSPlayer {
                 }
             }
         }).start();
+    }
+
+    public static synchronized void playVietnameseText(final String text, final PlayCallback callback) {
+        playText(text, "vi", callback);
+    }
+
+    public static synchronized void playEnglishText(final String text, final PlayCallback callback) {
+        playText(text, "en", callback);
     }
 
     private static void playAudioFile(final String filePath, final PlayCallback callback) {

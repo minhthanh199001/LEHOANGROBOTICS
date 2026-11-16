@@ -8,8 +8,8 @@ android {
         applicationId "com.lehoangrobotics.robotos"
         minSdkVersion 16
         targetSdkVersion 29
-        versionCode 5
-        versionName "3.2"
+        versionCode 9
+        versionName "3.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

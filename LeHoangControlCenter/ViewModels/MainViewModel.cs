@@ -19,6 +19,17 @@ namespace LeHoangControlCenter.ViewModels
     {
         private readonly IRobotWebSocketService _robotService;
         private readonly DispatcherTimer _simulationTimer;
+        private readonly DispatcherTimer _robotFleetStatusTimer;
+        private CloudBridgeService? _cloudBridge;
+        private DateTime _lastRobotDbSave = DateTime.MinValue;
+        private int _lastSavedBattery = -1;
+
+        // --- Cloud Central Sync (Option B) ---
+        [ObservableProperty]
+        private bool _isCloudConnected;
+
+        [ObservableProperty]
+        private string _cloudStatusText = "☁️ CLOUD SYNC: CHƯA KẾT NỐI";
 
         // --- Active View Navigation ---
         [ObservableProperty]
@@ -39,7 +50,7 @@ namespace LeHoangControlCenter.ViewModels
 
         // --- Connection & Diagnostics ---
         [ObservableProperty]
-        private string _robotIp = "192.168.0.134";
+        private string _robotIp = "192.168.0.44";
 
         [ObservableProperty]
         private int _robotPort = 8899;
@@ -47,8 +58,28 @@ namespace LeHoangControlCenter.ViewModels
         [ObservableProperty]
         private bool _isConnected;
 
+        partial void OnIsConnectedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ConnectionStatusColor));
+        }
+
         [ObservableProperty]
         private string _connectionStatusText = "CHƯA KẾT NỐI";
+
+        partial void OnConnectionStatusTextChanged(string value)
+        {
+            OnPropertyChanged(nameof(ConnectionStatusColor));
+        }
+
+        public string ConnectionStatusColor
+        {
+            get
+            {
+                if (IsConnected) return "#10B981"; // Emerald Green
+                if (IsSimulationMode) return "#F59E0B"; // Amber
+                return "#EF4444"; // Red
+            }
+        }
 
         [ObservableProperty]
         private string _diagnosticMessage = "Chưa kiểm tra kết nối";
@@ -59,9 +90,14 @@ namespace LeHoangControlCenter.ViewModels
         [ObservableProperty]
         private bool _isSimulationMode = false;
 
+        partial void OnIsSimulationModeChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ConnectionStatusColor));
+        }
+
         // --- Selected Active Robot Details ---
         [ObservableProperty]
-        private string _robotId = "ROB01";
+        private string _robotId = "LH-ORIONSTAR-01";
 
         [ObservableProperty]
         private string _robotState = "AVAILABLE"; // AVAILABLE, ACTIVE, CHARGING, OFFLINE
@@ -93,19 +129,19 @@ namespace LeHoangControlCenter.ViewModels
         }
 
         [ObservableProperty]
-        private double _poseX = 12.4;
+        private double _poseX = 1.93;
 
         [ObservableProperty]
-        private double _poseY = -3.2;
+        private double _poseY = 5.99;
 
         [ObservableProperty]
-        private double _poseTheta = 45.0;
+        private double _poseTheta = 0.0;
 
         [ObservableProperty]
         private double _robotHeadingDegrees = 45.0;
 
         [ObservableProperty]
-        private string _currentMap = "Floor_1_Main";
+        private string _currentMap = "tăng 2-1110154527";
 
         [ObservableProperty]
         private string _currentPlace = "Khu vực Bàn C";
@@ -395,12 +431,26 @@ namespace LeHoangControlCenter.ViewModels
             ResetTaskForm();
             UpdateAvailableStationNames();
 
+            // Khởi tạo cơ sở dữ liệu SQLite & Dữ liệu Phân quyền Doanh nghiệp (Organization / Site / Robots)
+            _ = InitializeEnterpriseDataAsync();
+
             // Setup Simulation Timer (for realistic dashboard animations when robot is in test mode)
             _simulationTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(400)
             };
             _simulationTimer.Tick += SimulationTimer_Tick;
+
+            // Setup Robot Fleet Online/Status Checker Timer (every 8 seconds)
+            _robotFleetStatusTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(8)
+            };
+            _robotFleetStatusTimer.Tick += async (s, e) =>
+            {
+                await RefreshAllRobotsOnlineStatusAsync();
+            };
+            _robotFleetStatusTimer.Start();
 
             AddLog("Hệ thống LÊ HOÀNG ROBOTICS CONTROL CENTER đã sẵn sàng.");
 
@@ -416,6 +466,26 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     AddLog($"[TỰ ĐỘNG KẾT NỐI] {ex.Message}");
                 }
+            });
+
+            // Khởi động Cloud Bridge kết nối tới LeHoangCloudServer (Option B Centralized Cloud Hub)
+            _cloudBridge = new CloudBridgeService(this);
+            _cloudBridge.ConnectionStatusChanged += OnCloudConnectionChanged;
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1800);
+                await _cloudBridge.StartAsync();
+            });
+        }
+
+        private void OnCloudConnectionChanged(bool connected)
+        {
+            Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                IsCloudConnected = connected;
+                CloudStatusText = connected ? "☁️ CLOUD SYNC: ĐÃ KẾT NỐI" : "☁️ CLOUD SYNC: ĐANG KẾT NỐI LẠI";
+                AddLog(connected ? "☁️ [CLOUD ENGINE] Đã kết nối & đồng bộ dữ liệu tới LeHoangCloudServer (Port 5050)."
+                                 : "☁️ [CLOUD ENGINE] Mất kết nối tới LeHoangCloudServer.");
             });
         }
 
@@ -607,12 +677,24 @@ namespace LeHoangControlCenter.ViewModels
             {
                 IsConnected = connected;
                 ConnectionStatusText = connected ? "ĐÃ KẾT NỐI" : "CHƯA KẾT NỐI";
-                RobotState = connected ? "AVAILABLE" : "OFFLINE";
+                RobotState = connected ? "ONLINE" : "OFFLINE";
                 var robotInFleet = FleetRobots.FirstOrDefault(r => r.Ip == RobotIp);
                 if (robotInFleet != null)
                 {
                     robotInFleet.IsOnline = connected;
-                    robotInFleet.State = connected ? "Available" : "Offline";
+                    robotInFleet.State = connected ? "Online" : "Offline";
+                }
+
+                // Cập nhật trạng thái cho robot trong EnterpriseRobots
+                var currentBot = EnterpriseRobots.FirstOrDefault(r => string.Equals(r.Ip?.Trim(), RobotIp?.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (currentBot != null)
+                {
+                    currentBot.Status = connected ? (IsCharging ? "Charging" : "Online") : "Offline";
+                    if (connected)
+                    {
+                        currentBot.BatteryLevel = BatteryLevel;
+                        currentBot.LastSeen = DateTime.Now;
+                    }
                 }
 
                 if (connected)
@@ -635,6 +717,40 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     BatteryLevel = telemetry.Battery.Level;
                     IsCharging = telemetry.Battery.IsCharging;
+                }
+
+                // Cập nhật mức Pin và Trạng thái thời gian thực cho Robot trong EnterpriseRobots
+                var connectedBot = EnterpriseRobots.FirstOrDefault(r => string.Equals(r.Ip?.Trim(), RobotIp?.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (connectedBot == null && !string.IsNullOrEmpty(RobotId))
+                {
+                    connectedBot = EnterpriseRobots.FirstOrDefault(r => r.Id == RobotId || (!string.IsNullOrEmpty(r.Name) && r.Name.Contains(RobotId)));
+                }
+
+                if (connectedBot != null)
+                {
+                    if (telemetry.Battery != null)
+                    {
+                        connectedBot.BatteryLevel = telemetry.Battery.Level;
+                        connectedBot.IsCharging = telemetry.Battery.IsCharging;
+                    }
+                    connectedBot.Status = connectedBot.IsCharging ? "Charging" : "Online";
+                    connectedBot.LastSeen = DateTime.Now;
+
+                    // Lưu định kỳ vào SQLite (nếu mức pin đổi và cách nhau >= 5 giây)
+                    if ((DateTime.Now - _lastRobotDbSave > TimeSpan.FromSeconds(5)) && _lastSavedBattery != connectedBot.BatteryLevel)
+                    {
+                        _lastRobotDbSave = DateTime.Now;
+                        _lastSavedBattery = connectedBot.BatteryLevel;
+                        var botToSave = connectedBot;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await DatabaseService.Instance.UpdateRobotAsync(botToSave);
+                            }
+                            catch { }
+                        });
+                    }
                 }
 
                 if (telemetry.Pose != null)
@@ -677,10 +793,39 @@ namespace LeHoangControlCenter.ViewModels
                 if (telemetry.Status != null)
                 {
                     RobotState = telemetry.Status.State;
-                    CurrentMap = string.IsNullOrEmpty(telemetry.Status.CurrentMap) ? "--" : telemetry.Status.CurrentMap;
+                    string incomingMap = string.IsNullOrEmpty(telemetry.Status.CurrentMap) ? "--" : telemetry.Status.CurrentMap;
+                    if (incomingMap != "--" && incomingMap != CurrentMap)
+                    {
+                        SwitchToMapLocal(incomingMap);
+                    }
+                    else
+                    {
+                        CurrentMap = incomingMap;
+                    }
                     CurrentPlace = string.IsNullOrEmpty(telemetry.Status.CurrentPlace) ? "--" : telemetry.Status.CurrentPlace;
                     IsEmergencyStopActive = telemetry.Status.EmergencyStop;
                     DoorStatus = telemetry.Status.DoorStatus;
+                }
+
+                // Đồng bộ Telemetry trực tiếp lên Cloud Server (Option B Centralized Cloud Hub)
+                if (_cloudBridge != null && _cloudBridge.IsConnected)
+                {
+                    var packet = new RobotTelemetryPacket
+                    {
+                        RobotId = string.IsNullOrEmpty(RobotId) ? "LH-ORIONSTAR-02" : RobotId,
+                        OrgId = SelectedOrganization?.Id ?? "ORG-01",
+                        SiteId = SelectedSite?.Id ?? "SITE-01",
+                        Status = IsConnected ? (IsCharging ? "Charging" : "Online") : "Offline",
+                        Battery = BatteryLevel,
+                        IsCharging = IsCharging,
+                        MapName = CurrentMap,
+                        PoseX = PoseX,
+                        PoseY = PoseY,
+                        PoseAngle = RobotHeadingDegrees,
+                        ActiveMode = RobotState,
+                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    };
+                    _ = _cloudBridge.SendTelemetryAsync(packet);
                 }
             });
         }
@@ -851,7 +996,7 @@ namespace LeHoangControlCenter.ViewModels
             });
         }
 
-        private void AddLog(string log)
+        public void AddLog(string log)
         {
             LogHistory.Insert(0, log);
             if (LogHistory.Count > 300)
@@ -937,17 +1082,17 @@ namespace LeHoangControlCenter.ViewModels
         {
             if (!IsSimulationMode) return;
 
-            _simAngle += 0.05;
+            _simAngle += 0.04;
             if (_simAngle > Math.PI * 2) _simAngle = 0;
 
-            // Move simulated robot in a smooth route on the blueprint map
-            CanvasRobotLeft = 320 + Math.Cos(_simAngle) * 140;
-            CanvasRobotTop = 220 + Math.Sin(_simAngle * 2) * 60;
-            RobotHeadingDegrees = Math.Atan2(Math.Cos(_simAngle * 2) * 120, -Math.Sin(_simAngle) * 140) * 180.0 / Math.PI;
+            // Move simulated robot smoothly along the actual building hallway
+            PoseX = Math.Round(1.8 + Math.Cos(_simAngle * 2) * 0.4, 2);
+            PoseY = Math.Round(3.6 + Math.Sin(_simAngle) * 4.2, 2);
+            RobotHeadingDegrees = Math.Round(Math.Cos(_simAngle) >= 0 ? 0.0 : 180.0, 1);
+            PoseTheta = RobotHeadingDegrees;
 
-            PoseX = Math.Round((CanvasRobotLeft - 320) / 24.0, 2);
-            PoseY = Math.Round((220 - CanvasRobotTop) / 24.0, 2);
-            PoseTheta = Math.Round(RobotHeadingDegrees, 1);
+            CanvasRobotLeft = WorldToCanvasX(PoseX);
+            CanvasRobotTop = WorldToCanvasY(PoseY);
 
             var pt = new Point(CanvasRobotLeft, CanvasRobotTop);
             TrajectoryPath.Add(pt);
@@ -1814,6 +1959,13 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public async Task NavigateAsync(object? param = null)
         {
+            if (IsRelocalizeMode)
+            {
+                await SetLocationAsync(param);
+                IsRelocalizeMode = false;
+                return;
+            }
+
             string dest = "";
             double? x = null;
             double? y = null;
@@ -1846,6 +1998,26 @@ namespace LeHoangControlCenter.ViewModels
             }
 
             if (string.IsNullOrWhiteSpace(dest)) return;
+
+            // Nếu robot đang mất định vị, gợi ý người dùng định vị robot tại điểm này
+            if (!IsEstimated && !IsSimulationMode && IsConnected)
+            {
+                var ask = System.Windows.MessageBox.Show(
+                    $"Robot hiện đang MẤT ĐỊNH VỊ!\n\nBạn có muốn ĐẶT LẠI VỊ TRÍ của robot tại điểm '{dest}' không?\n\n- Bấm 'Yes': Đặt vị trí robot tại '{dest}'.\n- Bấm 'No': Tiếp tục gửi lệnh di chuyển.",
+                    "Robot Chưa Định Vị",
+                    System.Windows.MessageBoxButton.YesNoCancel,
+                    System.Windows.MessageBoxImage.Question);
+
+                if (ask == System.Windows.MessageBoxResult.Yes)
+                {
+                    await SetLocationAsync(param);
+                    return;
+                }
+                else if (ask == System.Windows.MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+            }
 
             TargetDestination = dest;
             AddLog($"[ĐIỀU HƯỚNG] Gửi lệnh di chuyển tới: '{dest}'" + (x.HasValue ? $" (X={x:F2}m, Y={y:F2}m)" : ""));
@@ -2020,45 +2192,33 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public void ShowDashboard()
         {
+            HideAllViews();
             SelectedNavMenu = "Dashboard";
             DashboardVisibility = Visibility.Visible;
-            MapsVisibility = Visibility.Collapsed;
-            TasksVisibility = Visibility.Collapsed;
+            RightPanelVisibility = Visibility.Collapsed;
             DashboardNavBg = "#162034";
             DashboardNavFg = "#00E5FF";
-            MapsNavBg = "Transparent";
-            MapsNavFg = "#94A3B8";
-            TasksNavBg = "Transparent";
-            TasksNavFg = "#94A3B8";
         }
 
         [RelayCommand]
         public void ShowMaps()
         {
+            HideAllViews();
             SelectedNavMenu = "Maps";
-            DashboardVisibility = Visibility.Collapsed;
             MapsVisibility = Visibility.Visible;
-            TasksVisibility = Visibility.Collapsed;
-            DashboardNavBg = "Transparent";
-            DashboardNavFg = "#94A3B8";
+            RightPanelVisibility = Visibility.Collapsed;
             MapsNavBg = "#162034";
             MapsNavFg = "#00E5FF";
-            TasksNavBg = "Transparent";
-            TasksNavFg = "#94A3B8";
             _ = RefreshMapAsync();
         }
 
         [RelayCommand]
         public void ShowTasks()
         {
+            HideAllViews();
             SelectedNavMenu = "Tasks";
-            DashboardVisibility = Visibility.Collapsed;
-            MapsVisibility = Visibility.Collapsed;
             TasksVisibility = Visibility.Visible;
-            DashboardNavBg = "Transparent";
-            DashboardNavFg = "#94A3B8";
-            MapsNavBg = "Transparent";
-            MapsNavFg = "#94A3B8";
+            RightPanelVisibility = Visibility.Collapsed;
             TasksNavBg = "#162034";
             TasksNavFg = "#00E5FF";
             UpdateAvailableStationNames();
@@ -2884,46 +3044,22 @@ namespace LeHoangControlCenter.ViewModels
 
         public void UpdateMapBounds(IList<MapPlaceItem>? places, string? mapName = null, double? res = null, double? originX = null, double? originY = null, int? imgW = null, int? imgH = null)
         {
-            if (res.HasValue && res.Value > 0.001)
+            if (res.HasValue && res.Value > 0.001 && originX.HasValue && originY.HasValue && imgW.HasValue && imgH.HasValue && imgW.Value > 0 && imgH.Value > 0)
             {
                 double resolution = res.Value;
-                int w = imgW.GetValueOrDefault(52);
-                int h = imgH.GetValueOrDefault(76);
-                MapMinX = originX ?? -5.0;
+                int w = imgW.Value;
+                int h = imgH.Value;
+                MapMinX = originX.Value;
                 MapMaxX = MapMinX + (w * resolution);
-                MapMinY = originY ?? -6.0;
+                MapMinY = originY.Value;
                 MapMaxY = MapMinY + (h * resolution);
-            }
-            else if (!string.IsNullOrEmpty(mapName) && (mapName.Contains("tăng 2") || mapName.Contains("tang 2")))
-            {
-                // Exact calibrated bounds for default OrionStar building floor:
-                // map.pgm: origin_x = -5.0, origin_y = -6.0, res = 0.05, 260x380
-                // thumbnail: 52x76 (5x downsample), res = 0.25
-                MapMinX = -5.0;
-                MapMaxX = 8.0;   // -5.0 + 52 * 0.25 = +8.0
-                MapMinY = -6.0;
-                MapMaxY = 13.0;  // -6.0 + 76 * 0.25 = +13.0
-            }
-            else if (places != null && places.Count > 0)
-            {
-                double minX = places.Min(p => p.X);
-                double maxX = places.Max(p => p.X);
-                double minY = places.Min(p => p.Y);
-                double maxY = places.Max(p => p.Y);
-
-                double centerX = (minX + maxX) / 2.0;
-                double centerY = (minY + maxY) / 2.0;
-                double spanY = Math.Max(12.0, (maxY - minY) * 1.55);
-                double aspect = (imgW.HasValue && imgH.HasValue && imgW.Value > 0 && imgH.Value > 0) ? ((double)imgW.Value / imgH.Value) : (52.0 / 76.0);
-                double spanX = spanY * aspect;
-
-                MapMinX = Math.Round(centerX - spanX / 2.0, 2);
-                MapMaxX = Math.Round(centerX + spanX / 2.0, 2);
-                MapMinY = Math.Round(centerY - spanY / 2.0, 2);
-                MapMaxY = Math.Round(centerY + spanY / 2.0, 2);
             }
             else
             {
+                // Exact calibrated bounds for default OrionStar building floor (260x380, res=0.05, origin=(-5.0, -6.0)):
+                // map.pgm: origin_x = -5.0, origin_y = -6.0, res = 0.05, 260x380
+                // X range: [-5.0, +8.0] (span = 13.0m)
+                // Y range: [-6.0, +13.0] (span = 19.0m)
                 MapMinX = -5.0;
                 MapMaxX = 8.0;
                 MapMinY = -6.0;

@@ -23,19 +23,31 @@ captures/
 __pycache__/
 *.pyc
 *.log
+*stderr.txt
+*stdout.txt
+scratch/
 extracted_docx/
 .vscode/
+
+# SQLite temporary journals
+*.db-shm
+*.db-wal
 
 # Old / intermediate APKs & temp screenshots
 app-debug.apk
 LeHoangRobot_v1.0.apk
 LeHoangRobot_v2.0.apk
 LeHoangRobot_v2.apk
+LeHoangRobot_v3.0.apk
+LeHoangRobot_v3.1.apk
+LeHoangRobot_v3.2.apk
 screen_*.png
 robot_screen*.png
 screen3.png
 app_screen.png
 
 # Keep latest release APK and core assets
-!LeHoangRobot_v3.0.apk
+!LeHoangRobot_v3.9.apk
+!LeHoangCloudMobile_v1.0.apk
 !LEHOANG.png
+!LEHOANG2026.png

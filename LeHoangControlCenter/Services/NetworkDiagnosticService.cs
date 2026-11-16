@@ -88,6 +88,36 @@ namespace LeHoangControlCenter.Services
             return result;
         }
 
+        public static async Task<bool> QuickCheckRobotOnlineAsync(string ip, int port = 8899, int timeoutMs = 400)
+        {
+            if (string.IsNullOrWhiteSpace(ip)) return false;
+            try
+            {
+                using var client = new TcpClient();
+                var connectTask = client.ConnectAsync(ip, port);
+                var timeoutTask = Task.Delay(timeoutMs);
+
+                var completed = await Task.WhenAny(connectTask, timeoutTask);
+                if (completed == connectTask && client.Connected)
+                {
+                    return true;
+                }
+            }
+            catch { }
+
+            // Fallback quick ping
+            try
+            {
+                using var ping = new Ping();
+                var reply = await ping.SendPingAsync(ip, timeoutMs);
+                return reply.Status == IPStatus.Success;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<List<DiscoveredRobot>> ScanSubnetForRobotsAsync(string localIpBase, int port = 8088, Action<int>? progressCallback = null)
         {
             var discovered = new List<DiscoveredRobot>();

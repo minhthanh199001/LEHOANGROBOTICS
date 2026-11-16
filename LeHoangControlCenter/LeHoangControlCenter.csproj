@@ -6,10 +6,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resources\LEHOANG.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,4 +21,9 @@
     </None>
   </ItemGroup>
 
+
+  <ItemGroup>
+    <Resource Include="Resources\LEHOANG.png" />
+    <Resource Include="Resources\LEHOANG.ico" />
+  </ItemGroup>
 </Project>
