@@ -82,6 +82,19 @@ namespace LeHoangControlCenter.Services
                     await HandleIncomingCloudCommandAsync(cmd);
                 });
 
+                _hubConnection.On<System.Text.Json.JsonElement>("OnOrganizationsUpdated", (orgsEl) =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
+                _hubConnection.On<System.Text.Json.JsonElement>("OnSitesUpdated", (sitesEl) =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
+                _hubConnection.On<System.Text.Json.JsonElement>("OnUsersUpdated", (usersEl) =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
+
                 _hubConnection.Reconnecting += (err) =>
                 {
                     Debug.WriteLine($"[CloudBridge] Reconnecting to Cloud Server: {err?.Message}");
@@ -246,6 +259,65 @@ namespace LeHoangControlCenter.Services
             }
         }
 
+        public async Task<UserAccountItem?> AuthenticateOnCloudAsync(string username, string password)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+                return null;
+
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(5);
+                var uri = new Uri(_cloudHubUrl);
+                var baseUrl = $"{uri.Scheme}://{uri.Authority}";
+
+                var reqObj = new { username = username.Trim(), password = password.Trim() };
+                var json = System.Text.Json.JsonSerializer.Serialize(reqObj);
+                using var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                var response = await http.PostAsync($"{baseUrl}/api/fleet/login", content);
+                if (response.IsSuccessStatusCode)
+                {
+                    var resJson = await response.Content.ReadAsStringAsync();
+                    using var doc = System.Text.Json.JsonDocument.Parse(resJson);
+                    if (doc.RootElement.TryGetProperty("user", out var userEl))
+                    {
+                        var id = userEl.TryGetProperty("id", out var pId) ? pId.GetString() ?? "" : "";
+                        var uname = userEl.TryGetProperty("username", out var pU) ? pU.GetString() ?? "" : username;
+                        var fullName = userEl.TryGetProperty("fullName", out var pFn) ? pFn.GetString() ?? "" : uname;
+                        var email = userEl.TryGetProperty("email", out var pEm) ? pEm.GetString() ?? "" : "";
+                        var role = userEl.TryGetProperty("role", out var pRole) ? pRole.GetString() ?? "Operator" : "Operator";
+                        var orgId = userEl.TryGetProperty("organizationId", out var pOid) ? pOid.GetString() : null;
+                        var orgName = userEl.TryGetProperty("organizationName", out var pOn) ? pOn.GetString() : null;
+                        var siteId = userEl.TryGetProperty("siteId", out var pSid) ? pSid.GetString() : null;
+                        var siteName = userEl.TryGetProperty("siteName", out var pSn) ? pSn.GetString() : null;
+                        var isActive = !userEl.TryGetProperty("isActive", out var pAct) || pAct.GetBoolean();
+
+                        return new UserAccountItem
+                        {
+                            Id = !string.IsNullOrEmpty(id) ? id : "USR-" + Guid.NewGuid().ToString("N")[..6].ToUpper(),
+                            Username = uname,
+                            Password = password,
+                            FullName = fullName,
+                            Email = email,
+                            Role = role,
+                            OrganizationId = orgId,
+                            OrganizationName = orgName ?? "Lê Hoàng Robotics Corp",
+                            SiteId = siteId,
+                            SiteName = siteName ?? "Toàn hệ thống",
+                            IsActive = isActive,
+                            CreatedAt = DateTime.Now
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] AuthenticateOnCloud error: {ex.Message}");
+            }
+            return null;
+        }
+
         public async Task SyncCatalogFromCloudAsync()
         {
             try
@@ -268,6 +340,53 @@ namespace LeHoangControlCenter.Services
                     {
                         _mainVm.ApplyCloudCatalog(orgs, sites);
                     });
+                }
+
+                // 3. Fetch Users
+                try
+                {
+                    var usersJson = await http.GetStringAsync($"{baseUrl}/api/fleet/users");
+                    using var uDoc = System.Text.Json.JsonDocument.Parse(usersJson);
+                    if (uDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var cloudUsers = new System.Collections.Generic.List<UserAccountItem>();
+                        foreach (var el in uDoc.RootElement.EnumerateArray())
+                        {
+                            var uId = el.TryGetProperty("id", out var pId) ? pId.GetString() ?? "" : "";
+                            var uName = el.TryGetProperty("username", out var pU) ? pU.GetString() ?? "" : "";
+                            var uFn = el.TryGetProperty("fullName", out var pFn) ? pFn.GetString() ?? "" : uName;
+                            var uRole = el.TryGetProperty("role", out var pRole) ? pRole.GetString() ?? "Operator" : "Operator";
+                            var uOrgId = el.TryGetProperty("organizationId", out var pOid) ? pOid.GetString() : null;
+                            var uOrgName = el.TryGetProperty("organizationName", out var pOn) ? pOn.GetString() : null;
+                            var uSiteId = el.TryGetProperty("siteId", out var pSid) ? pSid.GetString() : null;
+                            var uSiteName = el.TryGetProperty("siteName", out var pSn) ? pSn.GetString() : null;
+                            var uActive = !el.TryGetProperty("isActive", out var pAct) || pAct.GetBoolean();
+
+                            cloudUsers.Add(new UserAccountItem
+                            {
+                                Id = uId,
+                                Username = uName,
+                                Password = "",
+                                FullName = uFn,
+                                Role = uRole,
+                                OrganizationId = uOrgId,
+                                OrganizationName = uOrgName,
+                                SiteId = uSiteId,
+                                SiteName = uSiteName,
+                                IsActive = uActive,
+                                CreatedAt = DateTime.Now
+                            });
+                        }
+
+                        Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            _mainVm.ApplyCloudUsers(cloudUsers);
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[CloudBridge] Fetch users error: {ex.Message}");
                 }
             }
             catch (Exception ex)

@@ -38,7 +38,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> SaveOrganization([FromBody] CloudOrganization org)
     {
         _db.SaveOrganization(org);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
+        await _hubContext.Clients.All.SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
         return Ok(new { success = true, organization = org });
     }
 
@@ -46,7 +46,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> DeleteOrganization(string id)
     {
         _db.DeleteOrganization(id);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
+        await _hubContext.Clients.All.SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
         return Ok(new { success = true, id });
     }
 
@@ -60,7 +60,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> SaveSite([FromBody] CloudSite site)
     {
         _db.SaveSite(site);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnSitesUpdated", _db.GetSites());
+        await _hubContext.Clients.All.SendAsync("OnSitesUpdated", _db.GetSites());
         return Ok(new { success = true, site });
     }
 
@@ -68,7 +68,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> DeleteSite(string id)
     {
         _db.DeleteSite(id);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnSitesUpdated", _db.GetSites());
+        await _hubContext.Clients.All.SendAsync("OnSitesUpdated", _db.GetSites());
         return Ok(new { success = true, id });
     }
 
@@ -82,7 +82,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> UpsertRobot([FromBody] CloudRobotItem robot)
     {
         _db.SaveRobot(robot);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnRobotUpserted", robot);
+        await _hubContext.Clients.All.SendAsync("OnRobotUpserted", robot);
         return Ok(new { success = true, robot });
     }
 
@@ -90,7 +90,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> DeleteRobot(string id)
     {
         _db.DeleteRobot(id);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnRobotDeleted", id);
+        await _hubContext.Clients.All.SendAsync("OnRobotDeleted", id);
         return Ok(new { success = true, id });
     }
 
@@ -104,7 +104,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> IngestTelemetry([FromBody] RobotTelemetryPacket packet)
     {
         _db.UpdateRobotTelemetry(packet);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnTelemetryUpdated", packet);
+        await _hubContext.Clients.All.SendAsync("OnTelemetryUpdated", packet);
         return Ok(new { success = true, receivedAt = DateTime.UtcNow });
     }
 
@@ -132,7 +132,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> SaveUser([FromBody] CloudUserAccountItem user)
     {
         _db.SaveUserAccount(user);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnUsersUpdated", _db.GetUserAccounts());
+        await _hubContext.Clients.All.SendAsync("OnUsersUpdated", _db.GetUserAccounts());
         return Ok(new { success = true, user });
     }
 
@@ -140,7 +140,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> DeleteUser(string id)
     {
         _db.DeleteUserAccount(id);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnUsersUpdated", _db.GetUserAccounts());
+        await _hubContext.Clients.All.SendAsync("OnUsersUpdated", _db.GetUserAccounts());
         return Ok(new { success = true, id });
     }
 
@@ -154,7 +154,7 @@ public class FleetApiController : ControllerBase
     public async Task<IActionResult> SetCurrentUser([FromBody] CloudUserAccountItem user)
     {
         _db.SetCurrentUser(user);
-        await _hubContext.Clients.Group("Observers").SendAsync("OnCurrentUserUpdated", user);
+        await _hubContext.Clients.All.SendAsync("OnCurrentUserUpdated", user);
         return Ok(new { success = true, user });
     }
 

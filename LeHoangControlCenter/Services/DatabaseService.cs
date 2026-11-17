@@ -769,10 +769,16 @@ namespace LeHoangControlCenter.Services
         public async Task SaveUserAccountAsync(UserAccountItem user)
         {
             var existing = await GetUserAccountsAsync();
-            if (existing.Exists(u => u.Id == user.Id))
+            var match = existing.FirstOrDefault(u => u.Id == user.Id || string.Equals(u.Username, user.Username, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                user.Id = match.Id;
                 await UpdateUserAccountAsync(user);
+            }
             else
+            {
                 await InsertUserAccountAsync(user);
+            }
         }
 
         public async Task<UserAccountItem?> AuthenticateUserAsync(string username, string password)

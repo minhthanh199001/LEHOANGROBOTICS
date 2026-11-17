@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -489,6 +490,36 @@ namespace LeHoangControlCenter.ViewModels
             catch (Exception ex)
             {
                 AddLog($"[LỖI ĐỒNG BỘ CLOUD] {ex.Message}");
+            }
+        }
+
+        public void ApplyCloudUsers(List<UserAccountItem> cloudUsers)
+        {
+            if (cloudUsers == null || cloudUsers.Count == 0) return;
+            try
+            {
+                foreach (var cu in cloudUsers)
+                {
+                    var existing = UserAccounts.FirstOrDefault(u => u.Id == cu.Id || string.Equals(u.Username, cu.Username, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        existing.FullName = cu.FullName;
+                        existing.Role = cu.Role;
+                        existing.OrganizationId = cu.OrganizationId;
+                        existing.OrganizationName = cu.OrganizationName;
+                        existing.SiteId = cu.SiteId;
+                        existing.SiteName = cu.SiteName;
+                        existing.IsActive = cu.IsActive;
+                    }
+                    else
+                    {
+                        UserAccounts.Add(cu);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ApplyCloudUsers] error: {ex.Message}");
             }
         }
 
@@ -1404,7 +1435,33 @@ namespace LeHoangControlCenter.ViewModels
             try
             {
                 var db = DatabaseService.Instance;
-                var user = await db.AuthenticateUserAsync(LoginUsername, LoginPassword);
+                UserAccountItem? user = null;
+
+                // 1. Thử xác thực trực tuyến qua Cloud Server trước (Online Authentication)
+                if (_cloudBridge != null)
+                {
+                    user = await _cloudBridge.AuthenticateOnCloudAsync(LoginUsername, LoginPassword);
+                    if (user != null)
+                    {
+                        // Lưu / cập nhật tài khoản vào SQLite cục bộ để hỗ trợ đăng nhập offline sau này
+                        try
+                        {
+                            await db.SaveUserAccountAsync(user);
+                            ApplyCloudUsers(new List<UserAccountItem> { user });
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[Login] Cache user to local DB error: {ex.Message}");
+                        }
+                    }
+                }
+
+                // 2. Nếu Cloud chưa phản hồi (offline) hoặc không tìm thấy, thử xác thực bằng Database cục bộ (Offline Mode)
+                if (user == null)
+                {
+                    user = await db.AuthenticateUserAsync(LoginUsername, LoginPassword);
+                }
+
                 if (user != null)
                 {
                     CurrentUser = user;
@@ -1416,6 +1473,15 @@ namespace LeHoangControlCenter.ViewModels
                     LoginErrorMessage = string.Empty;
                     HasLoginError = false;
                     AddLog($"[ĐĂNG NHẬP] Chào mừng '{user.FullName}' ({user.Role}) đã đăng nhập vào hệ thống.");
+
+                    _ = Task.Run(async () =>
+                    {
+                        if (_cloudBridge != null)
+                        {
+                            await _cloudBridge.SyncCurrentUserAsync();
+                            await _cloudBridge.SyncCatalogFromCloudAsync();
+                        }
+                    });
                 }
                 else
                 {
