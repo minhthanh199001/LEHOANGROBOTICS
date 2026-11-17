@@ -3,8 +3,10 @@ using LeHoangCloudServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure port 5050 for Cloud Server (distinct from robot ports 8899 and apk server 8000)
-builder.WebHost.UseUrls("http://0.0.0.0:5050");
+// Configure listening URLs (supports dynamic Cloud environment variables like PORT or ASPNETCORE_URLS)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5050";
+var defaultUrl = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? $"http://0.0.0.0:{port}";
+builder.WebHost.UseUrls(defaultUrl);
 
 // 1. Core Services
 builder.Services.AddSingleton<CloudDatabaseService>();

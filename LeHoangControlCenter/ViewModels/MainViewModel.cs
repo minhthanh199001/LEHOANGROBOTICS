@@ -484,8 +484,8 @@ namespace LeHoangControlCenter.ViewModels
             {
                 IsCloudConnected = connected;
                 CloudStatusText = connected ? "☁️ CLOUD SYNC: ĐÃ KẾT NỐI" : "☁️ CLOUD SYNC: ĐANG KẾT NỐI LẠI";
-                AddLog(connected ? "☁️ [CLOUD ENGINE] Đã kết nối & đồng bộ dữ liệu tới LeHoangCloudServer (Port 5050)."
-                                 : "☁️ [CLOUD ENGINE] Mất kết nối tới LeHoangCloudServer.");
+                AddLog(connected ? $"☁️ [CLOUD ENGINE] Đã kết nối & đồng bộ dữ liệu tới {_cloudBridge?.CloudHubUrl}."
+                                 : $"☁️ [CLOUD ENGINE] Mất kết nối tới {_cloudBridge?.CloudHubUrl}. Đang thử kết nối lại...");
             });
         }
 

@@ -1,0 +1,19 @@
+[Unit]
+Description=Le Hoang Robotics Central Cloud Server
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/lehoang-cloud
+ExecStart=/usr/bin/dotnet /var/www/lehoang-cloud/LeHoangCloudServer.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=lehoang-cloud
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=PORT=5050
+Environment=ASPNETCORE_URLS=http://0.0.0.0:5050
+Environment=DATABASE_PATH=/var/www/lehoang-cloud/data/cloud_fleet.db
+
+[Install]
+WantedBy=multi-user.target

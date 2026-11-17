@@ -17,7 +17,13 @@ public class CloudDatabaseService
 
     public CloudDatabaseService()
     {
-        string dbPath = Path.Combine(AppContext.BaseDirectory, "cloud_fleet.db");
+        string? envDbPath = Environment.GetEnvironmentVariable("DATABASE_PATH");
+        string dbPath = !string.IsNullOrWhiteSpace(envDbPath) ? envDbPath : Path.Combine(AppContext.BaseDirectory, "cloud_fleet.db");
+        var parentDir = Path.GetDirectoryName(dbPath);
+        if (!string.IsNullOrWhiteSpace(parentDir) && !Directory.Exists(parentDir))
+        {
+            Directory.CreateDirectory(parentDir);
+        }
         _connectionString = $"Data Source={dbPath}";
         InitializeDatabase();
         LoadInitialCache();

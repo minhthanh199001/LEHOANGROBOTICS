@@ -18,13 +18,47 @@ namespace LeHoangControlCenter.Services
         private bool _isDisposed;
 
         public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+        public string CloudHubUrl => _cloudHubUrl;
 
         public event Action<bool>? ConnectionStatusChanged;
 
-        public CloudBridgeService(MainViewModel mainVm, string cloudHubUrl = "http://localhost:5050/fleetHub")
+        public static string LoadConfiguredCloudUrl()
+        {
+            try
+            {
+                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cloud_config.json");
+                if (System.IO.File.Exists(path))
+                {
+                    var json = System.IO.File.ReadAllText(path);
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("CloudServerUrl", out var prop))
+                    {
+                        var val = prop.GetString();
+                        if (!string.IsNullOrWhiteSpace(val)) return val;
+                    }
+                }
+                else
+                {
+                    // Tự động sinh file cấu hình mẫu khi chưa có
+                    var defaultObj = new
+                    {
+                        CloudServerUrl = "http://localhost:5050/fleetHub",
+                        Description = "Cấu hình địa chỉ Cloud Server trung tâm để đồng bộ chuỗi chi nhánh (VD: http://cloud.lehoangrobotics.com:5050/fleetHub hoặc https://api.domain.com/fleetHub)"
+                    };
+                    System.IO.File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(defaultObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] Error loading cloud_config.json: {ex.Message}");
+            }
+            return "http://localhost:5050/fleetHub";
+        }
+
+        public CloudBridgeService(MainViewModel mainVm, string? cloudHubUrl = null)
         {
             _mainVm = mainVm;
-            _cloudHubUrl = cloudHubUrl;
+            _cloudHubUrl = !string.IsNullOrWhiteSpace(cloudHubUrl) ? cloudHubUrl : LoadConfiguredCloudUrl();
         }
 
         public async Task StartAsync()

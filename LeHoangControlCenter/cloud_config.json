@@ -1,0 +1,4 @@
+{
+  "CloudServerUrl": "http://localhost:5050/fleetHub",
+  "Description": "Cấu hình địa chỉ Cloud Server trung tâm để đồng bộ chuỗi 10 - 100 chi nhánh (VD: http://103.x.x.x:5050/fleetHub hoặc https://cloud.lehoangrobotics.vn/fleetHub)"
+}

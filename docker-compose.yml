@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  lehoang-cloud:
+    build:
+      context: .
+      dockerfile: LeHoangCloudServer/Dockerfile
+    container_name: lehoang-cloud-server
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - PORT=5050
+      - ASPNETCORE_URLS=http://0.0.0.0:5050
+      - DATABASE_PATH=/app/data/cloud_fleet.db
+    volumes:
+      # Persistent SQLite database across container upgrades
+      - lehoang_cloud_data:/app/data
+
+volumes:
+  lehoang_cloud_data:
+    driver: local
