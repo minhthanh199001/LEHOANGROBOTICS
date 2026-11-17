@@ -50,7 +50,7 @@ public class FleetHub : Hub
     {
         _db.SaveRobot(robot);
         _logger.LogInformation("Robot upserted from Edge: {RobotId} ({Name}) at Site {SiteId}", robot.Id, robot.Name, robot.SiteId);
-        await Clients.Group("Observers").SendAsync("OnRobotUpserted", robot);
+        await Clients.All.SendAsync("OnRobotUpserted", robot);
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public class FleetHub : Hub
                 _db.SaveRobot(r);
             }
             _logger.LogInformation("Edge synced {Count} robots to Cloud", robots.Count);
-            await Clients.Group("Observers").SendAsync("OnFleetReloadNeeded");
+            await Clients.All.SendAsync("OnFleetReloadNeeded");
         }
     }
 

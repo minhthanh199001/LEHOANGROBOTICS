@@ -1060,77 +1060,21 @@
 
 
 
-                    <!-- ENTERPRISE (TỔ CHỨC & SITES) -->
-
-
+                    <!-- ROBOT FLEET MANAGEMENT (QUẢN LÝ & THÊM ROBOTS - ĐỒNG BỘ CLOUD) -->
 
                     <Border Background="{Binding EnterpriseNavBg}" CornerRadius="6" Margin="0,0,0,4">
 
-
-
-                        <Button Style="{StaticResource NavButton}" Foreground="{Binding EnterpriseNavFg}" FontWeight="SemiBold" Command="{Binding ShowEnterpriseCommand}" ToolTip="Quản lý Phân quyền Doanh nghiệp: Tổ chức ➔ Chi nhánh (Sites) ➔ Đội xe Robots">
-
-
+                        <Button Style="{StaticResource NavButton}" Foreground="{Binding EnterpriseNavFg}" FontWeight="SemiBold" Command="{Binding ShowEnterpriseCommand}" ToolTip="Quản lý &amp; Thêm Robots theo Chi nhánh (Đồng bộ thời gian thực với Cloud Server)">
 
                             <StackPanel Orientation="Horizontal">
 
+                                <TextBlock Text="🤖" FontSize="14" Margin="0,0,10,0" VerticalAlignment="Center" />
 
-
-                                <TextBlock Text="🏢" FontSize="14" Margin="0,0,10,0" VerticalAlignment="Center" />
-
-
-
-                                <TextBlock Text="Tổ chức &amp; Site" FontSize="12" VerticalAlignment="Center" Foreground="{Binding EnterpriseNavFg}" FontWeight="SemiBold" />
-
-
+                                <TextBlock Text="Thêm Robots" FontSize="12" VerticalAlignment="Center" Foreground="{Binding EnterpriseNavFg}" FontWeight="SemiBold" />
 
                             </StackPanel>
 
-
-
                         </Button>
-
-
-
-                    </Border>
-
-
-
-
-
-
-
-                    <!-- USER MANAGEMENT (PHÂN QUYỀN NGƯỜI DÙNG) -->
-
-
-
-                    <Border Background="{Binding UsersNavBg}" CornerRadius="6" Margin="0,0,0,4">
-
-
-
-                        <Button Style="{StaticResource NavButton}" Foreground="{Binding UsersNavFg}" FontWeight="SemiBold" Command="{Binding ShowUsersCommand}" ToolTip="Quản lý Tài khoản &amp; Phân quyền người dùng theo vai trò: SuperAdmin, OrgAdmin, SiteManager, Operator">
-
-
-
-                            <StackPanel Orientation="Horizontal">
-
-
-
-                                <TextBlock Text="👥" FontSize="14" Margin="0,0,10,0" VerticalAlignment="Center" />
-
-
-
-                                <TextBlock Text="Người dùng" FontSize="12" VerticalAlignment="Center" Foreground="{Binding UsersNavFg}" FontWeight="SemiBold" />
-
-
-
-                            </StackPanel>
-
-
-
-                        </Button>
-
-
 
                     </Border>
 
@@ -7267,7 +7211,7 @@
 
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
-                            <TextBlock Text="🏢 QUẢN LÝ DOANH NGHIỆP: TỔ CHỨC ➔ SITES ➔ ROBOTS" FontSize="13" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
+                            <TextBlock Text="🤖 QUẢN LÝ &amp; THÊM ROBOTS (ĐỒNG BỘ CLOUD SERVER)" FontSize="13" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
 
                         </StackPanel>
 
@@ -7277,11 +7221,7 @@
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
 
-                        <Button Command="{Binding SyncFromCloudCommand}" Content="🔄 Đồng bộ từ Cloud" Style="{StaticResource CyberButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" ToolTip="Tải danh sách Tổ chức &amp; Chi nhánh mới nhất từ Cloud Server" />
-
-                        <Button Command="{Binding OpenAddOrgCommand}" Content="➕ Thêm Tổ Chức" Style="{StaticResource CyanButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" />
-
-                        <Button Command="{Binding OpenAddSiteCommand}" Content="➕ Thêm Site" Style="{StaticResource CyberButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" />
+                        <Button Command="{Binding SyncFromCloudCommand}" Content="🔄 Đồng bộ từ Cloud" Style="{StaticResource CyberButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" ToolTip="Tải danh sách Tổ chức, Chi nhánh &amp; Robots mới nhất từ Cloud Server" />
 
                         <Button Command="{Binding OpenAddRobotCommand}" Content="➕ Thêm Robot" Style="{StaticResource CyberButton}" Background="#0284C7" FontSize="11" Padding="10,5" />
 
@@ -7332,8 +7272,6 @@
                                     <TextBlock Text="Bấm chọn để lọc Sites tương ứng" FontSize="10" Foreground="#64748B" Margin="0,2,0,0" />
 
                                 </StackPanel>
-
-                                <Button HorizontalAlignment="Right" Command="{Binding OpenAddOrgCommand}" Content="➕" Style="{StaticResource CyanButton}" Width="26" Height="24" FontSize="11" Padding="0" ToolTip="Thêm tổ chức mới" />
 
                             </Grid>
 
@@ -7433,14 +7371,6 @@
 
                                                 <TextBlock Text="{Binding ContactPerson, StringFormat='👤 {0}'}" FontSize="10" Foreground="#64748B" VerticalAlignment="Center" />
 
-                                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-
-                                                    <Button Command="{Binding DataContext.OpenEditOrgCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Content="✏️" Style="{StaticResource CyberButton}" Width="26" Height="22" Padding="0" Margin="0,0,4,0" FontSize="10" />
-
-                                                    <Button Command="{Binding DataContext.DeleteOrgCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Content="🗑️" Style="{StaticResource CyberButton}" Background="#7F1D1D" Foreground="#FCA5A5" Width="26" Height="22" Padding="0" FontSize="10" />
-
-                                                </StackPanel>
-
                                             </Grid>
 
                                         </Grid>
@@ -7493,8 +7423,6 @@
 
                                 </StackPanel>
 
-                                <Button HorizontalAlignment="Right" Command="{Binding OpenAddSiteCommand}" Content="➕" Style="{StaticResource CyanButton}" Width="26" Height="24" FontSize="11" Padding="0" ToolTip="Thêm Site vào tổ chức này" />
-
                             </Grid>
 
 
@@ -7508,8 +7436,6 @@
                                     <TextBlock Text="📍" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" Opacity="0.5" />
 
                                     <TextBlock Text="Chưa có chi nhánh nào thuộc tổ chức này" FontSize="11" Foreground="#94A3B8" HorizontalAlignment="Center" TextAlignment="Center" />
-
-                                    <Button Command="{Binding OpenAddSiteCommand}" Content="➕ Thêm Site ngay" Style="{StaticResource CyberButton}" Margin="0,8,0,0" HorizontalAlignment="Center" Padding="8,4" FontSize="10" />
 
                                 </StackPanel>
 
@@ -7610,14 +7536,6 @@
                                             <Grid Grid.Row="2">
 
                                                 <TextBlock Text="{Binding ContactPhone, StringFormat='📞 {0}'}" FontSize="10" Foreground="#64748B" VerticalAlignment="Center" />
-
-                                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-
-                                                    <Button Command="{Binding DataContext.OpenEditSiteCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Content="✏️" Style="{StaticResource CyberButton}" Width="26" Height="22" Padding="0" Margin="0,0,4,0" FontSize="10" />
-
-                                                    <Button Command="{Binding DataContext.DeleteSiteCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Content="🗑️" Style="{StaticResource CyberButton}" Background="#7F1D1D" Foreground="#FCA5A5" Width="26" Height="22" Padding="0" FontSize="10" />
-
-                                                </StackPanel>
 
                                             </Grid>
 

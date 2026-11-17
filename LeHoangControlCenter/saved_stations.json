@@ -240,5 +240,55 @@
       "Y": 8.8,
       "Theta": 0
     }
+  ],
+  "timeout": [
+    {
+      "Name": "tivi",
+      "X": 1.44,
+      "Y": 1.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Stand-by Point",
+      "X": 1.84,
+      "Y": 5.69,
+      "Theta": 0
+    },
+    {
+      "Name": "ph\u00F2ng h\u1ECDp",
+      "X": 1.69,
+      "Y": 8.38,
+      "Theta": 0
+    },
+    {
+      "Name": "cafe",
+      "X": 1.12,
+      "Y": -1.16,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Pole",
+      "X": 0,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "Charging Point",
+      "X": 0.6,
+      "Y": -0.31,
+      "Theta": 0
+    },
+    {
+      "Name": "test",
+      "X": 1.48,
+      "Y": 4.75,
+      "Theta": 0
+    },
+    {
+      "Name": "Positioning Point",
+      "X": 1.46,
+      "Y": 0.66,
+      "Theta": 0
+    }
   ]
 }

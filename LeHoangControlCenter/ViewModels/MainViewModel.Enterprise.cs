@@ -523,14 +523,71 @@ namespace LeHoangControlCenter.ViewModels
             }
         }
 
+        public void ApplyCloudFleet(List<EnterpriseRobotItem> cloudRobots)
+        {
+            if (cloudRobots == null) return;
+            try
+            {
+                // 1. Lưu đồng bộ vào SQLite cục bộ để hỗ trợ làm việc offline
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var db = DatabaseService.Instance;
+                        var existingLocal = await db.GetRobotsAsync();
+                        var cloudIds = new HashSet<string>(cloudRobots.Select(r => r.Id), StringComparer.OrdinalIgnoreCase);
+
+                        // Dọn dẹp dữ liệu mock cũ không còn tồn tại trên Cloud
+                        foreach (var localBot in existingLocal)
+                        {
+                            if (!cloudIds.Contains(localBot.Id))
+                            {
+                                await db.DeleteRobotAsync(localBot.Id);
+                            }
+                        }
+
+                        foreach (var bot in cloudRobots)
+                        {
+                            await db.SaveRobotAsync(bot);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SQLite Save Robots Error] {ex.Message}");
+                    }
+                });
+
+                // 2. Cập nhật EnterpriseRobots trên UI
+                EnterpriseRobots.Clear();
+                foreach (var bot in cloudRobots)
+                {
+                    if (IsConnected && string.Equals(bot.Ip?.Trim(), RobotIp?.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        bot.Status = IsCharging ? "Charging" : "Online";
+                        bot.BatteryLevel = BatteryLevel;
+                        bot.IsCharging = IsCharging;
+                    }
+                    EnterpriseRobots.Add(bot);
+                }
+
+                // 3. Cập nhật bộ lọc danh sách robot theo Site đang chọn
+                UpdateFilteredRobots();
+
+                AddLog($"☁️ [ĐỒNG BỘ CLOUD] Đã đồng bộ {cloudRobots.Count} Robot thực tế từ Cloud Server về Client.");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"[LỖI ĐỒNG BỘ FLEET CLOUD] {ex.Message}");
+            }
+        }
+
         [RelayCommand]
         public async Task SyncFromCloudAsync()
         {
             if (_cloudBridge != null)
             {
-                AddLog("☁️ Đang đồng bộ danh mục từ Cloud Server...");
+                AddLog("☁️ Đang đồng bộ dữ liệu thực tế từ Cloud Server...");
                 await _cloudBridge.SyncCatalogFromCloudAsync();
-                await _cloudBridge.SyncAllLocalRobotsToCloudAsync();
             }
         }
 

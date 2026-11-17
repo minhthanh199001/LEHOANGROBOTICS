@@ -138,43 +138,42 @@ namespace LeHoangControlCenter.Services
                     cmd.CommandText = @"
                         -- 1. Organizations
                         INSERT INTO Organizations (Id, Name, Code, Description, ContactPerson, Phone, Email, CreatedAt) VALUES
-                        ('ORG-LEHOANG', 'Lê Hoàng Robotics Corp', 'LEHOANG', 'Tổng công ty Công nghệ Tự hành Lê Hoàng', 'Lê Hoàng', '0901234567', 'contact@lehoangrobotics.vn', datetime('now')),
-                        ('ORG-VINPEARL', 'Tập đoàn Vinpearl Hospitality', 'VINPEARL', 'Hệ thống Khách sạn & Nghỉ dưỡng Vinpearl', 'Nguyễn Văn A', '0912345678', 'fleet@vinpearl.com', datetime('now')),
-                        ('ORG-MUONGTHANH', 'Khách sạn Mường Thanh', 'MUONGTHANH', 'Chuỗi Khách sạn Tư nhân Mường Thanh', 'Trần Thị B', '0987654321', 'robotics@muongthanh.vn', datetime('now'));
+                        ('LEHOANG', 'Lê Hoàng Robotics Corp', 'LEHOANG', 'Tổng công ty Công nghệ Tự hành Lê Hoàng', 'Lê Hoàng', '0901234567', 'contact@lehoangrobotics.vn', datetime('now')),
+                        ('VINPEARL', 'Tập đoàn Vinpearl', 'VINPEARL', 'Hệ thống Khách sạn & Nghỉ dưỡng Vinpearl', 'Nguyễn Văn A', '0912345678', 'fleet@vinpearl.com', datetime('now')),
+                        ('MUONGTHANH', 'Khách sạn Mường Thanh', 'MUONGTHANH', 'Chuỗi Khách sạn Tư nhân Mường Thanh', 'Trần Thị B', '0987654321', 'robotics@muongthanh.vn', datetime('now'));
 
                         -- 2. Sites
                         INSERT INTO Sites (Id, OrganizationId, Name, Code, Address, ContactPhone, CreatedAt) VALUES
-                        ('SITE-RND', 'ORG-LEHOANG', 'Trung tâm R&D & Test Lab', 'RND-Q1', 'Số 12 Đường Lê Hoàng, TP. HCM', '0901234567', datetime('now')),
-                        ('SITE-VLM81', 'ORG-VINPEARL', 'Vinpearl Landmark 81', 'VLM-81', '720A Điện Biên Phủ, Phường 22, Bình Thạnh, TP. HCM', '0912345678', datetime('now')),
-                        ('SITE-RESORT-NT', 'ORG-VINPEARL', 'Vinpearl Resort & Spa Nha Trang', 'VRS-NT', 'Đảo Hòn Tre, Nha Trang, Khánh Hòa', '0912345679', datetime('now')),
-                        ('SITE-MTSG', 'ORG-MUONGTHANH', 'Mường Thanh Luxury Sài Gòn', 'MT-SG', '261 Nguyễn Văn Trỗi, Phú Nhuận, TP. HCM', '0987654321', datetime('now'));
+                        ('RND-Q1', 'LEHOANG', 'Trung tâm R&D & Trụ sở chính', 'RND-Q1', 'Số 12 Đường Lê Hoàng, TP. HCM', '0901234567', datetime('now')),
+                        ('VIN-LANDMARK', 'VINPEARL', 'Vinpearl Landmark 81 Luxury', 'VIN-LANDMARK', '720A Điện Biên Phủ, Phường 22, Bình Thạnh, TP. HCM', '0912345678', datetime('now')),
+                        ('MT-SG', 'MUONGTHANH', 'Mường Thanh Luxury Sài Gòn', 'MT-SG', '261 Nguyễn Văn Trỗi, Phú Nhuận, TP. HCM', '0987654321', datetime('now'));
 
                         -- 3. Robots
                         INSERT INTO Robots (Id, SiteId, OrganizationId, Name, Model, Ip, Port, BatteryLevel, Status, AssignedMap, CreatedAt, LastSeen) VALUES
-                        ('ROB01', 'SITE-RND', 'ORG-LEHOANG', 'Lê Hoàng 01 (Test Lab)', 'OrionStar Delivery Bot', '192.168.0.125', 8899, 95, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now')),
-                        ('ROB02', 'SITE-VLM81', 'ORG-VINPEARL', 'Vinpearl LM81 - Bot 01', 'OrionStar Lucki Bot', '192.168.0.134', 8899, 88, 'Active', 'MT1map-0721090621', datetime('now'), datetime('now')),
-                        ('ROB03', 'SITE-VLM81', 'ORG-VINPEARL', 'Vinpearl LM81 - Bot 02', 'OrionStar Lucki Bot', '192.168.0.135', 8899, 72, 'Online', 'MT1map-0721090621', datetime('now'), datetime('now')),
-                        ('ROB04', 'SITE-RESORT-NT', 'ORG-VINPEARL', 'Vinpearl Resort Bot 01', 'OrionStar Delivery Bot', '192.168.1.110', 8899, 100, 'Charging', 'MT1map-0721090621', datetime('now'), datetime('now')),
-                        ('ROB05', 'SITE-MTSG', 'ORG-MUONGTHANH', 'Mường Thanh Bot Phục Vụ', 'OrionStar Lucki Bot', '192.168.2.120', 8899, 65, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now'));
+                        ('ROB-01', 'RND-Q1', 'LEHOANG', 'Lê Hoàng 01 (Trụ Sở)', 'OrionStar Mini', '192.168.0.125', 8899, 95, 'Online', 'tang 2-1110154527', datetime('now'), datetime('now')),
+                        ('ROB-03', 'VIN-LANDMARK', 'VINPEARL', 'Vinpearl Service Bot 01', 'OrionStar Mini', '192.168.10.45', 8899, 88, 'Charging', 'sanh_chinh', datetime('now'), datetime('now')),
+                        ('LH-ORIONSTAR-01', 'MT-SG', 'MUONGTHANH', 'LH-ORIONSTAR-01', 'OrionStar Mini', '127.0.0.1', 8899, 63, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now')),
+                        ('ROB-02', 'MT-SG', 'MUONGTHANH', 'Mường Thanh Bot Phục Vụ 01', 'OrionStar Mini', '192.168.2.120', 8899, 65, 'Online', 'tang 2-1110154527', datetime('now'), datetime('now')),
+                        ('CBAFA800', 'MT-SG', 'MUONGTHANH', 'LH-ORIONSTAR-02', 'OrionStar Lucki', '192.168.0.32', 8899, 65, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now'));
 
                         -- 4. User Accounts
                         INSERT INTO UserAccounts (Id, Username, Password, FullName, Email, Role, OrganizationId, SiteId, IsActive, CreatedAt) VALUES
                         ('USR-01', 'admin', '123456', 'Quản trị viên Hệ thống (Lê Hoàng)', 'admin@lehoangrobotics.vn', 'SuperAdmin', NULL, NULL, 1, datetime('now')),
-                        ('USR-02', 'vinpearl_admin', '123456', 'Ban Quản trị Vinpearl', 'admin@vinpearl.com', 'OrgAdmin', 'ORG-VINPEARL', NULL, 1, datetime('now')),
-                        ('USR-03', 'vlm81_manager', '123456', 'Quản lý Chi nhánh Landmark 81', 'manager.lm81@vinpearl.com', 'SiteManager', 'ORG-VINPEARL', 'SITE-VLM81', 1, datetime('now')),
-                        ('USR-04', 'operator01', '123456', 'Nhân viên Vận hành Bot', 'operator@lehoangrobotics.vn', 'Operator', 'ORG-LEHOANG', 'SITE-RND', 1, datetime('now'));
+                        ('USR-02', 'vinpearl_admin', '123456', 'Ban Quản trị Vinpearl', 'admin@vinpearl.com', 'OrgAdmin', 'VINPEARL', NULL, 1, datetime('now')),
+                        ('USR-03', 'vlm81_manager', '123456', 'Quản lý Chi nhánh Landmark 81', 'manager.lm81@vinpearl.com', 'SiteManager', 'VINPEARL', 'VIN-LANDMARK', 1, datetime('now')),
+                        ('USR-04', 'operator01', '123456', 'Nhân viên Vận hành Bot', 'operator@lehoangrobotics.vn', 'Operator', 'LEHOANG', 'RND-Q1', 1, datetime('now'));
 
                         -- 5. Delivery Orders
                         INSERT INTO DeliveryOrders (Id, OrderCode, OrganizationId, SiteId, RobotId, Tray1Dest, Tray2Dest, Tray3Dest, SpeedMode, Status, CreatedAt, CompletedAt) VALUES
-                        ('ORD-001', 'ORD-20261114-01', 'ORG-LEHOANG', 'SITE-RND', 'ROB01', 'Bàn 1', 'Bàn 2', 'cafe', 'Nhanh (0.7 m/s)', 'Hoàn thành', datetime('now', '-30 minutes'), datetime('now', '-25 minutes')),
-                        ('ORD-002', 'ORD-20261114-02', 'ORG-LEHOANG', 'SITE-RND', 'ROB01', 'phòng họp', 'tivi', '', 'Chậm (0.5 m/s)', 'Hoàn thành', datetime('now', '-15 minutes'), datetime('now', '-10 minutes')),
-                        ('ORD-003', 'ORD-20261114-03', 'ORG-VINPEARL', 'SITE-VLM81', 'ROB02', 'Bàn 5', '', '', 'Nhanh (0.7 m/s)', 'Đang giao', datetime('now', '-5 minutes'), NULL);
+                        ('ORD-001', 'ORD-20261114-01', 'LEHOANG', 'RND-Q1', 'ROB-01', 'Bàn 1', 'Bàn 2', 'cafe', 'Nhanh (0.7 m/s)', 'Hoàn thành', datetime('now', '-30 minutes'), datetime('now', '-25 minutes')),
+                        ('ORD-002', 'ORD-20261114-02', 'LEHOANG', 'RND-Q1', 'ROB-01', 'phòng họp', 'tivi', '', 'Chậm (0.5 m/s)', 'Hoàn thành', datetime('now', '-15 minutes'), datetime('now', '-10 minutes')),
+                        ('ORD-003', 'ORD-20261114-03', 'VINPEARL', 'VIN-LANDMARK', 'ROB-03', 'Bàn 5', '', '', 'Nhanh (0.7 m/s)', 'Đang giao', datetime('now', '-5 minutes'), NULL);
 
                         -- 6. Alert Logs
                         INSERT INTO AlertLogs (Id, OrganizationId, SiteId, RobotId, Title, Message, Severity, CreatedAt, IsRead) VALUES
-                        ('ALT-001', 'ORG-LEHOANG', 'SITE-RND', 'ROB01', 'Mất định vị SLAM', 'Robot mất vị trí sau khi khởi động. Cần khôi phục vị trí.', 'Warning', datetime('now', '-1 hour'), 0),
-                        ('ALT-002', 'ORG-VINPEARL', 'SITE-VLM81', 'ROB03', 'Pin yếu dưới 20%', 'Robot ROB03 sắp hết pin, tự động quay về trạm sạc.', 'Info', datetime('now', '-45 minutes'), 1),
-                        ('ALT-003', 'ORG-LEHOANG', 'SITE-RND', 'ROB01', 'Vật cản đường', 'Phát hiện vật cản bất ngờ trên hành lang.', 'Warning', datetime('now', '-20 minutes'), 0);
+                        ('ALT-001', 'LEHOANG', 'RND-Q1', 'ROB-01', 'Mất định vị SLAM', 'Robot mất vị trí sau khi khởi động. Cần khôi phục vị trí.', 'Warning', datetime('now', '-1 hour'), 0),
+                        ('ALT-002', 'VINPEARL', 'VIN-LANDMARK', 'ROB-03', 'Pin yếu dưới 20%', 'Robot ROB-03 sắp hết pin, tự động quay về trạm sạc.', 'Info', datetime('now', '-45 minutes'), 1),
+                        ('ALT-003', 'LEHOANG', 'RND-Q1', 'ROB-01', 'Vật cản đường', 'Phát hiện vật cản bất ngờ trên hành lang.', 'Warning', datetime('now', '-20 minutes'), 0);
                     ";
                     cmd.ExecuteNonQuery();
                     trans.Commit();

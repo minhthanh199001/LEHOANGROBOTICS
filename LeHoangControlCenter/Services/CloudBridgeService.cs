@@ -94,6 +94,18 @@ namespace LeHoangControlCenter.Services
                 {
                     _ = SyncCatalogFromCloudAsync();
                 });
+                _hubConnection.On<System.Text.Json.JsonElement>("OnRobotUpserted", (robotEl) =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
+                _hubConnection.On<string>("OnRobotDeleted", (robotId) =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
+                _hubConnection.On("OnFleetReloadNeeded", () =>
+                {
+                    _ = SyncCatalogFromCloudAsync();
+                });
 
                 _hubConnection.Reconnecting += (err) =>
                 {
@@ -178,10 +190,10 @@ namespace LeHoangControlCenter.Services
                     id = robot.Id,
                     name = robot.Name,
                     model = robot.Model ?? "OrionStar Mini",
-                    orgId = _mainVm.SelectedOrganization?.Id ?? robot.OrganizationId ?? "",
-                    orgName = _mainVm.SelectedOrganization?.Name ?? robot.OrganizationName ?? "",
-                    siteId = _mainVm.SelectedSite?.Id ?? robot.SiteId ?? "",
-                    siteName = _mainVm.SelectedSite?.Name ?? robot.SiteName ?? "",
+                    orgId = !string.IsNullOrEmpty(robot.OrganizationId) ? robot.OrganizationId : (_mainVm.SelectedOrganization?.Id ?? ""),
+                    orgName = !string.IsNullOrEmpty(robot.OrganizationName) ? robot.OrganizationName : (_mainVm.SelectedOrganization?.Name ?? ""),
+                    siteId = !string.IsNullOrEmpty(robot.SiteId) ? robot.SiteId : (_mainVm.SelectedSite?.Id ?? ""),
+                    siteName = !string.IsNullOrEmpty(robot.SiteName) ? robot.SiteName : (_mainVm.SelectedSite?.Name ?? ""),
                     ip = robot.Ip,
                     port = robot.Port,
                     status = robot.Status,
@@ -234,10 +246,10 @@ namespace LeHoangControlCenter.Services
                         id = robot.Id,
                         name = robot.Name,
                         model = robot.Model ?? "OrionStar Mini",
-                        orgId = _mainVm.SelectedOrganization?.Id ?? robot.OrganizationId ?? "",
-                        orgName = _mainVm.SelectedOrganization?.Name ?? robot.OrganizationName ?? "",
-                        siteId = _mainVm.SelectedSite?.Id ?? robot.SiteId ?? "",
-                        siteName = _mainVm.SelectedSite?.Name ?? robot.SiteName ?? "",
+                        orgId = !string.IsNullOrEmpty(robot.OrganizationId) ? robot.OrganizationId : (_mainVm.SelectedOrganization?.Id ?? ""),
+                        orgName = !string.IsNullOrEmpty(robot.OrganizationName) ? robot.OrganizationName : (_mainVm.SelectedOrganization?.Name ?? ""),
+                        siteId = !string.IsNullOrEmpty(robot.SiteId) ? robot.SiteId : (_mainVm.SelectedSite?.Id ?? ""),
+                        siteName = !string.IsNullOrEmpty(robot.SiteName) ? robot.SiteName : (_mainVm.SelectedSite?.Name ?? ""),
                         ip = robot.Ip,
                         port = robot.Port,
                         status = robot.Status,
@@ -387,6 +399,61 @@ namespace LeHoangControlCenter.Services
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"[CloudBridge] Fetch users error: {ex.Message}");
+                }
+
+                // 4. Fetch Robots
+                try
+                {
+                    var robotsJson = await http.GetStringAsync($"{baseUrl}/api/fleet/robots");
+                    using var rDoc = System.Text.Json.JsonDocument.Parse(robotsJson);
+                    if (rDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var cloudRobots = new System.Collections.Generic.List<EnterpriseRobotItem>();
+                        foreach (var el in rDoc.RootElement.EnumerateArray())
+                        {
+                            var rId = el.TryGetProperty("id", out var pId) ? pId.GetString() ?? "" : "";
+                            var rName = el.TryGetProperty("name", out var pName) ? pName.GetString() ?? "" : "";
+                            var rModel = el.TryGetProperty("model", out var pM) ? pM.GetString() ?? "OrionStar Lucki" : "OrionStar Lucki";
+                            var rOrgId = el.TryGetProperty("orgId", out var pOid) ? pOid.GetString() ?? "" : "";
+                            var rOrgName = el.TryGetProperty("orgName", out var pOn) ? pOn.GetString() ?? "" : "";
+                            var rSiteId = el.TryGetProperty("siteId", out var pSid) ? pSid.GetString() ?? "" : "";
+                            var rSiteName = el.TryGetProperty("siteName", out var pSn) ? pSn.GetString() ?? "" : "";
+                            var rIp = el.TryGetProperty("ip", out var pIp) ? pIp.GetString() ?? "127.0.0.1" : "127.0.0.1";
+                            var rPort = el.TryGetProperty("port", out var pPort) ? pPort.GetInt32() : 8899;
+                            var rBat = el.TryGetProperty("battery", out var pBat) ? pBat.GetInt32() : 100;
+                            var rCharging = el.TryGetProperty("isCharging", out var pChg) && pChg.GetBoolean();
+                            var rStatus = el.TryGetProperty("status", out var pSt) ? pSt.GetString() ?? "Online" : "Online";
+                            var rMap = el.TryGetProperty("assignedMap", out var pMap) ? pMap.GetString() ?? "" : "";
+
+                            cloudRobots.Add(new EnterpriseRobotItem
+                            {
+                                Id = rId,
+                                Name = rName,
+                                Model = rModel,
+                                OrganizationId = rOrgId,
+                                OrganizationName = rOrgName,
+                                SiteId = rSiteId,
+                                SiteName = rSiteName,
+                                Ip = rIp,
+                                Port = rPort,
+                                BatteryLevel = rBat,
+                                IsCharging = rCharging,
+                                Status = rStatus,
+                                AssignedMap = rMap,
+                                CreatedAt = DateTime.Now,
+                                LastSeen = DateTime.Now
+                            });
+                        }
+
+                        Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            _mainVm.ApplyCloudFleet(cloudRobots);
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[CloudBridge] Fetch robots error: {ex.Message}");
                 }
             }
             catch (Exception ex)
