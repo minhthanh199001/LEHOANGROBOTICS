@@ -89,9 +89,10 @@ public class FleetApiController : ControllerBase
     [HttpDelete("robots/{id}")]
     public async Task<IActionResult> DeleteRobot(string id)
     {
-        _db.DeleteRobot(id);
-        await _hubContext.Clients.All.SendAsync("OnRobotDeleted", id);
-        return Ok(new { success = true, id });
+        var decodedId = System.Net.WebUtility.UrlDecode(id);
+        _db.DeleteRobot(decodedId);
+        await _hubContext.Clients.All.SendAsync("OnRobotDeleted", decodedId);
+        return Ok(new { success = true, id = decodedId });
     }
 
     [HttpGet("alerts")]

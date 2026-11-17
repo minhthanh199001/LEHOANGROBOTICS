@@ -374,7 +374,7 @@ public class CloudDatabaseService
         _robotLiveCache.TryRemove(id, out _);
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
-        using var cmd = new SqliteCommand("DELETE FROM Robots WHERE Id = @Id;", conn);
+        using var cmd = new SqliteCommand("DELETE FROM Robots WHERE Id = @Id OR Name = @Id OR Ip = @Id;", conn);
         cmd.Parameters.AddWithValue("@Id", id);
         cmd.ExecuteNonQuery();
     }

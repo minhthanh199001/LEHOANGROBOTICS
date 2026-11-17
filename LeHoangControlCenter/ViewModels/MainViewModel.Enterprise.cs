@@ -1118,7 +1118,7 @@ namespace LeHoangControlCenter.ViewModels
             }
 
             var confirm = MessageBox.Show(
-                $"Bạn có chắc chắn muốn xóa Robot '{target.Name}' (IP: {target.Ip})?",
+                $"Bạn có chắc chắn muốn xóa Robot '{target.Name}' (IP: {target.Ip}) khỏi hệ thống?\nRobot sẽ được gỡ bỏ khỏi cơ sở dữ liệu và đồng bộ xóa khỏi Cloud Server.",
                 "Xác nhận xóa Robot",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -1128,16 +1128,43 @@ namespace LeHoangControlCenter.ViewModels
                 try
                 {
                     var db = DatabaseService.Instance;
-                    await db.DeleteRobotAsync(target.Id);
+                    await db.DeleteRobotAsync(target.Id, target.Ip);
 
-                    // Xóa Robot khỏi Cloud Server
+                    // Xóa Robot khỏi Cloud Server (chờ hoàn tất để không bị Cloud đồng bộ ngược lại)
                     if (_cloudBridge != null)
                     {
-                        _ = _cloudBridge.DeleteRobotFromCloudAsync(target.Id);
+                        await _cloudBridge.DeleteRobotFromCloudAsync(target.Id);
+                        if (!string.IsNullOrEmpty(target.Ip) && target.Ip != target.Id)
+                        {
+                            await _cloudBridge.DeleteRobotFromCloudAsync(target.Ip);
+                        }
+                    }
+
+                    // Gỡ bỏ ngay khỏi danh sách hiển thị
+                    EnterpriseRobots.Remove(target);
+                    FilteredRobots.Remove(target);
+                    var inFleet = FleetRobots.FirstOrDefault(r => r.Ip == target.Ip);
+                    if (inFleet != null) FleetRobots.Remove(inFleet);
+
+                    if (SelectedEnterpriseRobot?.Id == target.Id)
+                    {
+                        SelectedEnterpriseRobot = FilteredRobots.FirstOrDefault();
+                    }
+
+                    // Nếu robot đang xóa là robot đang kết nối hiện tại -> ngắt kết nối
+                    if (string.Equals(RobotIp?.Trim(), target.Ip?.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (IsConnected)
+                        {
+                            await _robotService.DisconnectAsync();
+                            IsConnected = false;
+                            RobotState = "OFFLINE";
+                        }
                     }
 
                     await InitializeEnterpriseDataAsync();
-                    AddLog($"[DOANH NGHIỆP] Đã xóa Robot '{target.Name}'.");
+                    AddLog($"[DOANH NGHIỆP] Đã xóa thành công Robot '{target.Name}' (IP: {target.Ip}).");
+                    MessageBox.Show($"Đã xóa thành công Robot '{target.Name}' (IP: {target.Ip}) khỏi hệ thống!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
                 {

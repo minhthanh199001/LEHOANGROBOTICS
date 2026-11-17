@@ -2748,6 +2748,9 @@
             <button class="btn-card-action btn-card-select" onclick="event.stopPropagation(); selectRobot('${bot.id}')" title="Định vị & chọn robot này">
               🗺️ Bản Đồ
             </button>
+            <button class="btn-card-action btn-card-delete" onclick="event.stopPropagation(); deleteRobot('${bot.id}', '${bot.name}')" title="Xóa robot này khỏi hệ thống Cloud" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">
+              🗑️ Xóa
+            </button>
           </div>
         `;
         container.appendChild(card);
@@ -3176,24 +3179,49 @@
       sites.forEach(site => {
         const org = fleetData.organizations.find(o => o.id === site.organizationId);
         const orgName = org ? org.name : (site.organizationId || "Chưa gán");
+        const siteRobots = (fleetData.robots || []).filter(r => r.siteId === site.id);
         const div = document.createElement("div");
         div.className = "entity-card";
+        div.style.flexDirection = "column";
+        div.style.alignItems = "stretch";
         div.innerHTML = `
-          <div>
-            <div style="font-weight: 700; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-              <span>📍</span> ${site.name}
-              <span class="entity-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">${site.code || 'SITE'}</span>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 700; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                <span>📍</span> ${site.name}
+                <span class="entity-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">${site.code || 'SITE'}</span>
+              </div>
+              <div style="font-size: 0.76rem; color: #38bdf8; margin-top: 3px;">
+                Thuộc: <b>${orgName}</b>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-dim); margin-top: 2px;">
+                ${site.address ? `🏠 ${site.address} ` : ''} ${site.phone ? `• 📞 ${site.phone}` : ''}
+              </div>
             </div>
-            <div style="font-size: 0.76rem; color: #38bdf8; margin-top: 3px;">
-              Thuộc: <b>${orgName}</b>
-            </div>
-            <div style="font-size: 0.74rem; color: var(--text-dim); margin-top: 2px;">
-              ${site.address ? `🏠 ${site.address} ` : ''} ${site.phone ? `• 📞 ${site.phone}` : ''}
+            <div style="display: flex; gap: 6px;">
+              <button class="btn-primary" style="padding: 4px 10px; font-size: 0.72rem;" onclick="openEditSiteModal('${site.id}')" title="Sửa chi nhánh này">✏️ Sửa</button>
+              <button class="btn-delete-item" onclick="deleteSite('${site.id}')" title="Xóa chi nhánh này">🗑️ Xóa</button>
             </div>
           </div>
-          <div style="display: flex; gap: 6px;">
-            <button class="btn-primary" style="padding: 4px 10px; font-size: 0.72rem;" onclick="openEditSiteModal('${site.id}')" title="Sửa chi nhánh này">✏️ Sửa</button>
-            <button class="btn-delete-item" onclick="deleteSite('${site.id}')" title="Xóa chi nhánh này">🗑️ Xóa</button>
+          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.08);">
+            <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+              <span>🤖 Robots trong chi nhánh (${siteRobots.length}):</span>
+            </div>
+            ${siteRobots.length === 0 ? '<div style="font-size: 0.72rem; color: #64748b; font-style: italic;">Chưa có robot nào được gán cho chi nhánh này</div>' : `
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                ${siteRobots.map(bot => `
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.7); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); font-size: 0.76rem;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-weight: 600; color: #f1f5f9;">${bot.name}</span>
+                      <span style="color: #64748b; font-size: 0.72rem;">(IP: ${bot.ip}:${bot.port || 8899})</span>
+                      <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; background: ${bot.status === 'Online' ? 'rgba(16,185,129,0.2)' : (bot.status === 'Charging' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)')}; color: ${bot.status === 'Online' ? '#34d399' : (bot.status === 'Charging' ? '#fbbf24' : '#f87171')};">${bot.status}</span>
+                      <span style="color: #94a3b8; font-size: 0.7rem;">🔋 ${bot.battery || 0}%</span>
+                    </div>
+                    <button class="btn-delete-item" style="padding: 2px 8px; font-size: 0.7rem; border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="event.stopPropagation(); deleteRobot('${bot.id}', '${bot.name}')" title="Xóa robot này khỏi chi nhánh">🗑️ Xóa</button>
+                  </div>
+                `).join('')}
+              </div>
+            `}
           </div>
         `;
         container.appendChild(div);
@@ -3361,6 +3389,24 @@
         }
       } catch (e) {
         showToast("❌ Lỗi khi xóa: " + e.message);
+      }
+    }
+
+    async function deleteRobot(id, name) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa Robot "${name}" khỏi hệ thống Cloud Server?\nLưu ý: Robot cũng sẽ tự động được gỡ bỏ trên các máy trạm Client.`)) return;
+      try {
+        const res = await fetch(`/api/fleet/robots/${encodeURIComponent(id)}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast(`🗑️ Đã xóa robot "${name}" thành công!`);
+          fleetData.robots = fleetData.robots.filter(r => r.id !== id && r.name !== id && r.ip !== id);
+          renderKPIs();
+          renderRobots();
+          renderSites();
+        } else {
+          showToast("❌ Lỗi máy chủ khi xóa robot.");
+        }
+      } catch (e) {
+        showToast("❌ Lỗi kết nối khi xóa: " + e.message);
       }
     }
 

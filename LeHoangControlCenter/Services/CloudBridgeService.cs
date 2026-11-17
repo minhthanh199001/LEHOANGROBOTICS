@@ -222,8 +222,9 @@ namespace LeHoangControlCenter.Services
                 using var http = new System.Net.Http.HttpClient();
                 var uri = new Uri(_cloudHubUrl);
                 var baseUrl = $"{uri.Scheme}://{uri.Authority}";
-                await http.DeleteAsync($"{baseUrl}/api/fleet/robots/{robotId}");
-                Debug.WriteLine($"[CloudBridge] Deleted robot {robotId} from Cloud successfully!");
+                var encodedId = Uri.EscapeDataString(robotId.Trim());
+                var res = await http.DeleteAsync($"{baseUrl}/api/fleet/robots/{encodedId}");
+                Debug.WriteLine($"[CloudBridge] Deleted robot {robotId} from Cloud (Status: {res.StatusCode})");
             }
             catch (Exception ex)
             {

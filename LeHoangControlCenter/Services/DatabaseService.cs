@@ -485,14 +485,23 @@ namespace LeHoangControlCenter.Services
             await cmd.ExecuteNonQueryAsync();
         }
 
-        public async Task DeleteRobotAsync(string robotId)
+        public async Task DeleteRobotAsync(string robotId, string? robotIp = null)
         {
             using var conn = new SqliteConnection(_connectionString);
             await conn.OpenAsync();
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "DELETE FROM Robots WHERE Id = @Id;";
-            cmd.Parameters.AddWithValue("@Id", robotId);
+            if (!string.IsNullOrEmpty(robotIp))
+            {
+                cmd.CommandText = "DELETE FROM Robots WHERE Id = @Id OR Name = @Id OR Ip = @Ip;";
+                cmd.Parameters.AddWithValue("@Id", robotId);
+                cmd.Parameters.AddWithValue("@Ip", robotIp);
+            }
+            else
+            {
+                cmd.CommandText = "DELETE FROM Robots WHERE Id = @Id OR Name = @Id OR Ip = @Id;";
+                cmd.Parameters.AddWithValue("@Id", robotId);
+            }
             await cmd.ExecuteNonQueryAsync();
         }
 
