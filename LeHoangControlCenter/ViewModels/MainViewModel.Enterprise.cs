@@ -21,8 +21,12 @@ namespace LeHoangControlCenter.ViewModels
         public ObservableCollection<EnterpriseRobotItem> EnterpriseRobots { get; } = new();
 
         // Filtered Collections (Hierarchical 3-column drill-down: Org -> Sites -> Robots)
+        public ObservableCollection<OrganizationItem> FilteredOrganizations { get; } = new();
         public ObservableCollection<SiteItem> FilteredSites { get; } = new();
         public ObservableCollection<EnterpriseRobotItem> FilteredRobots { get; } = new();
+
+        [ObservableProperty]
+        private bool _hasNoFilteredOrganizations;
 
         [ObservableProperty]
         private bool _hasNoFilteredSites;
@@ -275,26 +279,8 @@ namespace LeHoangControlCenter.ViewModels
 
                 AddLog("[CƠ SỞ DỮ LIỆU] Đã nạp thành công dữ liệu Doanh nghiệp từ lehoang_fleet.db SQLite.");
 
-                // Cập nhật phân cấp Org -> Sites -> Robots
-                string? prevOrgId = SelectedOrganization?.Id;
-                string? prevSiteId = SelectedSite?.Id;
-
-                if (!string.IsNullOrEmpty(prevOrgId))
-                {
-                    SelectedOrganization = Organizations.FirstOrDefault(o => o.Id == prevOrgId) ?? Organizations.FirstOrDefault();
-                }
-                else if (SelectedOrganization == null && Organizations.Count > 0)
-                {
-                    SelectedOrganization = Organizations.First();
-                }
-
-                UpdateFilteredSites();
-
-                if (!string.IsNullOrEmpty(prevSiteId))
-                {
-                    SelectedSite = FilteredSites.FirstOrDefault(s => s.Id == prevSiteId) ?? FilteredSites.FirstOrDefault();
-                }
-                UpdateFilteredRobots();
+                // Cập nhật phân cấp Org -> Sites -> Robots theo phân quyền tài khoản
+                UpdateFilteredOrganizations();
             }
             catch (Exception ex)
             {
@@ -305,6 +291,11 @@ namespace LeHoangControlCenter.ViewModels
         // =========================================================
         // HIERARCHICAL SELECTION DRILL-DOWN (ORG -> SITES -> ROBOTS)
         // =========================================================
+        partial void OnCurrentUserChanged(UserAccountItem? value)
+        {
+            UpdateFilteredOrganizations();
+        }
+
         partial void OnSelectedOrganizationChanged(OrganizationItem? value)
         {
             UpdateFilteredSites();
@@ -327,6 +318,61 @@ namespace LeHoangControlCenter.ViewModels
             }
         }
 
+        public void UpdateFilteredOrganizations()
+        {
+            FilteredOrganizations.Clear();
+
+            // Phân quyền theo vai trò và phạm vi tài khoản:
+            // - SuperAdmin (hoặc chưa đăng nhập / không gán tổ chức): xem toàn bộ tổ chức
+            // - OrgAdmin / SiteManager / Operator: chỉ xem tổ chức mà tài khoản được gán
+            if (CurrentUser == null || 
+                string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || 
+                (string.IsNullOrEmpty(CurrentUser.OrganizationId) && string.IsNullOrEmpty(CurrentUser.SiteId)))
+            {
+                foreach (var org in Organizations)
+                {
+                    FilteredOrganizations.Add(org);
+                }
+            }
+            else
+            {
+                // Tìm tổ chức theo OrganizationId hoặc OrganizationName của CurrentUser
+                var userOrg = Organizations.FirstOrDefault(o => 
+                    (!string.IsNullOrEmpty(CurrentUser.OrganizationId) && string.Equals(o.Id, CurrentUser.OrganizationId, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(CurrentUser.OrganizationName) && string.Equals(o.Name, CurrentUser.OrganizationName, StringComparison.OrdinalIgnoreCase)));
+
+                // Nếu user chỉ có SiteId mà chưa có OrganizationId, suy ra Organization từ Site
+                if (userOrg == null && !string.IsNullOrEmpty(CurrentUser.SiteId))
+                {
+                    var userSite = Sites.FirstOrDefault(s => string.Equals(s.Id, CurrentUser.SiteId, StringComparison.OrdinalIgnoreCase));
+                    if (userSite != null)
+                    {
+                        userOrg = Organizations.FirstOrDefault(o => string.Equals(o.Id, userSite.OrganizationId, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                if (userOrg != null)
+                {
+                    FilteredOrganizations.Add(userOrg);
+                }
+                else if (Organizations.Count > 0)
+                {
+                    FilteredOrganizations.Add(Organizations[0]);
+                }
+            }
+
+            HasNoFilteredOrganizations = FilteredOrganizations.Count == 0;
+
+            if (SelectedOrganization == null || !FilteredOrganizations.Any(o => o.Id == SelectedOrganization.Id))
+            {
+                SelectedOrganization = FilteredOrganizations.FirstOrDefault();
+            }
+            else
+            {
+                UpdateFilteredSites();
+            }
+        }
+
         public void UpdateFilteredSites()
         {
             FilteredSites.Clear();
@@ -338,7 +384,19 @@ namespace LeHoangControlCenter.ViewModels
                 return;
             }
 
-            var matching = Sites.Where(s => s.OrganizationId == SelectedOrganization.Id).ToList();
+            var matching = Sites.Where(s => string.Equals(s.OrganizationId, SelectedOrganization.Id, StringComparison.OrdinalIgnoreCase));
+
+            // Phân quyền theo Site: Nếu tài khoản là SiteManager hoặc Operator và có gán SiteId cụ thể
+            if (CurrentUser != null && 
+                !string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) && 
+                !string.Equals(CurrentUser.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase) && 
+                !string.IsNullOrEmpty(CurrentUser.SiteId))
+            {
+                matching = matching.Where(s => 
+                    string.Equals(s.Id, CurrentUser.SiteId, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(CurrentUser.SiteName) && string.Equals(s.Name, CurrentUser.SiteName, StringComparison.OrdinalIgnoreCase)));
+            }
+
             foreach (var site in matching)
             {
                 FilteredSites.Add(site);
@@ -346,7 +404,7 @@ namespace LeHoangControlCenter.ViewModels
             HasNoFilteredSites = FilteredSites.Count == 0;
 
             // Nếu site hiện tại không thuộc tổ chức mới, tự động chọn site đầu tiên
-            if (SelectedSite == null || !matching.Any(s => s.Id == SelectedSite.Id))
+            if (SelectedSite == null || !FilteredSites.Any(s => s.Id == SelectedSite.Id))
             {
                 SelectedSite = FilteredSites.FirstOrDefault();
             }
@@ -480,10 +538,7 @@ namespace LeHoangControlCenter.ViewModels
                 Sites.Clear();
                 foreach (var s in sites) Sites.Add(s);
 
-                if (SelectedOrganization == null && Organizations.Count > 0)
-                {
-                    SelectedOrganization = Organizations[0];
-                }
+                UpdateFilteredOrganizations();
 
                 AddLog($"☁️ [ĐỒNG BỘ CLOUD] Đã nhận {orgs.Count} Tổ chức & {sites.Count} Chi nhánh từ Cloud Server.");
             }
@@ -514,6 +569,23 @@ namespace LeHoangControlCenter.ViewModels
                     else
                     {
                         UserAccounts.Add(cu);
+                    }
+                }
+
+                // Cập nhật phân quyền ngay cho phiên đăng nhập hiện tại nếu có thay đổi từ Cloud
+                if (CurrentUser != null)
+                {
+                    var updatedCurrent = cloudUsers.FirstOrDefault(u => u.Id == CurrentUser.Id || string.Equals(u.Username, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+                    if (updatedCurrent != null)
+                    {
+                        CurrentUser.Role = updatedCurrent.Role;
+                        CurrentUser.OrganizationId = updatedCurrent.OrganizationId;
+                        CurrentUser.OrganizationName = updatedCurrent.OrganizationName;
+                        CurrentUser.SiteId = updatedCurrent.SiteId;
+                        CurrentUser.SiteName = updatedCurrent.SiteName;
+                        CurrentUser.FullName = updatedCurrent.FullName;
+                        CurrentUserBadge = $"👑 {CurrentUser.FullName} ({CurrentUser.Role})";
+                        UpdateFilteredOrganizations();
                     }
                 }
             }
@@ -819,21 +891,22 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public void OpenAddRobot()
         {
-            if (Sites.Count == 0)
+            if (FilteredSites.Count == 0 && Sites.Count == 0)
             {
-                MessageBox.Show("Cần tạo ít nhất một Site trước khi thêm Robot!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Chưa có Chi nhánh (Site) nào được phân quyền hoặc tải từ Cloud Server!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             IsEditMode = false;
             CrudDialogTitle = "Thêm Robot Mới Vào Đội Xe";
-            var defaultSite = SelectedSite ?? Sites.First();
+            var defaultSite = SelectedSite ?? FilteredSites.FirstOrDefault() ?? Sites.First();
             EditingRobot = new EnterpriseRobotItem
             {
                 Id = Guid.NewGuid().ToString("N")[..8].ToUpper(),
                 SiteId = defaultSite.Id,
                 SiteName = defaultSite.Name,
                 OrganizationId = defaultSite.OrganizationId,
+                OrganizationName = Organizations.FirstOrDefault(o => o.Id == defaultSite.OrganizationId)?.Name ?? "",
                 Name = "LH-ORIONSTAR-" + (EnterpriseRobots.Count + 1).ToString("D2"),
                 Model = "OrionStar Lucki",
                 Ip = "192.168.0." + (120 + EnterpriseRobots.Count),

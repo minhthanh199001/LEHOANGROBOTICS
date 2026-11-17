@@ -7267,7 +7267,17 @@
 
                                 <StackPanel>
 
-                                    <TextBlock Text="🏢 TỔ CHỨC (ORGANIZATIONS)" FontSize="12" FontWeight="Bold" Foreground="#00E5FF" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal">
+
+                                        <TextBlock Text="🏢 TỔ CHỨC (ORGANIZATIONS)" FontSize="12" FontWeight="Bold" Foreground="#00E5FF" VerticalAlignment="Center" />
+
+                                        <Border Background="#1E293B" CornerRadius="8" Padding="6,1" Margin="6,0,0,0" VerticalAlignment="Center">
+
+                                            <TextBlock Text="{Binding FilteredOrganizations.Count, StringFormat='{}{0}'}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+
+                                        </Border>
+
+                                    </StackPanel>
 
                                     <TextBlock Text="Bấm chọn để lọc Sites tương ứng" FontSize="10" Foreground="#64748B" Margin="0,2,0,0" />
 
@@ -7277,7 +7287,23 @@
 
 
 
-                            <ListBox Grid.Row="1" ItemsSource="{Binding Organizations}" SelectedItem="{Binding SelectedOrganization}" Background="Transparent" BorderThickness="0">
+                            <!-- Empty state if no organizations -->
+
+                            <Border Grid.Row="1" Visibility="{Binding HasNoFilteredOrganizations, Converter={StaticResource BoolToVisConverter}}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16">
+
+                                <StackPanel HorizontalAlignment="Center">
+
+                                    <TextBlock Text="🏢" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" Opacity="0.5" />
+
+                                    <TextBlock Text="Tài khoản chưa được gán tổ chức nào" FontSize="11" Foreground="#94A3B8" HorizontalAlignment="Center" TextAlignment="Center" />
+
+                                </StackPanel>
+
+                            </Border>
+
+
+
+                            <ListBox Grid.Row="1" ItemsSource="{Binding FilteredOrganizations}" SelectedItem="{Binding SelectedOrganization}" Background="Transparent" BorderThickness="0">
 
                                 <ListBox.ItemContainerStyle>
 
@@ -10067,7 +10093,7 @@
 
 
 
-                    <ComboBox ItemsSource="{Binding Sites}" SelectedValuePath="Id" DisplayMemberPath="Name"
+                    <ComboBox ItemsSource="{Binding FilteredSites}" SelectedValuePath="Id" DisplayMemberPath="Name"
 
 
 
