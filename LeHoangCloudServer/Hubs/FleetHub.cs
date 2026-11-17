@@ -44,6 +44,32 @@ public class FleetHub : Hub
     }
 
     /// <summary>
+    /// Edge Control Center registers or updates a local robot to Cloud
+    /// </summary>
+    public async Task UpsertRobot(CloudRobotItem robot)
+    {
+        _db.SaveRobot(robot);
+        _logger.LogInformation("Robot upserted from Edge: {RobotId} ({Name}) at Site {SiteId}", robot.Id, robot.Name, robot.SiteId);
+        await Clients.Group("Observers").SendAsync("OnRobotUpserted", robot);
+    }
+
+    /// <summary>
+    /// Edge Control Center syncs all local robots to Cloud on startup
+    /// </summary>
+    public async Task SyncEdgeFleet(List<CloudRobotItem> robots)
+    {
+        if (robots != null)
+        {
+            foreach (var r in robots)
+            {
+                _db.SaveRobot(r);
+            }
+            _logger.LogInformation("Edge synced {Count} robots to Cloud", robots.Count);
+            await Clients.Group("Observers").SendAsync("OnFleetReloadNeeded");
+        }
+    }
+
+    /// <summary>
     /// Web dashboard or Mobile app registers as an Observer
     /// </summary>
     public async Task RegisterObserver(string? siteId = null)

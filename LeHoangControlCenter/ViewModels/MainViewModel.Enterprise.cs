@@ -456,6 +456,53 @@ namespace LeHoangControlCenter.ViewModels
             }
         }
 
+        public void ApplyCloudCatalog(List<OrganizationItem> orgs, List<SiteItem> sites)
+        {
+            if (orgs == null || sites == null) return;
+            try
+            {
+                // Lưu vào local SQLite để offline vẫn có dữ liệu
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var db = DatabaseService.Instance;
+                        foreach (var o in orgs) await db.SaveOrganizationAsync(o);
+                        foreach (var s in sites) await db.SaveSiteAsync(s);
+                    }
+                    catch { }
+                });
+
+                Organizations.Clear();
+                foreach (var o in orgs) Organizations.Add(o);
+
+                Sites.Clear();
+                foreach (var s in sites) Sites.Add(s);
+
+                if (SelectedOrganization == null && Organizations.Count > 0)
+                {
+                    SelectedOrganization = Organizations[0];
+                }
+
+                AddLog($"☁️ [ĐỒNG BỘ CLOUD] Đã nhận {orgs.Count} Tổ chức & {sites.Count} Chi nhánh từ Cloud Server.");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"[LỖI ĐỒNG BỘ CLOUD] {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public async Task SyncFromCloudAsync()
+        {
+            if (_cloudBridge != null)
+            {
+                AddLog("☁️ Đang đồng bộ danh mục từ Cloud Server...");
+                await _cloudBridge.SyncCatalogFromCloudAsync();
+                await _cloudBridge.SyncAllLocalRobotsToCloudAsync();
+            }
+        }
+
         // =========================================================
         // CRUD COMMANDS: ORGANIZATION
         // =========================================================
@@ -762,9 +809,16 @@ namespace LeHoangControlCenter.ViewModels
 
                 var db = DatabaseService.Instance;
                 await db.SaveRobotAsync(EditingRobot);
+
+                // Tự động đẩy thông tin Robot lên Cloud Server trung tâm
+                if (_cloudBridge != null)
+                {
+                    _ = _cloudBridge.PushRobotToCloudAsync(EditingRobot);
+                }
+
                 IsRobotDialogVisible = false;
                 await InitializeEnterpriseDataAsync();
-                AddLog($"[DOANH NGHIỆP] Đã lưu thông tin Robot: {EditingRobot.Name} (IP: {EditingRobot.Ip})");
+                AddLog($"[DOANH NGHIỆP] Đã lưu và đẩy Robot lên Cloud: {EditingRobot.Name} (IP: {EditingRobot.Ip})");
             }
             catch (Exception ex)
             {
@@ -794,6 +848,13 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     var db = DatabaseService.Instance;
                     await db.DeleteRobotAsync(target.Id);
+
+                    // Xóa Robot khỏi Cloud Server
+                    if (_cloudBridge != null)
+                    {
+                        _ = _cloudBridge.DeleteRobotFromCloudAsync(target.Id);
+                    }
+
                     await InitializeEnterpriseDataAsync();
                     AddLog($"[DOANH NGHIỆP] Đã xóa Robot '{target.Name}'.");
                 }

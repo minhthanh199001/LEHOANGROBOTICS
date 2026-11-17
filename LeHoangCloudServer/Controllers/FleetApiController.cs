@@ -34,16 +34,64 @@ public class FleetApiController : ControllerBase
         return Ok(_db.GetOrganizations());
     }
 
+    [HttpPost("organizations")]
+    public async Task<IActionResult> SaveOrganization([FromBody] CloudOrganization org)
+    {
+        _db.SaveOrganization(org);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
+        return Ok(new { success = true, organization = org });
+    }
+
+    [HttpDelete("organizations/{id}")]
+    public async Task<IActionResult> DeleteOrganization(string id)
+    {
+        _db.DeleteOrganization(id);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnOrganizationsUpdated", _db.GetOrganizations());
+        return Ok(new { success = true, id });
+    }
+
     [HttpGet("sites")]
     public ActionResult<List<CloudSite>> GetSites([FromQuery] string? orgId = null)
     {
         return Ok(_db.GetSites(orgId));
     }
 
+    [HttpPost("sites")]
+    public async Task<IActionResult> SaveSite([FromBody] CloudSite site)
+    {
+        _db.SaveSite(site);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnSitesUpdated", _db.GetSites());
+        return Ok(new { success = true, site });
+    }
+
+    [HttpDelete("sites/{id}")]
+    public async Task<IActionResult> DeleteSite(string id)
+    {
+        _db.DeleteSite(id);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnSitesUpdated", _db.GetSites());
+        return Ok(new { success = true, id });
+    }
+
     [HttpGet("robots")]
     public ActionResult<List<CloudRobotItem>> GetRobots([FromQuery] string? orgId = null, [FromQuery] string? siteId = null)
     {
         return Ok(_db.GetAllRobots(orgId, siteId));
+    }
+
+    [HttpPost("robots")]
+    public async Task<IActionResult> UpsertRobot([FromBody] CloudRobotItem robot)
+    {
+        _db.SaveRobot(robot);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnRobotUpserted", robot);
+        return Ok(new { success = true, robot });
+    }
+
+    [HttpDelete("robots/{id}")]
+    public async Task<IActionResult> DeleteRobot(string id)
+    {
+        _db.DeleteRobot(id);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnRobotDeleted", id);
+        return Ok(new { success = true, id });
     }
 
     [HttpGet("alerts")]
@@ -78,6 +126,22 @@ public class FleetApiController : ControllerBase
     public ActionResult<List<CloudUserAccountItem>> GetUsers()
     {
         return Ok(_db.GetUserAccounts());
+    }
+
+    [HttpPost("users")]
+    public async Task<IActionResult> SaveUser([FromBody] CloudUserAccountItem user)
+    {
+        _db.SaveUserAccount(user);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnUsersUpdated", _db.GetUserAccounts());
+        return Ok(new { success = true, user });
+    }
+
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(string id)
+    {
+        _db.DeleteUserAccount(id);
+        await _hubContext.Clients.Group("Observers").SendAsync("OnUsersUpdated", _db.GetUserAccounts());
+        return Ok(new { success = true, id });
     }
 
     [HttpGet("current-user")]

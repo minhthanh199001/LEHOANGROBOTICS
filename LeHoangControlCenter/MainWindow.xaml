@@ -7277,6 +7277,8 @@
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
 
+                        <Button Command="{Binding SyncFromCloudCommand}" Content="🔄 Đồng bộ từ Cloud" Style="{StaticResource CyberButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" ToolTip="Tải danh sách Tổ chức &amp; Chi nhánh mới nhất từ Cloud Server" />
+
                         <Button Command="{Binding OpenAddOrgCommand}" Content="➕ Thêm Tổ Chức" Style="{StaticResource CyanButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" />
 
                         <Button Command="{Binding OpenAddSiteCommand}" Content="➕ Thêm Site" Style="{StaticResource CyberButton}" Margin="0,0,8,0" FontSize="11" Padding="10,5" />

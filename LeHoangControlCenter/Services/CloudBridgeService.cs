@@ -138,12 +138,141 @@ namespace LeHoangControlCenter.Services
                 string siteId = _mainVm.SelectedSite?.Id ?? "SITE-01";
                 await _hubConnection.InvokeAsync("RegisterEdgeNode", robotId, orgId, siteId);
 
-                // Đồng bộ tài khoản người dùng đang đăng nhập từ Desktop lên Cloud
+                // 1. Đồng bộ tài khoản người dùng đang đăng nhập từ Desktop lên Cloud
                 await SyncCurrentUserAsync();
+
+                // 2. Kéo danh mục Tổ chức & Chi nhánh mới nhất từ Cloud về máy trạm
+                await SyncCatalogFromCloudAsync();
+
+                // 3. Tự động đẩy tất cả các Robot đang có ở máy trạm lên Cloud Server
+                await SyncAllLocalRobotsToCloudAsync();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[CloudBridge] RegisterEdgeNode error: {ex.Message}");
+            }
+        }
+
+        public async Task PushRobotToCloudAsync(EnterpriseRobotItem robot)
+        {
+            if (_hubConnection == null || _hubConnection.State != HubConnectionState.Connected || robot == null)
+                return;
+
+            try
+            {
+                var rItem = new
+                {
+                    id = robot.Id,
+                    name = robot.Name,
+                    model = robot.Model ?? "OrionStar Mini",
+                    orgId = _mainVm.SelectedOrganization?.Id ?? robot.OrganizationId ?? "",
+                    orgName = _mainVm.SelectedOrganization?.Name ?? robot.OrganizationName ?? "",
+                    siteId = _mainVm.SelectedSite?.Id ?? robot.SiteId ?? "",
+                    siteName = _mainVm.SelectedSite?.Name ?? robot.SiteName ?? "",
+                    ip = robot.Ip,
+                    port = robot.Port,
+                    status = robot.Status,
+                    battery = robot.BatteryLevel,
+                    isCharging = robot.IsCharging,
+                    assignedMap = robot.AssignedMap ?? _mainVm.CurrentMap,
+                    poseX = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.PoseX : 0.0,
+                    poseY = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.PoseY : 0.0,
+                    poseAngle = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.RobotHeadingDegrees : 0.0,
+                    lastSeen = DateTime.UtcNow
+                };
+                await _hubConnection.InvokeAsync("UpsertRobot", rItem);
+                Debug.WriteLine($"[CloudBridge] Pushed robot {robot.Name} ({robot.Id}) to Cloud successfully!");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] PushRobotToCloud error: {ex.Message}");
+            }
+        }
+
+        public async Task DeleteRobotFromCloudAsync(string robotId)
+        {
+            if (string.IsNullOrWhiteSpace(robotId)) return;
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                var uri = new Uri(_cloudHubUrl);
+                var baseUrl = $"{uri.Scheme}://{uri.Authority}";
+                await http.DeleteAsync($"{baseUrl}/api/fleet/robots/{robotId}");
+                Debug.WriteLine($"[CloudBridge] Deleted robot {robotId} from Cloud successfully!");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] DeleteRobotFromCloud error: {ex.Message}");
+            }
+        }
+
+        public async Task SyncAllLocalRobotsToCloudAsync()
+        {
+            if (_hubConnection == null || _hubConnection.State != HubConnectionState.Connected)
+                return;
+
+            try
+            {
+                var list = new System.Collections.Generic.List<object>();
+                foreach (var robot in _mainVm.EnterpriseRobots)
+                {
+                    list.Add(new
+                    {
+                        id = robot.Id,
+                        name = robot.Name,
+                        model = robot.Model ?? "OrionStar Mini",
+                        orgId = _mainVm.SelectedOrganization?.Id ?? robot.OrganizationId ?? "",
+                        orgName = _mainVm.SelectedOrganization?.Name ?? robot.OrganizationName ?? "",
+                        siteId = _mainVm.SelectedSite?.Id ?? robot.SiteId ?? "",
+                        siteName = _mainVm.SelectedSite?.Name ?? robot.SiteName ?? "",
+                        ip = robot.Ip,
+                        port = robot.Port,
+                        status = robot.Status,
+                        battery = robot.BatteryLevel,
+                        isCharging = robot.IsCharging,
+                        assignedMap = robot.AssignedMap ?? _mainVm.CurrentMap,
+                        poseX = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.PoseX : 0.0,
+                        poseY = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.PoseY : 0.0,
+                        poseAngle = (string.Equals(robot.Ip, _mainVm.RobotIp, StringComparison.OrdinalIgnoreCase)) ? _mainVm.RobotHeadingDegrees : 0.0,
+                        lastSeen = DateTime.UtcNow
+                    });
+                }
+                await _hubConnection.InvokeAsync("SyncEdgeFleet", list);
+                Debug.WriteLine($"[CloudBridge] Synced {list.Count} local robots to Cloud Server.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] SyncAllLocalRobots error: {ex.Message}");
+            }
+        }
+
+        public async Task SyncCatalogFromCloudAsync()
+        {
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                var uri = new Uri(_cloudHubUrl);
+                var baseUrl = $"{uri.Scheme}://{uri.Authority}";
+
+                // 1. Fetch Organizations
+                var orgsJson = await http.GetStringAsync($"{baseUrl}/api/fleet/organizations");
+                var orgs = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<OrganizationItem>>(orgsJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                // 2. Fetch Sites
+                var sitesJson = await http.GetStringAsync($"{baseUrl}/api/fleet/sites");
+                var sites = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<SiteItem>>(sitesJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (orgs != null && orgs.Count > 0 && sites != null && sites.Count > 0)
+                {
+                    Application.Current?.Dispatcher?.Invoke(() =>
+                    {
+                        _mainVm.ApplyCloudCatalog(orgs, sites);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CloudBridge] SyncCatalogFromCloud error: {ex.Message}");
             }
         }
 

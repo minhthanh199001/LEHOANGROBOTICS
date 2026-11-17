@@ -218,6 +218,30 @@ public class CloudDatabaseService
         return list;
     }
 
+    public void SaveOrganization(CloudOrganization org)
+    {
+        if (string.IsNullOrWhiteSpace(org.Id)) org.Id = "ORG-" + Guid.NewGuid().ToString("N")[..6].ToUpper();
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand(@"
+            INSERT INTO Organizations (Id, Name, Code)
+            VALUES (@Id, @Name, @Code)
+            ON CONFLICT(Id) DO UPDATE SET Name = @Name, Code = @Code;", conn);
+        cmd.Parameters.AddWithValue("@Id", org.Id);
+        cmd.Parameters.AddWithValue("@Name", org.Name);
+        cmd.Parameters.AddWithValue("@Code", org.Code);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteOrganization(string id)
+    {
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand("DELETE FROM Organizations WHERE Id = @Id;", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
+        cmd.ExecuteNonQuery();
+    }
+
     public List<CloudSite> GetSites(string? orgId = null)
     {
         var list = new List<CloudSite>();
@@ -243,6 +267,107 @@ public class CloudDatabaseService
             });
         }
         return list;
+    }
+
+    public void SaveSite(CloudSite site)
+    {
+        if (string.IsNullOrWhiteSpace(site.Id)) site.Id = "SITE-" + Guid.NewGuid().ToString("N")[..6].ToUpper();
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand(@"
+            INSERT INTO Sites (Id, OrganizationId, Name, Code, Address, Phone)
+            VALUES (@Id, @OrgId, @Name, @Code, @Address, @Phone)
+            ON CONFLICT(Id) DO UPDATE SET OrganizationId = @OrgId, Name = @Name, Code = @Code, Address = @Address, Phone = @Phone;", conn);
+        cmd.Parameters.AddWithValue("@Id", site.Id);
+        cmd.Parameters.AddWithValue("@OrgId", site.OrganizationId);
+        cmd.Parameters.AddWithValue("@Name", site.Name);
+        cmd.Parameters.AddWithValue("@Code", site.Code);
+        cmd.Parameters.AddWithValue("@Address", site.Address ?? "");
+        cmd.Parameters.AddWithValue("@Phone", site.Phone ?? "");
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteSite(string id)
+    {
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand("DELETE FROM Sites WHERE Id = @Id;", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void SaveRobot(CloudRobotItem robot)
+    {
+        if (string.IsNullOrWhiteSpace(robot.Id)) robot.Id = "ROB-" + Guid.NewGuid().ToString("N")[..6].ToUpper();
+        
+        // Fill OrgName and SiteName if missing
+        if (!string.IsNullOrEmpty(robot.SiteId))
+        {
+            var site = GetSites().FirstOrDefault(s => s.Id == robot.SiteId);
+            if (site != null)
+            {
+                robot.SiteName = site.Name;
+                robot.OrgId = site.OrganizationId;
+                var org = GetOrganizations().FirstOrDefault(o => o.Id == site.OrganizationId);
+                if (org != null) robot.OrgName = org.Name;
+            }
+        }
+
+        robot.LastSeen = DateTime.UtcNow;
+        _robotLiveCache[robot.Id] = robot;
+        UpdateRobotInDb(robot);
+    }
+
+    public void DeleteRobot(string id)
+    {
+        _robotLiveCache.TryRemove(id, out _);
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand("DELETE FROM Robots WHERE Id = @Id;", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void SaveUserAccount(CloudUserAccountItem user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Id)) user.Id = "USR-" + Guid.NewGuid().ToString("N")[..6].ToUpper();
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+
+        string sql = @"
+            INSERT INTO UserAccounts (Id, Username, Password, FullName, Email, Role, OrganizationId, SiteId, IsActive, CreatedAt)
+            VALUES (@Id, @Username, @Password, @FullName, @Email, @Role, @OrgId, @SiteId, @IsActive, @CreatedAt)
+            ON CONFLICT(Id) DO UPDATE SET 
+                Username = @Username,
+                Password = CASE WHEN @Password IS NOT NULL AND @Password != '' THEN @Password ELSE Password END,
+                FullName = @FullName,
+                Email = @Email,
+                Role = @Role,
+                OrganizationId = @OrgId,
+                SiteId = @SiteId,
+                IsActive = @IsActive;";
+
+        using var cmd = new SqliteCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@Id", user.Id);
+        cmd.Parameters.AddWithValue("@Username", user.Username);
+        cmd.Parameters.AddWithValue("@Password", user.Password ?? "123456");
+        cmd.Parameters.AddWithValue("@FullName", user.FullName);
+        cmd.Parameters.AddWithValue("@Email", user.Email ?? "");
+        cmd.Parameters.AddWithValue("@Role", user.Role ?? "Staff");
+        cmd.Parameters.AddWithValue("@OrgId", (object?)user.OrganizationId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@SiteId", (object?)user.SiteId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@IsActive", user.IsActive ? 1 : 0);
+        cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow.ToString("o"));
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteUserAccount(string id)
+    {
+        using var conn = new SqliteConnection(_connectionString);
+        conn.Open();
+        using var cmd = new SqliteCommand("DELETE FROM UserAccounts WHERE Id = @Id;", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
+        cmd.ExecuteNonQuery();
     }
 
     public List<CloudRobotItem> GetAllRobots(string? orgId = null, string? siteId = null)
@@ -305,7 +430,14 @@ public class CloudDatabaseService
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             string sql = @"
-                UPDATE Robots SET 
+                INSERT INTO Robots (Id, SiteId, Name, Model, Ip, Port, Status, Battery, IsCharging, AssignedMap, PoseX, PoseY, PoseAngle, LastSeen)
+                VALUES (@id, @siteId, @name, @model, @ip, @port, @status, @battery, @charging, @map, @x, @y, @angle, datetime('now'))
+                ON CONFLICT(Id) DO UPDATE SET 
+                    SiteId = CASE WHEN @siteId != '' THEN @siteId ELSE SiteId END,
+                    Name = CASE WHEN @name != '' THEN @name ELSE Name END,
+                    Model = CASE WHEN @model != '' THEN @model ELSE Model END,
+                    Ip = CASE WHEN @ip != '' THEN @ip ELSE Ip END,
+                    Port = CASE WHEN @port > 0 THEN @port ELSE Port END,
                     Status = @status, 
                     Battery = @battery, 
                     IsCharging = @charging, 
@@ -313,10 +445,15 @@ public class CloudDatabaseService
                     PoseY = @y, 
                     PoseAngle = @angle, 
                     AssignedMap = @map,
-                    LastSeen = datetime('now')
-                WHERE Id = @id;
+                    LastSeen = datetime('now');
             ";
             using var cmd = new SqliteCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@id", r.Id);
+            cmd.Parameters.AddWithValue("@siteId", r.SiteId ?? "");
+            cmd.Parameters.AddWithValue("@name", r.Name ?? r.Id);
+            cmd.Parameters.AddWithValue("@model", r.Model ?? "OrionStar Mini");
+            cmd.Parameters.AddWithValue("@ip", r.Ip ?? "127.0.0.1");
+            cmd.Parameters.AddWithValue("@port", r.Port > 0 ? r.Port : 8899);
             cmd.Parameters.AddWithValue("@status", r.Status);
             cmd.Parameters.AddWithValue("@battery", r.Battery);
             cmd.Parameters.AddWithValue("@charging", r.IsCharging ? 1 : 0);
@@ -324,7 +461,6 @@ public class CloudDatabaseService
             cmd.Parameters.AddWithValue("@y", r.PoseY);
             cmd.Parameters.AddWithValue("@angle", r.PoseAngle);
             cmd.Parameters.AddWithValue("@map", r.AssignedMap);
-            cmd.Parameters.AddWithValue("@id", r.Id);
             cmd.ExecuteNonQuery();
         }
         catch (Exception)

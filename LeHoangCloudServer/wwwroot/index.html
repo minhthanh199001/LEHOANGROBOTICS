@@ -1168,6 +1168,148 @@
       flex-direction: column;
       gap: 12px;
     }
+
+    /* MAIN NAVIGATION TABS */
+    .main-nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    .main-nav-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s ease;
+    }
+    .main-nav-btn:hover {
+      color: #f8fafc;
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+    .main-nav-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(56, 189, 248, 0.2));
+      border: 1px solid var(--cyan-bright);
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.35);
+    }
+
+    /* SUBVIEW HEADER & LAYOUTS */
+    .subview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px 22px;
+      margin-bottom: 16px;
+    }
+    .org-site-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      min-height: 580px;
+    }
+    @media (max-width: 992px) {
+      .org-site-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .entity-list-scrollable {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .entity-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+    .entity-card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.15);
+      background: rgba(30, 41, 59, 0.8);
+    }
+    .entity-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan-bright);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* CYBER TABLE */
+    .table-responsive {
+      overflow-x: auto;
+      max-height: 620px;
+    }
+    .cyber-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      text-align: left;
+    }
+    .cyber-table th {
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text-dim);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.8px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .cyber-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+      color: #e2e8f0;
+      vertical-align: middle;
+    }
+    .cyber-table tr:hover td {
+      background: rgba(30, 41, 59, 0.5);
+    }
+    .btn-delete-item {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    .btn-delete-item:hover {
+      background: #ef4444;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -1181,6 +1323,19 @@
         <div class="brand-subtitle">Central Fleet Management System</div>
       </div>
     </div>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <nav class="main-nav-tabs">
+      <button id="navBtnDashboard" class="main-nav-btn active" onclick="switchMainView('dashboard')">
+        <span>🗺️</span> BẢN ĐỒ &amp; ĐỘI XE
+      </button>
+      <button id="navBtnOrgSite" class="main-nav-btn" onclick="switchMainView('orgsite')">
+        <span>🏢</span> TỔ CHỨC &amp; CHI NHÁNH
+      </button>
+      <button id="navBtnUsers" class="main-nav-btn" onclick="switchMainView('users')">
+        <span>👥</span> NGƯỜI DÙNG &amp; PHÂN QUYỀN
+      </button>
+    </nav>
 
     <div class="filters-section">
       <!-- Organization Filter -->
@@ -1255,7 +1410,10 @@
   <!-- APP CONTENT -->
   <div class="app-container">
 
-    <!-- KPI ROW -->
+    <!-- VIEW 1: DASHBOARD & REALTIME FLEET MAP -->
+    <div id="viewDashboard" class="subview-panel">
+
+      <!-- KPI ROW -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-header">
@@ -1443,6 +1601,104 @@
       </div>
 
     </div>
+    <!-- END VIEW 1 (DASHBOARD) -->
+    </div>
+
+    <!-- VIEW 2: TỔ CHỨC & CHI NHÁNH (ORGANIZATIONS & SITES) -->
+    <div id="viewOrgSite" class="subview-panel" style="display: none;">
+      <div class="subview-header">
+        <div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+            🏢 Quản Lý Doanh Nghiệp: Tổ Chức &amp; Chi Nhánh (Sites)
+          </h2>
+          <p style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
+            Hệ thống phân cấp quản lý tập trung trên Cloud Server. Mọi thay đổi sẽ lập tức đồng bộ tự động xuống các phần mềm Client Desktop (LeHoangControlCenter).
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-primary" onclick="openAddOrgModal()">➕ Thêm Tổ Chức</button>
+          <button class="btn-action-charge" style="border-radius: 8px; font-size: 0.82rem;" onclick="openAddSiteModal()">➕ Thêm Chi Nhánh</button>
+        </div>
+      </div>
+
+      <div class="org-site-grid">
+        <!-- Cột 1: Danh sách Tổ chức -->
+        <div class="cyber-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🏢</span> Tổ Chức Doanh Nghiệp (<span id="orgsCountBadge">0</span>)
+            </div>
+            <button class="btn-tool" onclick="openAddOrgModal()">➕ Thêm Mới</button>
+          </div>
+          <div id="orgsListContainer" class="entity-list-scrollable">
+            <!-- Org items dynamically rendered -->
+          </div>
+        </div>
+
+        <!-- Cột 2: Danh sách Chi nhánh / Sites -->
+        <div class="cyber-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>📍</span> Chi Nhánh Trực Thuộc (<span id="sitesCountBadge">0</span>)
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <select id="filterOrgInSiteTab" class="custom-select" style="min-width: 140px; padding: 4px 10px; font-size: 0.78rem;" onchange="onFilterOrgInSiteTabChanged()">
+                <option value="">Tất cả tổ chức</option>
+              </select>
+              <button class="btn-tool" onclick="openAddSiteModal()">➕ Thêm Mới</button>
+            </div>
+          </div>
+          <div id="sitesListContainer" class="entity-list-scrollable">
+            <!-- Site items dynamically rendered -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: QUẢN LÝ NGƯỜI DÙNG (USER ACCOUNTS) -->
+    <div id="viewUsers" class="subview-panel" style="display: none;">
+      <div class="subview-header">
+        <div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+            👥 Quản Lý Tài Khoản Người Dùng &amp; Phân Quyền
+          </h2>
+          <p style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
+            Tạo tài khoản người dùng cho nhân viên tại các chi nhánh để đăng nhập phần mềm LeHoangControlCenter Desktop và theo dõi đội xe.
+          </p>
+        </div>
+        <button class="btn-primary" onclick="openAddUserModal()">➕ Tạo Tài Khoản Mới</button>
+      </div>
+
+      <div class="cyber-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>👤</span> Danh Sách Tài Khoản Hệ Thống (<span id="usersCountBadge">0</span>)
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="userSearchInput" class="custom-select" placeholder="🔍 Tìm kiếm user, họ tên..." style="width: 220px; font-size: 0.8rem;" oninput="renderUsersTable()">
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="cyber-table">
+            <thead>
+              <tr>
+                <th>Họ Tên</th>
+                <th>Tên Đăng Nhập</th>
+                <th>Vai Trò (Role)</th>
+                <th>Tổ Chức</th>
+                <th>Chi Nhánh</th>
+                <th>Trạng Thái</th>
+                <th style="text-align: right;">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
   </div>
 
@@ -1485,6 +1741,135 @@
     </div>
   </div>
 
+  <!-- MODAL THÊM TỔ CHỨC -->
+  <div id="modalAddOrg" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>🏢</span>
+          <span style="font-weight: 800; color: #fff;">THÊM TỔ CHỨC DOANH NGHIỆP</span>
+        </div>
+        <button class="btn-close-modal" onclick="closeAddOrgModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tên Tổ Chức (*)</label>
+          <input type="text" id="addOrgName" class="form-control" placeholder="Ví dụ: Vinpearl Hotels & Resorts">
+        </div>
+        <div class="form-group">
+          <label>Mã Định Danh (Code)</label>
+          <input type="text" id="addOrgCode" class="form-control" placeholder="VINPEARL">
+        </div>
+        <div id="addOrgError" style="color: var(--red); font-size: 0.78rem; display: none;"></div>
+        <button class="btn-primary" onclick="submitAddOrg()" style="width: 100%; margin-top: 6px;">
+          💾 LƯU TỔ CHỨC
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL THÊM CHI NHÁNH / SITE -->
+  <div id="modalAddSite" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>📍</span>
+          <span style="font-weight: 800; color: #fff;">THÊM CHI NHÁNH / SITE</span>
+        </div>
+        <button class="btn-close-modal" onclick="closeAddSiteModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Thuộc Tổ Chức (*)</label>
+          <select id="addSiteOrgSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Tên Chi Nhánh / Site (*)</label>
+          <input type="text" id="addSiteName" class="form-control" placeholder="Ví dụ: Landmark 81 Luxury">
+        </div>
+        <div class="form-group">
+          <label>Mã Chi Nhánh (Code)</label>
+          <input type="text" id="addSiteCode" class="form-control" placeholder="VLM-81">
+        </div>
+        <div class="form-group">
+          <label>Địa Chỉ</label>
+          <input type="text" id="addSiteAddress" class="form-control" placeholder="720A Điện Biên Phủ, Bình Thạnh, TP.HCM">
+        </div>
+        <div class="form-group">
+          <label>Số Điện Thoại / Hotline</label>
+          <input type="text" id="addSitePhone" class="form-control" placeholder="0932655818">
+        </div>
+        <div id="addSiteError" style="color: var(--red); font-size: 0.78rem; display: none;"></div>
+        <button class="btn-primary" onclick="submitAddSite()" style="width: 100%; margin-top: 6px;">
+          💾 LƯU CHI NHÁNH
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL THÊM NGƯỜI DÙNG -->
+  <div id="modalAddUser" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>👤</span>
+          <span style="font-weight: 800; color: #fff;">TẠO TÀI KHOẢN NGƯỜI DÙNG MỚI</span>
+        </div>
+        <button class="btn-close-modal" onclick="closeAddUserModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Tên Đăng Nhập (*)</label>
+            <input type="text" id="addUserUsername" class="form-control" placeholder="vd: operator_hn">
+          </div>
+          <div class="form-group">
+            <label>Mật Khẩu (*)</label>
+            <input type="password" id="addUserPassword" class="form-control" placeholder="123456" value="123456">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Họ Và Tên (*)</label>
+          <input type="text" id="addUserFullName" class="form-control" placeholder="Ví dụ: Nguyễn Văn Vận Hành">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Email / Liên Hệ</label>
+            <input type="text" id="addUserEmail" class="form-control" placeholder="user@lehoang.vn">
+          </div>
+          <div class="form-group">
+            <label>Vai Trò (Role)</label>
+            <select id="addUserRole" class="form-control">
+              <option value="Operator">Operator (Vận hành)</option>
+              <option value="SiteManager">SiteManager (Quản lý Site)</option>
+              <option value="Admin">Admin (Quản trị)</option>
+              <option value="Viewer">Viewer (Chỉ xem)</option>
+              <option value="SuperAdmin">SuperAdmin (Toàn quyền)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Thuộc Tổ Chức</label>
+            <select id="addUserOrgSelect" class="form-control" onchange="onAddUserOrgChanged()"></select>
+          </div>
+          <div class="form-group">
+            <label>Thuộc Chi Nhánh</label>
+            <select id="addUserSiteSelect" class="form-control"></select>
+          </div>
+        </div>
+
+        <div id="addUserError" style="color: var(--red); font-size: 0.78rem; display: none;"></div>
+        <button class="btn-primary" onclick="submitAddUser()" style="width: 100%; margin-top: 6px;">
+          💾 TẠO TÀI KHOẢN
+        </button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     © 2026 LÊ HOÀNG ROBOTICS CO., LTD • Hệ Thống Điều Hành & Giám Sát Robot Đa Chi Nhánh Nền Tảng Đám Mây (.NET 8 SignalR Engine)
   </footer>
@@ -1499,11 +1884,45 @@
       alerts: []
     };
 
+    let currentMainView = 'dashboard';
+    let systemUsers = [];
     let selectedOrgId = "";
     let selectedSiteId = "";
     let selectedRobotId = "LH-ORIONSTAR-02";
     let showWaypoints = true;
     let currentUser = null;
+
+    function switchMainView(viewName) {
+      currentMainView = viewName;
+      const views = {
+        'dashboard': document.getElementById('viewDashboard'),
+        'orgsite': document.getElementById('viewOrgSite'),
+        'users': document.getElementById('viewUsers')
+      };
+      const btns = {
+        'dashboard': document.getElementById('navBtnDashboard'),
+        'orgsite': document.getElementById('navBtnOrgSite'),
+        'users': document.getElementById('navBtnUsers')
+      };
+
+      Object.keys(views).forEach(key => {
+        if (views[key]) views[key].style.display = (key === viewName) ? 'block' : 'none';
+        if (btns[key]) {
+          if (key === viewName) btns[key].classList.add('active');
+          else btns[key].classList.remove('active');
+        }
+      });
+
+      if (viewName === 'orgsite') {
+        populateOrgFilterInSiteTab();
+        renderOrganizations();
+        renderSites();
+      } else if (viewName === 'users') {
+        renderUsersTable();
+      } else if (viewName === 'dashboard') {
+        resizeCanvas();
+      }
+    }
 
     // Map & Coordinates Info (Synchronized with Desktop App)
     let mapInfo = {
@@ -1998,6 +2417,41 @@
         showToast(`🔔 [${alert.alertType}] ${alert.message}`);
       });
 
+      hubConn.on("OnOrganizationsUpdated", (orgs) => {
+        fleetData.organizations = orgs;
+        populateFilters();
+        populateOrgFilterInSiteTab();
+        renderOrganizations();
+      });
+
+      hubConn.on("OnSitesUpdated", (sites) => {
+        fleetData.sites = sites;
+        populateSiteFilter();
+        renderSites();
+      });
+
+      hubConn.on("OnUsersUpdated", (users) => {
+        systemUsers = users;
+        renderUsersTable();
+      });
+
+      hubConn.on("OnRobotUpserted", (robot) => {
+        const idx = fleetData.robots.findIndex(r => r.id === robot.id);
+        if (idx >= 0) {
+          fleetData.robots[idx] = robot;
+        } else {
+          fleetData.robots.push(robot);
+        }
+        renderKPIs();
+        renderRobots();
+      });
+
+      hubConn.on("OnRobotDeleted", (robotId) => {
+        fleetData.robots = fleetData.robots.filter(r => r.id !== robotId);
+        renderKPIs();
+        renderRobots();
+      });
+
       hubConn.onreconnecting(() => {
         if (statusPill) statusPill.className = "cloud-status-pill disconnected";
         if (statusDot) statusDot.className = "status-dot red";
@@ -2022,18 +2476,28 @@
     // --- REST API METADATA FETCH ---
     async function fetchMetadata() {
       try {
-        const [orgRes, siteRes, alertRes] = await Promise.all([
+        const [orgRes, siteRes, alertRes, robotRes, userRes] = await Promise.all([
           fetch("/api/fleet/organizations"),
           fetch("/api/fleet/sites"),
-          fetch("/api/fleet/alerts")
+          fetch("/api/fleet/alerts"),
+          fetch("/api/fleet/robots"),
+          fetch("/api/fleet/users")
         ]);
 
         if (orgRes.ok) fleetData.organizations = await orgRes.json();
         if (siteRes.ok) fleetData.sites = await siteRes.json();
         if (alertRes.ok) fleetData.alerts = await alertRes.json();
+        if (robotRes.ok) fleetData.robots = await robotRes.json();
+        if (userRes.ok) systemUsers = await userRes.json();
 
         populateFilters();
+        populateOrgFilterInSiteTab();
+        renderKPIs();
+        renderRobots();
         renderAlerts();
+        renderOrganizations();
+        renderSites();
+        renderUsersTable();
       } catch (err) {
         console.error("Fetch metadata error:", err);
       }
@@ -2524,6 +2988,387 @@
           errEl.innerText = "Lỗi kết nối máy chủ: " + e.message;
           errEl.style.display = "block";
         }
+      }
+    }
+
+    // ==========================================
+    // ORGANIZATIONS & SITES MANAGEMENT FUNCTIONS
+    // ==========================================
+    function renderOrganizations() {
+      const container = document.getElementById("orgsListContainer");
+      const badge = document.getElementById("orgsCountBadge");
+      if (badge) badge.innerText = fleetData.organizations.length;
+      if (!container) return;
+
+      if (fleetData.organizations.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-dim); font-size: 0.85rem;">Chưa có tổ chức nào. Bấm ➕ Thêm Mới để bắt đầu.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      fleetData.organizations.forEach(org => {
+        const div = document.createElement("div");
+        div.className = "entity-card";
+        div.innerHTML = `
+          <div>
+            <div style="font-weight: 700; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+              <span>🏢</span> ${org.name}
+              <span class="entity-badge">${org.code || 'ORG'}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">
+              ID: <span style="font-family: monospace; color: #94a3b8;">${org.id}</span>
+            </div>
+          </div>
+          <div>
+            <button class="btn-delete-item" onclick="deleteOrg('${org.id}')" title="Xóa tổ chức này">🗑️ Xóa</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function populateOrgFilterInSiteTab() {
+      const sel = document.getElementById("filterOrgInSiteTab");
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">🏢 Tất cả tổ chức</option>';
+      fleetData.organizations.forEach(org => {
+        sel.innerHTML += `<option value="${org.id}">${org.name}</option>`;
+      });
+      if (cur) sel.value = cur;
+    }
+
+    function onFilterOrgInSiteTabChanged() {
+      renderSites();
+    }
+
+    function renderSites() {
+      const container = document.getElementById("sitesListContainer");
+      const badge = document.getElementById("sitesCountBadge");
+      const sel = document.getElementById("filterOrgInSiteTab");
+      const filterOrg = sel ? sel.value : "";
+
+      let sites = fleetData.sites;
+      if (filterOrg) {
+        sites = sites.filter(s => s.organizationId === filterOrg);
+      }
+
+      if (badge) badge.innerText = sites.length;
+      if (!container) return;
+
+      if (sites.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-dim); font-size: 0.85rem;">Chưa có chi nhánh nào phù hợp. Bấm ➕ Thêm Mới để tạo.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      sites.forEach(site => {
+        const org = fleetData.organizations.find(o => o.id === site.organizationId);
+        const orgName = org ? org.name : (site.organizationId || "Chưa gán");
+        const div = document.createElement("div");
+        div.className = "entity-card";
+        div.innerHTML = `
+          <div>
+            <div style="font-weight: 700; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+              <span>📍</span> ${site.name}
+              <span class="entity-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">${site.code || 'SITE'}</span>
+            </div>
+            <div style="font-size: 0.76rem; color: #38bdf8; margin-top: 3px;">
+              Thuộc: <b>${orgName}</b>
+            </div>
+            <div style="font-size: 0.74rem; color: var(--text-dim); margin-top: 2px;">
+              ${site.address ? `🏠 ${site.address} ` : ''} ${site.phone ? `• 📞 ${site.phone}` : ''}
+            </div>
+          </div>
+          <div>
+            <button class="btn-delete-item" onclick="deleteSite('${site.id}')" title="Xóa chi nhánh này">🗑️ Xóa</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Modal Add Org
+    function openAddOrgModal() {
+      document.getElementById("addOrgName").value = "";
+      document.getElementById("addOrgCode").value = "";
+      const err = document.getElementById("addOrgError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddOrg");
+      if (m) m.style.display = "flex";
+    }
+    function closeAddOrgModal() {
+      const m = document.getElementById("modalAddOrg");
+      if (m) m.style.display = "none";
+    }
+    async function submitAddOrg() {
+      const name = document.getElementById("addOrgName").value.trim();
+      const code = document.getElementById("addOrgCode").value.trim() || name.toUpperCase().replace(/\s+/g, "_");
+      const err = document.getElementById("addOrgError");
+      if (!name) {
+        if (err) { err.innerText = "Vui lòng nhập tên tổ chức."; err.style.display = "block"; }
+        return;
+      }
+      try {
+        const id = "org_" + Date.now().toString(36);
+        const res = await fetch("/api/fleet/organizations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, name, code })
+        });
+        if (res.ok) {
+          closeAddOrgModal();
+          showToast(`✅ Đã thêm tổ chức ${name}`);
+          await fetchMetadata();
+        } else {
+          if (err) { err.innerText = "Lỗi khi lưu tổ chức."; err.style.display = "block"; }
+        }
+      } catch (e) {
+        if (err) { err.innerText = "Lỗi kết nối: " + e.message; err.style.display = "block"; }
+      }
+    }
+    async function deleteOrg(id) {
+      if (!confirm("Bạn có chắc chắn muốn xóa tổ chức này?")) return;
+      try {
+        const res = await fetch(`/api/fleet/organizations/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("🗑️ Đã xóa tổ chức!");
+          await fetchMetadata();
+        }
+      } catch (e) {
+        showToast("❌ Lỗi khi xóa: " + e.message);
+      }
+    }
+
+    // Modal Add Site
+    function openAddSiteModal() {
+      const sel = document.getElementById("addSiteOrgSelect");
+      if (sel) {
+        sel.innerHTML = "";
+        fleetData.organizations.forEach(o => {
+          sel.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+        });
+      }
+      document.getElementById("addSiteName").value = "";
+      document.getElementById("addSiteCode").value = "";
+      document.getElementById("addSiteAddress").value = "";
+      document.getElementById("addSitePhone").value = "";
+      const err = document.getElementById("addSiteError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddSite");
+      if (m) m.style.display = "flex";
+    }
+    function closeAddSiteModal() {
+      const m = document.getElementById("modalAddSite");
+      if (m) m.style.display = "none";
+    }
+    async function submitAddSite() {
+      const orgId = document.getElementById("addSiteOrgSelect").value;
+      const name = document.getElementById("addSiteName").value.trim();
+      const code = document.getElementById("addSiteCode").value.trim() || name.toUpperCase().replace(/\s+/g, "_");
+      const address = document.getElementById("addSiteAddress").value.trim();
+      const phone = document.getElementById("addSitePhone").value.trim();
+      const err = document.getElementById("addSiteError");
+      if (!name) {
+        if (err) { err.innerText = "Vui lòng nhập tên chi nhánh."; err.style.display = "block"; }
+        return;
+      }
+      try {
+        const id = "site_" + Date.now().toString(36);
+        const res = await fetch("/api/fleet/sites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, organizationId: orgId, name, code, address, phone })
+        });
+        if (res.ok) {
+          closeAddSiteModal();
+          showToast(`✅ Đã thêm chi nhánh ${name}`);
+          await fetchMetadata();
+        } else {
+          if (err) { err.innerText = "Lỗi khi lưu chi nhánh."; err.style.display = "block"; }
+        }
+      } catch (e) {
+        if (err) { err.innerText = "Lỗi kết nối: " + e.message; err.style.display = "block"; }
+      }
+    }
+    async function deleteSite(id) {
+      if (!confirm("Bạn có chắc chắn muốn xóa chi nhánh này?")) return;
+      try {
+        const res = await fetch(`/api/fleet/sites/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("🗑️ Đã xóa chi nhánh!");
+          await fetchMetadata();
+        }
+      } catch (e) {
+        showToast("❌ Lỗi khi xóa: " + e.message);
+      }
+    }
+
+    // ==========================================
+    // USER ACCOUNTS MANAGEMENT FUNCTIONS
+    // ==========================================
+    function renderUsersTable() {
+      const tbody = document.getElementById("usersTableBody");
+      const badge = document.getElementById("usersCountBadge");
+      const search = (document.getElementById("userSearchInput")?.value || "").toLowerCase().trim();
+
+      let list = systemUsers || [];
+      if (search) {
+        list = list.filter(u => 
+          (u.username && u.username.toLowerCase().includes(search)) ||
+          (u.fullName && u.fullName.toLowerCase().includes(search)) ||
+          (u.role && u.role.toLowerCase().includes(search))
+        );
+      }
+
+      if (badge) badge.innerText = list.length;
+      if (!tbody) return;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 30px; color: var(--text-dim);">Chưa có tài khoản nào. Bấm ➕ Tạo Tài Khoản Mới.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      list.forEach(u => {
+        const tr = document.createElement("tr");
+        const initials = u.avatarInitials || (u.fullName ? u.fullName.substring(0, 2).toUpperCase() : "US");
+        const roleColors = {
+          'SuperAdmin': '#ef4444',
+          'Admin': '#f59e0b',
+          'SiteManager': '#38bdf8',
+          'Operator': '#10b981',
+          'Viewer': '#94a3b8'
+        };
+        const color = roleColors[u.role] || '#38bdf8';
+
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #06b6d4); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: #fff;">
+                ${initials}
+              </div>
+              <div>
+                <div style="font-weight: 700; color: #fff;">${u.fullName || u.username}</div>
+                <div style="font-size: 0.72rem; color: var(--text-dim);">${u.email || ''}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family: monospace; font-size: 0.85rem; color: #38bdf8;">@${u.username}</td>
+          <td>
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; border: 1px solid ${color}; color: ${color}; background: rgba(0,0,0,0.3);">
+              ${u.role}
+            </span>
+          </td>
+          <td>${u.organizationName || u.organizationId || 'Toàn hệ thống'}</td>
+          <td>${u.siteName || u.siteId || 'Toàn hệ thống'}</td>
+          <td>
+            <span style="color: ${u.isActive !== false ? '#10b981' : '#ef4444'}; font-weight: 600; font-size: 0.78rem;">
+              ● ${u.isActive !== false ? 'Hoạt động' : 'Tạm khóa'}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            ${u.username === 'admin' ? '<span style="font-size:0.75rem; color:var(--text-dim);">(Mặc định)</span>' : `<button class="btn-delete-item" onclick="deleteUser('${u.id}')" title="Xóa tài khoản">🗑️ Xóa</button>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openAddUserModal() {
+      const orgSel = document.getElementById("addUserOrgSelect");
+      if (orgSel) {
+        orgSel.innerHTML = '<option value="">(Không gán / Toàn hệ thống)</option>';
+        fleetData.organizations.forEach(o => {
+          orgSel.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+        });
+      }
+      onAddUserOrgChanged();
+      document.getElementById("addUserUsername").value = "";
+      document.getElementById("addUserPassword").value = "123456";
+      document.getElementById("addUserFullName").value = "";
+      document.getElementById("addUserEmail").value = "";
+      document.getElementById("addUserRole").value = "Operator";
+      const err = document.getElementById("addUserError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddUser");
+      if (m) m.style.display = "flex";
+    }
+    function closeAddUserModal() {
+      const m = document.getElementById("modalAddUser");
+      if (m) m.style.display = "none";
+    }
+    function onAddUserOrgChanged() {
+      const orgId = document.getElementById("addUserOrgSelect")?.value;
+      const siteSel = document.getElementById("addUserSiteSelect");
+      if (!siteSel) return;
+      siteSel.innerHTML = '<option value="">(Không gán / Tất cả site)</option>';
+      let sites = fleetData.sites;
+      if (orgId) {
+        sites = sites.filter(s => s.organizationId === orgId);
+      }
+      sites.forEach(s => {
+        siteSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+      });
+    }
+    async function submitAddUser() {
+      const username = document.getElementById("addUserUsername").value.trim();
+      const password = document.getElementById("addUserPassword").value.trim();
+      const fullName = document.getElementById("addUserFullName").value.trim();
+      const email = document.getElementById("addUserEmail").value.trim();
+      const role = document.getElementById("addUserRole").value;
+      const orgId = document.getElementById("addUserOrgSelect").value;
+      const siteId = document.getElementById("addUserSiteSelect").value;
+      const err = document.getElementById("addUserError");
+
+      if (!username || !password || !fullName) {
+        if (err) { err.innerText = "Vui lòng nhập tên đăng nhập, mật khẩu và họ tên."; err.style.display = "block"; }
+        return;
+      }
+
+      const org = fleetData.organizations.find(o => o.id === orgId);
+      const site = fleetData.sites.find(s => s.id === siteId);
+
+      try {
+        const id = "usr_" + Date.now().toString(36);
+        const res = await fetch("/api/fleet/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            username,
+            password,
+            fullName,
+            email,
+            role,
+            organizationId: orgId || null,
+            organizationName: org ? org.name : null,
+            siteId: siteId || null,
+            siteName: site ? site.name : null,
+            isActive: true
+          })
+        });
+        if (res.ok) {
+          closeAddUserModal();
+          showToast(`✅ Đã tạo tài khoản @${username}!`);
+          await fetchMetadata();
+        } else {
+          if (err) { err.innerText = "Lỗi khi tạo tài khoản."; err.style.display = "block"; }
+        }
+      } catch (e) {
+        if (err) { err.innerText = "Lỗi kết nối: " + e.message; err.style.display = "block"; }
+      }
+    }
+    async function deleteUser(id) {
+      if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) return;
+      try {
+        const res = await fetch(`/api/fleet/users/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("🗑️ Đã xóa người dùng!");
+          await fetchMetadata();
+        }
+      } catch (e) {
+        showToast("❌ Lỗi khi xóa: " + e.message);
       }
     }
   </script>
