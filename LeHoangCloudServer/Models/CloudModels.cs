@@ -12,7 +12,7 @@ public class CloudRobotItem
     public string OrgName { get; set; } = string.Empty;
     public string SiteId { get; set; } = string.Empty;
     public string SiteName { get; set; } = string.Empty;
-    public string Ip { get; set; } = "127.0.0.1";
+    public string Ip { get; set; } = string.Empty;
     public int Port { get; set; } = 8899;
     public string Status { get; set; } = "Offline"; // Online, Charging, Offline, EmergencyStop
     public string StatusColor { get; set; } = "#64748B";

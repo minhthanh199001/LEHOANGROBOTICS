@@ -168,9 +168,6 @@ namespace LeHoangControlCenter.Services
 
                 // 2. Kéo danh mục Tổ chức & Chi nhánh mới nhất từ Cloud về máy trạm
                 await SyncCatalogFromCloudAsync();
-
-                // 3. Tự động đẩy tất cả các Robot đang có ở máy trạm lên Cloud Server
-                await SyncAllLocalRobotsToCloudAsync();
             }
             catch (Exception ex)
             {
@@ -419,7 +416,7 @@ namespace LeHoangControlCenter.Services
                             var rOrgName = el.TryGetProperty("orgName", out var pOn) ? pOn.GetString() ?? "" : "";
                             var rSiteId = el.TryGetProperty("siteId", out var pSid) ? pSid.GetString() ?? "" : "";
                             var rSiteName = el.TryGetProperty("siteName", out var pSn) ? pSn.GetString() ?? "" : "";
-                            var rIp = el.TryGetProperty("ip", out var pIp) ? pIp.GetString() ?? "127.0.0.1" : "127.0.0.1";
+                            var rIp = el.TryGetProperty("ip", out var pIp) ? pIp.GetString() ?? "" : "";
                             var rPort = el.TryGetProperty("port", out var pPort) ? pPort.GetInt32() : 8899;
                             var rBat = el.TryGetProperty("battery", out var pBat) ? pBat.GetInt32() : 100;
                             var rCharging = el.TryGetProperty("isCharging", out var pChg) && pChg.GetBoolean();
@@ -582,25 +579,30 @@ namespace LeHoangControlCenter.Services
                 {
                     try
                     {
-                        if (IsConnected)
+                        // Chỉ gửi telemetry nếu ứng dụng thực sự đang kết nối tới Robot phần cứng và Robot còn tồn tại trong danh sách
+                        if (IsConnected && _mainVm.IsConnected && !string.IsNullOrEmpty(_mainVm.RobotId) && _mainVm.RobotIp != "127.0.0.1")
                         {
-                            var packet = new RobotTelemetryPacket
+                            var currentBot = _mainVm.EnterpriseRobots.FirstOrDefault(r => r.Id == _mainVm.RobotId || r.Ip == _mainVm.RobotIp);
+                            if (currentBot != null)
                             {
-                                RobotId = string.IsNullOrEmpty(_mainVm.RobotId) ? "LH-ORIONSTAR-02" : _mainVm.RobotId,
-                                OrgId = _mainVm.SelectedOrganization?.Id ?? "ORG-01",
-                                SiteId = _mainVm.SelectedSite?.Id ?? "SITE-01",
-                                Status = _mainVm.IsConnected ? (_mainVm.IsCharging ? "Charging" : "Online") : "Offline",
-                                Battery = _mainVm.BatteryLevel,
-                                IsCharging = _mainVm.IsCharging,
-                                MapName = _mainVm.CurrentMap,
-                                PoseX = _mainVm.PoseX,
-                                PoseY = _mainVm.PoseY,
-                                PoseAngle = _mainVm.RobotHeadingDegrees,
-                                ActiveMode = _mainVm.RobotState,
-                                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                            };
+                                var packet = new RobotTelemetryPacket
+                                {
+                                    RobotId = currentBot.Id,
+                                    OrgId = currentBot.OrganizationId ?? (_mainVm.SelectedOrganization?.Id ?? ""),
+                                    SiteId = currentBot.SiteId ?? (_mainVm.SelectedSite?.Id ?? ""),
+                                    Status = _mainVm.IsCharging ? "Charging" : "Online",
+                                    Battery = _mainVm.BatteryLevel,
+                                    IsCharging = _mainVm.IsCharging,
+                                    MapName = _mainVm.CurrentMap,
+                                    PoseX = _mainVm.PoseX,
+                                    PoseY = _mainVm.PoseY,
+                                    PoseAngle = _mainVm.RobotHeadingDegrees,
+                                    ActiveMode = _mainVm.RobotState,
+                                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                                };
 
-                            await SendTelemetryAsync(packet);
+                                await SendTelemetryAsync(packet);
+                            }
                         }
                     }
                     catch { }

@@ -152,7 +152,6 @@ namespace LeHoangControlCenter.Services
                         INSERT INTO Robots (Id, SiteId, OrganizationId, Name, Model, Ip, Port, BatteryLevel, Status, AssignedMap, CreatedAt, LastSeen) VALUES
                         ('ROB-01', 'RND-Q1', 'LEHOANG', 'Lê Hoàng 01 (Trụ Sở)', 'OrionStar Mini', '192.168.0.125', 8899, 95, 'Online', 'tang 2-1110154527', datetime('now'), datetime('now')),
                         ('ROB-03', 'VIN-LANDMARK', 'VINPEARL', 'Vinpearl Service Bot 01', 'OrionStar Mini', '192.168.10.45', 8899, 88, 'Charging', 'sanh_chinh', datetime('now'), datetime('now')),
-                        ('LH-ORIONSTAR-01', 'MT-SG', 'MUONGTHANH', 'LH-ORIONSTAR-01', 'OrionStar Mini', '127.0.0.1', 8899, 63, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now')),
                         ('ROB-02', 'MT-SG', 'MUONGTHANH', 'Mường Thanh Bot Phục Vụ 01', 'OrionStar Mini', '192.168.2.120', 8899, 65, 'Online', 'tang 2-1110154527', datetime('now'), datetime('now')),
                         ('CBAFA800', 'MT-SG', 'MUONGTHANH', 'LH-ORIONSTAR-02', 'OrionStar Lucki', '192.168.0.32', 8899, 65, 'Online', 'tăng 2-1110154527', datetime('now'), datetime('now'));
 

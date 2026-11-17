@@ -372,6 +372,14 @@ public class CloudDatabaseService
     public void DeleteRobot(string id)
     {
         _robotLiveCache.TryRemove(id, out _);
+        foreach (var k in _robotLiveCache.Keys.Where(k => 
+            string.Equals(k, id, StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(_robotLiveCache[k].Name, id, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(_robotLiveCache[k].Ip, id, StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            _robotLiveCache.TryRemove(k, out _);
+        }
+
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
         using var cmd = new SqliteCommand("DELETE FROM Robots WHERE Id = @Id OR Name = @Id OR Ip = @Id;", conn);
@@ -445,7 +453,17 @@ public class CloudDatabaseService
     {
         if (string.IsNullOrEmpty(packet.RobotId)) return;
 
-        var existing = _robotLiveCache.GetOrAdd(packet.RobotId, id => new CloudRobotItem { Id = id, Name = id });
+        // Chỉ cập nhật nếu Robot thực sự tồn tại trong hệ thống (KHÔNG tự động sinh mới robot từ telemetry)
+        if (!_robotLiveCache.TryGetValue(packet.RobotId, out var existing))
+        {
+            existing = GetRobotById(packet.RobotId);
+            if (existing == null)
+            {
+                // Robot không tồn tại hoặc đã bị xóa -> bỏ qua, không tự động sinh robot mới
+                return;
+            }
+            _robotLiveCache[packet.RobotId] = existing;
+        }
 
         existing.Battery = Math.Clamp(packet.Battery, 0, 100);
         existing.IsCharging = packet.IsCharging;
@@ -470,7 +488,7 @@ public class CloudDatabaseService
         if (!string.IsNullOrEmpty(packet.SiteId)) existing.SiteId = packet.SiteId;
         existing.LastSeen = DateTime.UtcNow;
 
-        // Async write back to DB
+        // Async write back to DB (chỉ UPDATE bản ghi đã tồn tại)
         UpdateRobotInDb(existing);
     }
 
@@ -481,37 +499,26 @@ public class CloudDatabaseService
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             string sql = @"
-                INSERT INTO Robots (Id, SiteId, Name, Model, Ip, Port, Status, Battery, IsCharging, AssignedMap, PoseX, PoseY, PoseAngle, LastSeen)
-                VALUES (@id, @siteId, @name, @model, @ip, @port, @status, @battery, @charging, @map, @x, @y, @angle, datetime('now'))
-                ON CONFLICT(Id) DO UPDATE SET 
-                    SiteId = CASE WHEN @siteId != '' THEN @siteId ELSE SiteId END,
-                    Name = CASE WHEN @name != '' THEN @name ELSE Name END,
-                    Model = CASE WHEN @model != '' THEN @model ELSE Model END,
-                    Ip = CASE WHEN @ip != '' THEN @ip ELSE Ip END,
-                    Port = CASE WHEN @port > 0 THEN @port ELSE Port END,
+                UPDATE Robots SET 
                     Status = @status, 
                     Battery = @battery, 
                     IsCharging = @charging, 
                     PoseX = @x, 
                     PoseY = @y, 
                     PoseAngle = @angle, 
-                    AssignedMap = @map,
-                    LastSeen = datetime('now');
+                    AssignedMap = CASE WHEN @map != '' THEN @map ELSE AssignedMap END,
+                    LastSeen = datetime('now')
+                WHERE Id = @id OR Name = @id;
             ";
             using var cmd = new SqliteCommand(sql, conn);
             cmd.Parameters.AddWithValue("@id", r.Id);
-            cmd.Parameters.AddWithValue("@siteId", r.SiteId ?? "");
-            cmd.Parameters.AddWithValue("@name", r.Name ?? r.Id);
-            cmd.Parameters.AddWithValue("@model", r.Model ?? "OrionStar Mini");
-            cmd.Parameters.AddWithValue("@ip", r.Ip ?? "127.0.0.1");
-            cmd.Parameters.AddWithValue("@port", r.Port > 0 ? r.Port : 8899);
             cmd.Parameters.AddWithValue("@status", r.Status);
             cmd.Parameters.AddWithValue("@battery", r.Battery);
             cmd.Parameters.AddWithValue("@charging", r.IsCharging ? 1 : 0);
             cmd.Parameters.AddWithValue("@x", r.PoseX);
             cmd.Parameters.AddWithValue("@y", r.PoseY);
             cmd.Parameters.AddWithValue("@angle", r.PoseAngle);
-            cmd.Parameters.AddWithValue("@map", r.AssignedMap);
+            cmd.Parameters.AddWithValue("@map", r.AssignedMap ?? "");
             cmd.ExecuteNonQuery();
         }
         catch (Exception)
