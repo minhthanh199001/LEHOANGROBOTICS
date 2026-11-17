@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -34,11 +35,11 @@
 
     body {
       background-color: var(--bg-dark);
-      background-image: 
+      background-image:
         radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
         radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
-        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
       background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
       color: var(--text-main);
       font-family: var(--font-cyber);
@@ -119,7 +120,8 @@
       min-width: 170px;
     }
 
-    .custom-select:hover, .custom-select:focus {
+    .custom-select:hover,
+    .custom-select:focus {
       border-color: var(--cyan);
       box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
     }
@@ -150,8 +152,17 @@
     }
 
     @keyframes pulseGlow {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.3); }
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(1.3);
+      }
     }
 
     /* CONTAINER & KPI TILES */
@@ -183,7 +194,7 @@
       justify-content: space-between;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
       transition: transform 0.2s, border-color 0.2s;
     }
 
@@ -257,7 +268,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     }
 
     .panel-header {
@@ -324,14 +335,23 @@
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       animation: pulseEstopGlow 2.5s infinite;
     }
+
     .btn-action-estop:hover {
       background: linear-gradient(135deg, #EF4444, #B91C1C);
       transform: translateY(-1px);
       box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
     }
+
     @keyframes pulseEstopGlow {
-      0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); }
-      50% { box-shadow: 0 0 22px rgba(239, 68, 68, 0.75); }
+
+      0%,
+      100% {
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+      }
+
+      50% {
+        box-shadow: 0 0 22px rgba(239, 68, 68, 0.75);
+      }
     }
 
     .btn-action-charge {
@@ -349,6 +369,7 @@
       box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .btn-action-charge:hover {
       background: linear-gradient(135deg, #F59E0B, #D97706);
       transform: translateY(-1px);
@@ -370,6 +391,7 @@
       box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
       transition: all 0.2s;
     }
+
     .btn-action-resume:hover {
       background: linear-gradient(135deg, #10B981, #059669);
       box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
@@ -380,6 +402,7 @@
       border-color: var(--cyan) !important;
       box-shadow: 0 0 16px rgba(0, 242, 254, 0.35);
     }
+
     .robot-card-actions {
       display: flex;
       gap: 6px;
@@ -387,6 +410,7 @@
       padding-top: 8px;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
+
     .btn-card-action {
       flex: 1;
       padding: 5px 8px;
@@ -401,31 +425,37 @@
       gap: 4px;
       transition: all 0.15s ease;
     }
+
     .btn-card-charge {
       background: rgba(245, 158, 11, 0.15);
       border-color: rgba(245, 158, 11, 0.4);
       color: #FBBF24;
     }
+
     .btn-card-charge:hover {
       background: rgba(245, 158, 11, 0.35);
       color: #FFF;
       box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
     }
+
     .btn-card-estop {
       background: rgba(239, 68, 68, 0.15);
       border-color: rgba(239, 68, 68, 0.4);
       color: #F87171;
     }
+
     .btn-card-estop:hover {
       background: rgba(239, 68, 68, 0.35);
       color: #FFF;
       box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
     }
+
     .btn-card-select {
       background: rgba(56, 189, 248, 0.12);
       border-color: rgba(56, 189, 248, 0.3);
       color: #38BDF8;
     }
+
     .btn-card-select:hover {
       background: rgba(56, 189, 248, 0.25);
       color: #FFF;
@@ -438,6 +468,7 @@
       gap: 6px;
       margin-top: 8px;
     }
+
     .btn-station-chip {
       background: rgba(30, 41, 59, 0.85);
       border: 1px solid rgba(56, 189, 248, 0.25);
@@ -451,6 +482,7 @@
       gap: 4px;
       transition: all 0.2s;
     }
+
     .btn-station-chip:hover {
       background: rgba(0, 242, 254, 0.18);
       border-color: #00F2FE;
@@ -475,10 +507,19 @@
       pointer-events: auto;
       animation: popoverFadeIn 0.2s ease-out;
     }
+
     @keyframes popoverFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
+
     .station-popover-title {
       font-size: 0.9rem;
       font-weight: 700;
@@ -487,16 +528,19 @@
       align-items: center;
       gap: 6px;
     }
+
     .station-popover-desc {
       font-size: 0.78rem;
       color: var(--text-dim);
       line-height: 1.4;
     }
+
     .station-popover-actions {
       display: flex;
       gap: 6px;
       margin-top: 4px;
     }
+
     .hud-status-badge {
       display: inline-block;
       padding: 1px 6px;
@@ -739,7 +783,7 @@
     .battery-bar-container {
       width: 90px;
       height: 8px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       overflow: hidden;
       display: inline-block;
@@ -908,7 +952,7 @@
       padding: 12px 18px;
       color: #fff;
       font-size: 0.85rem;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(10px);
       animation: slideIn 0.3s ease;
       display: flex;
@@ -917,8 +961,15 @@
     }
 
     @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
 
     /* FOOTER */
@@ -927,7 +978,7 @@
       padding: 14px;
       font-size: 0.75rem;
       color: var(--text-dim);
-      border-top: 1px solid rgba(255,255,255,0.05);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
       background: rgba(10, 16, 30, 0.6);
     }
 
@@ -986,8 +1037,15 @@
     }
 
     @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .user-dropdown-header {
@@ -1115,7 +1173,10 @@
     /* MODAL */
     .modal-overlay {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(8px);
       z-index: 2000;
@@ -1137,8 +1198,15 @@
     }
 
     @keyframes zoomIn {
-      from { transform: scale(0.92); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+      from {
+        transform: scale(0.92);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
 
     .modal-header {
@@ -1179,6 +1247,7 @@
       border-radius: 12px;
       border: 1px solid rgba(56, 189, 248, 0.25);
     }
+
     .main-nav-btn {
       background: transparent;
       border: 1px solid transparent;
@@ -1194,11 +1263,13 @@
       gap: 7px;
       transition: all 0.2s ease;
     }
+
     .main-nav-btn:hover {
       color: #f8fafc;
       background: rgba(56, 189, 248, 0.1);
       border-color: rgba(56, 189, 248, 0.2);
     }
+
     .main-nav-btn.active {
       color: #fff;
       background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(56, 189, 248, 0.2));
@@ -1218,17 +1289,20 @@
       padding: 16px 22px;
       margin-bottom: 16px;
     }
+
     .org-site-grid {
       display: grid;
       grid-template-columns: 1fr 1.2fr;
       gap: 20px;
       min-height: 580px;
     }
+
     @media (max-width: 992px) {
       .org-site-grid {
         grid-template-columns: 1fr;
       }
     }
+
     .entity-list-scrollable {
       padding: 14px;
       display: flex;
@@ -1237,6 +1311,7 @@
       max-height: 600px;
       overflow-y: auto;
     }
+
     .entity-card {
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid rgba(56, 189, 248, 0.2);
@@ -1247,11 +1322,13 @@
       justify-content: space-between;
       transition: all 0.2s ease;
     }
+
     .entity-card:hover {
       border-color: var(--cyan);
       box-shadow: 0 4px 15px rgba(0, 242, 254, 0.15);
       background: rgba(30, 41, 59, 0.8);
     }
+
     .entity-badge {
       display: inline-block;
       padding: 2px 8px;
@@ -1268,12 +1345,14 @@
       overflow-x: auto;
       max-height: 620px;
     }
+
     .cyber-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.84rem;
       text-align: left;
     }
+
     .cyber-table th {
       background: rgba(15, 23, 42, 0.95);
       color: var(--text-dim);
@@ -1287,15 +1366,18 @@
       top: 0;
       z-index: 10;
     }
+
     .cyber-table td {
       padding: 14px 18px;
       border-bottom: 1px solid rgba(56, 189, 248, 0.1);
       color: #e2e8f0;
       vertical-align: middle;
     }
+
     .cyber-table tr:hover td {
       background: rgba(30, 41, 59, 0.5);
     }
+
     .btn-delete-item {
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(239, 68, 68, 0.4);
@@ -1306,12 +1388,14 @@
       font-size: 0.75rem;
       transition: all 0.2s;
     }
+
     .btn-delete-item:hover {
       background: #ef4444;
       color: #fff;
     }
   </style>
 </head>
+
 <body>
 
   <!-- HEADER -->
@@ -1319,21 +1403,20 @@
     <div class="brand-section">
       <img src="img/logo.png" alt="Le Hoang Logo" class="brand-logo">
       <div>
-        <div class="brand-title">LÊ HOÀNG ROBOTICS <span style="font-size: 0.8rem; color: var(--cyan); font-weight: 500;">☁️ CLOUD</span></div>
-        <div class="brand-subtitle">Central Fleet Management System</div>
+        <div class="brand-title">LÊ HOÀNG ROBOTICS </div>
       </div>
     </div>
 
     <!-- MAIN NAVIGATION TABS -->
     <nav class="main-nav-tabs">
       <button id="navBtnDashboard" class="main-nav-btn active" onclick="switchMainView('dashboard')">
-        <span>🗺️</span> BẢN ĐỒ &amp; ĐỘI XE
+        <span>🗺️</span>ĐỘI XE
       </button>
       <button id="navBtnOrgSite" class="main-nav-btn" onclick="switchMainView('orgsite')">
-        <span>🏢</span> TỔ CHỨC &amp; CHI NHÁNH
+        <span>🏢</span> TỔ CHỨC
       </button>
       <button id="navBtnUsers" class="main-nav-btn" onclick="switchMainView('users')">
-        <span>👥</span> NGƯỜI DÙNG &amp; PHÂN QUYỀN
+        <span>👥</span> NGƯỜI DÙNG
       </button>
     </nav>
 
@@ -1356,7 +1439,8 @@
 
       <!-- User Profile Badge & Menu (Identical to Desktop App "QH") -->
       <div class="user-menu-wrapper" style="position: relative;">
-        <button id="userAvatarBtn" class="user-avatar-btn" onclick="toggleUserDropdown()" title="Hồ sơ tài khoản & Đổi người dùng">
+        <button id="userAvatarBtn" class="user-avatar-btn" onclick="toggleUserDropdown()"
+          title="Hồ sơ tài khoản & Đổi người dùng">
           <div class="user-avatar-circle">
             <span id="userInitials">QH</span>
           </div>
@@ -1414,194 +1498,209 @@
     <div id="viewDashboard" class="subview-panel">
 
       <!-- KPI ROW -->
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span>Tổng Robot Chuỗi</span>
-          <span class="kpi-icon">🤖</span>
-        </div>
-        <div class="kpi-value" id="kpiTotalRobots">--</div>
-        <div class="kpi-sub">Đồng bộ đa chi nhánh</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span>Robot Hoạt Động</span>
-          <span class="kpi-icon" style="color: var(--emerald);">🟢</span>
-        </div>
-        <div class="kpi-value" style="color: var(--emerald);" id="kpiOnlineRobots">--</div>
-        <div class="kpi-sub" id="kpiOnlineRate">Tỷ lệ sẵn sàng: --%</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span>Đang Sạc Pin</span>
-          <span class="kpi-icon" style="color: var(--amber);">⚡</span>
-        </div>
-        <div class="kpi-value" style="color: var(--amber);" id="kpiChargingRobots">--</div>
-        <div class="kpi-sub">Tự động tại Dock sạc</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span>Pin Trung Bình</span>
-          <span class="kpi-icon" style="color: var(--cyan);">🔋</span>
-        </div>
-        <div class="kpi-value" style="color: var(--cyan);" id="kpiAvgBattery">--%</div>
-        <div class="kpi-sub">Trạng thái năng lượng toàn đội</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span>Chi Nhánh Trực Tuyến</span>
-          <span class="kpi-icon" style="color: var(--purple);">🏢</span>
-        </div>
-        <div class="kpi-value" style="color: var(--purple);" id="kpiTotalSites">--</div>
-        <div class="kpi-sub">Điểm triển khai thực tế</div>
-      </div>
-    </div>
-
-    <!-- MAIN WORKSPACE -->
-    <div class="main-workspace">
-
-      <!-- LEFT: 2D MAP BLUEPRINT -->
-      <div class="cyber-panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <span>🗺️</span> Bản Đồ Mặt Bằng Thời Gian Thực
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Tất cả Robots</span>
+            <span class="kpi-icon">🤖</span>
           </div>
-          <div class="panel-tools">
-            <button class="btn-action-estop" onclick="triggerEmergencyStop()" title="Dừng khẩn cấp tức thời cho robot đang chọn">
-              ⛔ DỪNG KHẨN CẤP
-            </button>
-            <button class="btn-action-charge" onclick="triggerReturnCharge()" title="Gửi lệnh robot quay về trạm sạc tự động">
-              ⚡ VỀ TRẠM SẠC
-            </button>
-            <button class="btn-action-resume" onclick="triggerResume()" title="Khôi phục trạng thái hoạt động">
-              🟢 TIẾP TỤC
-            </button>
-            <button class="btn-tool" onclick="resetMapView()" title="Căn giữa bản đồ">🎯 Căn Giữa</button>
-            <button class="btn-tool" id="btnToggleWaypoints" onclick="toggleWaypoints()" title="Ẩn/Hiện các điểm trạm">📍 Điểm Trạm</button>
-            <button class="btn-tool" onclick="clearTrails()" title="Xóa vệt quỹ đạo di chuyển">🧹 Xóa Vệt</button>
-          </div>
+          <div class="kpi-value" id="kpiTotalRobots">--</div>
+          <div class="kpi-sub">Đồng bộ đa chi nhánh</div>
         </div>
 
-        <div class="map-container" id="mapWrapper">
-          <canvas id="floorCanvas"></canvas>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Robot Hoạt Động</span>
+            <span class="kpi-icon" style="color: var(--emerald);">🟢</span>
+          </div>
+          <div class="kpi-value" style="color: var(--emerald);" id="kpiOnlineRobots">--</div>
+          <div class="kpi-sub" id="kpiOnlineRate">Tỷ lệ sẵn sàng: --%</div>
+        </div>
 
-          <!-- Floating Quick Station Action Popup -->
-          <div id="stationActionModal" class="station-popover" style="display: none;">
-            <div class="station-popover-title">
-              <span id="popoverStationIcon">📍</span> <span id="popoverStationName">cafe</span>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Đang Sạc Pin</span>
+            <span class="kpi-icon" style="color: var(--amber);">⚡</span>
+          </div>
+          <div class="kpi-value" style="color: var(--amber);" id="kpiChargingRobots">--</div>
+          <div class="kpi-sub">Tự động tại Dock sạc</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Pin Trung Bình</span>
+            <span class="kpi-icon" style="color: var(--cyan);">🔋</span>
+          </div>
+          <div class="kpi-value" style="color: var(--cyan);" id="kpiAvgBattery">--%</div>
+          <div class="kpi-sub">Trạng thái năng lượng toàn đội</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Chi Nhánh Trực Tuyến</span>
+            <span class="kpi-icon" style="color: var(--purple);">🏢</span>
+          </div>
+          <div class="kpi-value" style="color: var(--purple);" id="kpiTotalSites">--</div>
+          <div class="kpi-sub">Điểm triển khai thực tế</div>
+        </div>
+      </div>
+
+      <!-- MAIN WORKSPACE -->
+      <div class="main-workspace">
+
+        <!-- LEFT: 2D MAP BLUEPRINT -->
+        <div class="cyber-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🗺️</span>Mặt Bằng
             </div>
-            <div class="station-popover-desc">
-              Tọa độ: <span id="popoverStationCoords" style="color:var(--cyan); font-weight:600;">X: 0.0m, Y: 0.0m</span><br/>
-              Điều hướng robot <b id="popoverRobotName" style="color:#FFF;">LH-ORIONSTAR-02</b> đến vị trí này?
-            </div>
-            <div class="station-popover-actions">
-              <button class="btn-primary" style="padding: 6px 14px; font-size: 0.8rem;" onclick="confirmStationNavigate()">🚀 Đến Ngay</button>
-              <button class="btn-tool" style="padding: 6px 10px; font-size: 0.8rem;" onclick="closeStationPopover()">Đóng</button>
-            </div>
-          </div>
-
-          <div class="canvas-controls">
-            <button class="canvas-btn" title="Phóng to" onclick="zoomMap(1.2)">+</button>
-            <button class="canvas-btn" title="Thu nhỏ" onclick="zoomMap(0.8)">-</button>
-            <button class="canvas-btn" title="Đặt lại vị trí" onclick="resetMapView()">⟲</button>
-          </div>
-
-          <div class="canvas-hud">
-            <div>Robot: <b id="hudRobotName">LH-ORIONSTAR-02</b> <span id="hudRobotStatus" class="hud-status-badge">🟢 Online</span></div>
-            <div>Tọa độ: <b id="hudCoords">X: 0.00m | Y: 0.00m</b></div>
-            <div>Góc: <b id="hudHeading">0.0°</b></div>
-            <div>Bản đồ: <b id="hudMapName">Tầng 2 - 1110154527</b></div>
-            <div>Trạm: <b id="hudStationCount">11 điểm</b></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: FLEET MANAGEMENT TABS -->
-      <div class="cyber-panel">
-        <div class="tabs-nav">
-          <button class="tab-btn active" onclick="switchTab('tabRobots', this)">
-            🤖 Đội Xe (<span id="tabBadgeRobots">0</span>)
-          </button>
-          <button class="tab-btn" onclick="switchTab('tabDispatch', this)">
-            ⚡ Điều Khiển
-          </button>
-          <button class="tab-btn" onclick="switchTab('tabAlerts', this)">
-            🔔 Nhật Ký
-          </button>
-        </div>
-
-        <!-- TAB 1: FLEET LIST -->
-        <div id="tabRobots" class="tab-content active">
-          <!-- Robot cards dynamically injected -->
-          <div id="robotCardsList" style="display:flex; flex-direction:column; gap:12px;"></div>
-        </div>
-
-        <!-- TAB 2: REMOTE DISPATCH -->
-        <div id="tabDispatch" class="tab-content">
-          <div class="dispatch-box">
-            <h4 style="color: var(--cyan); font-size: 0.9rem; text-transform: uppercase;">Phát Lệnh Từ Xa Qua Cloud</h4>
-            <p style="font-size: 0.78rem; color: var(--text-dim);">
-              Lệnh được mã hóa và chuyển tiếp tức thời qua SignalR Cloud Hub tới máy tính trạm chi nhánh hoặc trực tiếp robot.
-            </p>
-
-            <!-- FAST 1-CLICK CONTROLS -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-              <button class="btn-action-estop" style="justify-content: center; padding: 10px;" onclick="triggerEmergencyStop()">
+            <div class="panel-tools">
+              <button class="btn-action-estop" onclick="triggerEmergencyStop()"
+                title="Dừng khẩn cấp tức thời cho robot đang chọn">
                 ⛔ DỪNG KHẨN CẤP
               </button>
-              <button class="btn-action-charge" style="justify-content: center; padding: 10px;" onclick="triggerReturnCharge()">
+              <button class="btn-action-charge" onclick="triggerReturnCharge()"
+                title="Gửi lệnh robot quay về trạm sạc tự động">
                 ⚡ VỀ TRẠM SẠC
               </button>
+              <button class="btn-action-resume" onclick="triggerResume()" title="Khôi phục trạng thái hoạt động">
+                🟢 TIẾP TỤC
+              </button>
+              <button class="btn-tool" onclick="resetMapView()" title="Căn giữa bản đồ">🎯 Căn Giữa</button>
+              <button class="btn-tool" id="btnToggleWaypoints" onclick="toggleWaypoints()"
+                title="Ẩn/Hiện các điểm trạm">📍 Điểm Trạm</button>
+              <button class="btn-tool" onclick="clearTrails()" title="Xóa vệt quỹ đạo di chuyển">🧹 Xóa Vệt</button>
             </div>
-            <button class="btn-action-resume" style="width: 100%; justify-content: center; padding: 8px; margin-bottom: 12px;" onclick="triggerResume()">
-              🟢 KHÔI PHỤC HOẠT ĐỘNG (CLEAR E-STOP)
-            </button>
+          </div>
 
-            <div class="form-group">
-              <label>1. Chọn Robot Nhận Lệnh</label>
-              <select id="dispatchSelectRobot" class="form-control" onchange="onDispatchSelectRobotChanged()"></select>
+          <div class="map-container" id="mapWrapper">
+            <canvas id="floorCanvas"></canvas>
+
+            <!-- Floating Quick Station Action Popup -->
+            <div id="stationActionModal" class="station-popover" style="display: none;">
+              <div class="station-popover-title">
+                <span id="popoverStationIcon">📍</span> <span id="popoverStationName">cafe</span>
+              </div>
+              <div class="station-popover-desc">
+                Tọa độ: <span id="popoverStationCoords" style="color:var(--cyan); font-weight:600;">X: 0.0m, Y:
+                  0.0m</span><br />
+                Điều hướng robot <b id="popoverRobotName" style="color:#FFF;">LH-ORIONSTAR-02</b> đến vị trí này?
+              </div>
+              <div class="station-popover-actions">
+                <button class="btn-primary" style="padding: 6px 14px; font-size: 0.8rem;"
+                  onclick="confirmStationNavigate()">🚀 Đến Ngay</button>
+                <button class="btn-tool" style="padding: 6px 10px; font-size: 0.8rem;"
+                  onclick="closeStationPopover()">Đóng</button>
+              </div>
             </div>
 
-            <div class="form-group">
-              <label>2. Hành Động / Lộ Trình</label>
-              <select id="dispatchAction" class="form-control" onchange="onDispatchActionChanged()">
-                <option value="NAVIGATE">📍 Điều hướng tới Điểm đến</option>
-                <option value="RETURN_HOME">⚡ Quay về Trạm Sạc (Return Dock)</option>
-                <option value="EMERGENCY_STOP">⛔ DỪNG KHẨN CẤP (Emergency Stop)</option>
-                <option value="SPEAK">🔊 Phát giọng nói chào đón (TTS)</option>
-              </select>
+            <div class="canvas-controls">
+              <button class="canvas-btn" title="Phóng to" onclick="zoomMap(1.2)">+</button>
+              <button class="canvas-btn" title="Thu nhỏ" onclick="zoomMap(0.8)">-</button>
+              <button class="canvas-btn" title="Đặt lại vị trí" onclick="resetMapView()">⟲</button>
             </div>
 
-            <div class="form-group" id="groupDestination">
-              <label>3. Điểm Đến Chỉ Định (Chọn hoặc bấm nhanh bên dưới)</label>
-              <select id="dispatchDestination" class="form-control"></select>
-              <div id="quickStationChips" class="stations-quick-grid"></div>
+            <div class="canvas-hud">
+              <div>Robot: <b id="hudRobotName">LH-ORIONSTAR-02</b> <span id="hudRobotStatus" class="hud-status-badge">🟢
+                  Online</span></div>
+              <div>Tọa độ: <b id="hudCoords">X: 0.00m | Y: 0.00m</b></div>
+              <div>Góc: <b id="hudHeading">0.0°</b></div>
+              <div>Bản đồ: <b id="hudMapName">Tầng 2 - 1110154527</b></div>
+              <div>Trạm: <b id="hudStationCount">11 điểm</b></div>
             </div>
-
-            <div class="form-group" id="groupSpeech" style="display:none;">
-              <label>Nội dung câu nói (Tiếng Việt / English)</label>
-              <input type="text" id="dispatchSpeechText" class="form-control" value="Kính chào quý khách ghé thăm Lê Hoàng Robotics!">
-            </div>
-
-            <button class="btn-primary" onclick="submitCloudCommand()" style="margin-top: 6px;">
-              🚀 GỬI LỆNH ĐIỀU HÀNH CLOUD
-            </button>
           </div>
         </div>
 
-        <!-- TAB 3: ALERTS & AUDIT LOGS -->
-        <div id="tabAlerts" class="tab-content">
-          <div id="alertsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <!-- RIGHT: FLEET MANAGEMENT TABS -->
+        <div class="cyber-panel">
+          <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('tabRobots', this)">
+              🤖 Đội Xe (<span id="tabBadgeRobots">0</span>)
+            </button>
+            <button class="tab-btn" onclick="switchTab('tabDispatch', this)">
+              ⚡ Điều Khiển
+            </button>
+            <button class="tab-btn" onclick="switchTab('tabAlerts', this)">
+              🔔 Nhật Ký
+            </button>
+          </div>
+
+          <!-- TAB 1: FLEET LIST -->
+          <div id="tabRobots" class="tab-content active">
+            <!-- Robot cards dynamically injected -->
+            <div id="robotCardsList" style="display:flex; flex-direction:column; gap:12px;"></div>
+          </div>
+
+          <!-- TAB 2: REMOTE DISPATCH -->
+          <div id="tabDispatch" class="tab-content">
+            <div class="dispatch-box">
+              <h4 style="color: var(--cyan); font-size: 0.9rem; text-transform: uppercase;">Phát Lệnh Từ Xa Qua Cloud
+              </h4>
+              <p style="font-size: 0.78rem; color: var(--text-dim);">
+                Lệnh được mã hóa và chuyển tiếp tức thời qua SignalR Cloud Hub tới máy tính trạm chi nhánh hoặc trực
+                tiếp robot.
+              </p>
+
+              <!-- FAST 1-CLICK CONTROLS -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                <button class="btn-action-estop" style="justify-content: center; padding: 10px;"
+                  onclick="triggerEmergencyStop()">
+                  ⛔ DỪNG KHẨN CẤP
+                </button>
+                <button class="btn-action-charge" style="justify-content: center; padding: 10px;"
+                  onclick="triggerReturnCharge()">
+                  ⚡ VỀ TRẠM SẠC
+                </button>
+              </div>
+              <button class="btn-action-resume"
+                style="width: 100%; justify-content: center; padding: 8px; margin-bottom: 12px;"
+                onclick="triggerResume()">
+                🟢 KHÔI PHỤC HOẠT ĐỘNG (CLEAR E-STOP)
+              </button>
+
+              <div class="form-group">
+                <label>1. Chọn Robot Nhận Lệnh</label>
+                <select id="dispatchSelectRobot" class="form-control"
+                  onchange="onDispatchSelectRobotChanged()"></select>
+              </div>
+
+              <div class="form-group">
+                <label>2. Hành Động / Lộ Trình</label>
+                <select id="dispatchAction" class="form-control" onchange="onDispatchActionChanged()">
+                  <option value="NAVIGATE">📍 Điều hướng tới Điểm đến</option>
+                  <option value="RETURN_HOME">⚡ Quay về Trạm Sạc (Return Dock)</option>
+                  <option value="EMERGENCY_STOP">⛔ DỪNG KHẨN CẤP (Emergency Stop)</option>
+                  <option value="SPEAK">🔊 Phát giọng nói chào đón (TTS)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="groupDestination">
+                <label>3. Điểm Đến Chỉ Định (Chọn hoặc bấm nhanh bên dưới)</label>
+                <select id="dispatchDestination" class="form-control"></select>
+                <div id="quickStationChips" class="stations-quick-grid"></div>
+              </div>
+
+              <div class="form-group" id="groupSpeech" style="display:none;">
+                <label>Nội dung câu nói (Tiếng Việt / English)</label>
+                <input type="text" id="dispatchSpeechText" class="form-control"
+                  value="Kính chào quý khách ghé thăm Lê Hoàng Robotics!">
+              </div>
+
+              <button class="btn-primary" onclick="submitCloudCommand()" style="margin-top: 6px;">
+                🚀 GỬI LỆNH ĐIỀU HÀNH CLOUD
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 3: ALERTS & AUDIT LOGS -->
+          <div id="tabAlerts" class="tab-content">
+            <div id="alertsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+
         </div>
 
       </div>
-
-    </div>
-    <!-- END VIEW 1 (DASHBOARD) -->
+      <!-- END VIEW 1 (DASHBOARD) -->
     </div>
 
     <!-- VIEW 2: TỔ CHỨC & CHI NHÁNH (ORGANIZATIONS & SITES) -->
@@ -1612,12 +1711,14 @@
             🏢 Quản Lý Doanh Nghiệp: Tổ Chức &amp; Chi Nhánh (Sites)
           </h2>
           <p style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
-            Hệ thống phân cấp quản lý tập trung trên Cloud Server. Mọi thay đổi sẽ lập tức đồng bộ tự động xuống các phần mềm Client Desktop (LeHoangControlCenter).
+            Hệ thống phân cấp quản lý tập trung trên Cloud Server. Mọi thay đổi sẽ lập tức đồng bộ tự động xuống các
+            phần mềm Client Desktop (LeHoangControlCenter).
           </p>
         </div>
         <div style="display: flex; gap: 10px;">
           <button class="btn-primary" onclick="openAddOrgModal()">➕ Thêm Tổ Chức</button>
-          <button class="btn-action-charge" style="border-radius: 8px; font-size: 0.82rem;" onclick="openAddSiteModal()">➕ Thêm Chi Nhánh</button>
+          <button class="btn-action-charge" style="border-radius: 8px; font-size: 0.82rem;"
+            onclick="openAddSiteModal()">➕ Thêm Chi Nhánh</button>
         </div>
       </div>
 
@@ -1642,7 +1743,9 @@
               <span>📍</span> Chi Nhánh Trực Thuộc (<span id="sitesCountBadge">0</span>)
             </div>
             <div style="display: flex; gap: 8px;">
-              <select id="filterOrgInSiteTab" class="custom-select" style="min-width: 140px; padding: 4px 10px; font-size: 0.78rem;" onchange="onFilterOrgInSiteTabChanged()">
+              <select id="filterOrgInSiteTab" class="custom-select"
+                style="min-width: 140px; padding: 4px 10px; font-size: 0.78rem;"
+                onchange="onFilterOrgInSiteTabChanged()">
                 <option value="">Tất cả tổ chức</option>
               </select>
               <button class="btn-tool" onclick="openAddSiteModal()">➕ Thêm Mới</button>
@@ -1663,7 +1766,8 @@
             👥 Quản Lý Tài Khoản Người Dùng &amp; Phân Quyền
           </h2>
           <p style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
-            Tạo tài khoản người dùng cho nhân viên tại các chi nhánh để đăng nhập phần mềm LeHoangControlCenter Desktop và theo dõi đội xe.
+            Tạo tài khoản người dùng cho nhân viên tại các chi nhánh để đăng nhập phần mềm LeHoangControlCenter Desktop
+            và theo dõi đội xe.
           </p>
         </div>
         <button class="btn-primary" onclick="openAddUserModal()">➕ Tạo Tài Khoản Mới</button>
@@ -1675,7 +1779,8 @@
             <span>👤</span> Danh Sách Tài Khoản Hệ Thống (<span id="usersCountBadge">0</span>)
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="text" id="userSearchInput" class="custom-select" placeholder="🔍 Tìm kiếm user, họ tên..." style="width: 220px; font-size: 0.8rem;" oninput="renderUsersTable()">
+            <input type="text" id="userSearchInput" class="custom-select" placeholder="🔍 Tìm kiếm user, họ tên..."
+              style="width: 220px; font-size: 0.8rem;" oninput="renderUsersTable()">
           </div>
         </div>
 
@@ -1741,17 +1846,18 @@
     </div>
   </div>
 
-  <!-- MODAL THÊM TỔ CHỨC -->
+  <!-- MODAL THÊM / SỬA TỔ CHỨC -->
   <div id="modalAddOrg" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>🏢</span>
-          <span style="font-weight: 800; color: #fff;">THÊM TỔ CHỨC DOANH NGHIỆP</span>
+          <span id="modalOrgTitle" style="font-weight: 800; color: #fff;">THÊM TỔ CHỨC DOANH NGHIỆP</span>
         </div>
         <button class="btn-close-modal" onclick="closeAddOrgModal()">✕</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="addOrgId" value="">
         <div class="form-group">
           <label>Tên Tổ Chức (*)</label>
           <input type="text" id="addOrgName" class="form-control" placeholder="Ví dụ: Vinpearl Hotels & Resorts">
@@ -1768,17 +1874,18 @@
     </div>
   </div>
 
-  <!-- MODAL THÊM CHI NHÁNH / SITE -->
+  <!-- MODAL THÊM / SỬA CHI NHÁNH / SITE -->
   <div id="modalAddSite" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>📍</span>
-          <span style="font-weight: 800; color: #fff;">THÊM CHI NHÁNH / SITE</span>
+          <span id="modalSiteTitle" style="font-weight: 800; color: #fff;">THÊM CHI NHÁNH / SITE</span>
         </div>
         <button class="btn-close-modal" onclick="closeAddSiteModal()">✕</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="addSiteId" value="">
         <div class="form-group">
           <label>Thuộc Tổ Chức (*)</label>
           <select id="addSiteOrgSelect" class="form-control"></select>
@@ -1793,7 +1900,8 @@
         </div>
         <div class="form-group">
           <label>Địa Chỉ</label>
-          <input type="text" id="addSiteAddress" class="form-control" placeholder="720A Điện Biên Phủ, Bình Thạnh, TP.HCM">
+          <input type="text" id="addSiteAddress" class="form-control"
+            placeholder="720A Điện Biên Phủ, Bình Thạnh, TP.HCM">
         </div>
         <div class="form-group">
           <label>Số Điện Thoại / Hotline</label>
@@ -1807,24 +1915,25 @@
     </div>
   </div>
 
-  <!-- MODAL THÊM NGƯỜI DÙNG -->
+  <!-- MODAL THÊM / SỬA NGƯỜI DÙNG -->
   <div id="modalAddUser" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 480px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>👤</span>
-          <span style="font-weight: 800; color: #fff;">TẠO TÀI KHOẢN NGƯỜI DÙNG MỚI</span>
+          <span id="modalUserTitle" style="font-weight: 800; color: #fff;">TẠO TÀI KHOẢN NGƯỜI DÙNG MỚI</span>
         </div>
         <button class="btn-close-modal" onclick="closeAddUserModal()">✕</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="addUserId" value="">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
             <label>Tên Đăng Nhập (*)</label>
             <input type="text" id="addUserUsername" class="form-control" placeholder="vd: operator_hn">
           </div>
           <div class="form-group">
-            <label>Mật Khẩu (*)</label>
+            <label id="lblUserPassword">Mật Khẩu (*)</label>
             <input type="password" id="addUserPassword" class="form-control" placeholder="123456" value="123456">
           </div>
         </div>
@@ -1871,7 +1980,8 @@
   </div>
 
   <footer class="app-footer">
-    © 2026 LÊ HOÀNG ROBOTICS CO., LTD • Hệ Thống Điều Hành & Giám Sát Robot Đa Chi Nhánh Nền Tảng Đám Mây (.NET 8 SignalR Engine)
+    © 2026 LÊ HOÀNG ROBOTICS CO., LTD • Hệ Thống Điều Hành & Giám Sát Robot Đa Chi Nhánh Nền Tảng Đám Mây (.NET 8
+    SignalR Engine)
   </footer>
 
   <script>
@@ -2516,8 +2626,8 @@
     function populateSiteFilter() {
       const selSite = document.getElementById("selSite");
       selSite.innerHTML = '<option value="">📍 Tất cả chi nhánh</option>';
-      
-      const filtered = selectedOrgId 
+
+      const filtered = selectedOrgId
         ? fleetData.sites.filter(s => s.organizationId === selectedOrgId)
         : fleetData.sites;
 
@@ -2552,7 +2662,7 @@
       const total = robots.length;
       const online = robots.filter(r => r.status === "Online").length;
       const charging = robots.filter(r => r.status === "Charging" || r.isCharging).length;
-      
+
       let sumBatt = 0;
       robots.forEach(r => sumBatt += (r.battery || 0));
       const avgBatt = total > 0 ? Math.round(sumBatt / total) : 0;
@@ -2670,7 +2780,7 @@
         document.getElementById("hudCoords").innerText = `X: ${bot.poseX?.toFixed(2) || 0}m | Y: ${bot.poseY?.toFixed(2) || 0}m`;
         document.getElementById("hudHeading").innerText = `${bot.poseAngle?.toFixed(1) || 0}°`;
         if (bot.assignedMap) document.getElementById("hudMapName").innerText = bot.assignedMap;
-        
+
         const statusEl = document.getElementById("hudRobotStatus");
         if (statusEl) {
           if (bot.status === "EmergencyStop") {
@@ -2877,7 +2987,7 @@
       currentUser = user;
       localStorage.setItem("lehoang_cloud_user", JSON.stringify(user));
 
-      const inits = user.avatarInitials || (user.fullName ? user.fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase() : "QH");
+      const inits = user.avatarInitials || (user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : "QH");
       const elInit = document.getElementById("userInitials");
       const elDropInit = document.getElementById("userDropdownInitials");
       if (elInit) elInit.innerText = inits;
@@ -3019,7 +3129,8 @@
               ID: <span style="font-family: monospace; color: #94a3b8;">${org.id}</span>
             </div>
           </div>
-          <div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-primary" style="padding: 4px 10px; font-size: 0.72rem;" onclick="openEditOrgModal('${org.id}')" title="Sửa tổ chức này">✏️ Sửa</button>
             <button class="btn-delete-item" onclick="deleteOrg('${org.id}')" title="Xóa tổ chức này">🗑️ Xóa</button>
           </div>
         `;
@@ -3080,7 +3191,8 @@
               ${site.address ? `🏠 ${site.address} ` : ''} ${site.phone ? `• 📞 ${site.phone}` : ''}
             </div>
           </div>
-          <div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-primary" style="padding: 4px 10px; font-size: 0.72rem;" onclick="openEditSiteModal('${site.id}')" title="Sửa chi nhánh này">✏️ Sửa</button>
             <button class="btn-delete-item" onclick="deleteSite('${site.id}')" title="Xóa chi nhánh này">🗑️ Xóa</button>
           </div>
         `;
@@ -3090,6 +3202,9 @@
 
     // Modal Add Org
     function openAddOrgModal() {
+      document.getElementById("addOrgId").value = "";
+      const title = document.getElementById("modalOrgTitle");
+      if (title) title.innerText = "THÊM TỔ CHỨC DOANH NGHIỆP";
       document.getElementById("addOrgName").value = "";
       document.getElementById("addOrgCode").value = "";
       const err = document.getElementById("addOrgError");
@@ -3097,11 +3212,28 @@
       const m = document.getElementById("modalAddOrg");
       if (m) m.style.display = "flex";
     }
+
+    function openEditOrgModal(id) {
+      const org = fleetData.organizations.find(o => o.id === id);
+      if (!org) return;
+      document.getElementById("addOrgId").value = org.id;
+      const title = document.getElementById("modalOrgTitle");
+      if (title) title.innerText = `CHỈNH SỬA TỔ CHỨC: ${org.name}`;
+      document.getElementById("addOrgName").value = org.name;
+      document.getElementById("addOrgCode").value = org.code || "";
+      const err = document.getElementById("addOrgError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddOrg");
+      if (m) m.style.display = "flex";
+    }
+
     function closeAddOrgModal() {
       const m = document.getElementById("modalAddOrg");
       if (m) m.style.display = "none";
     }
+
     async function submitAddOrg() {
+      const id = document.getElementById("addOrgId").value.trim() || ("org_" + Date.now().toString(36));
       const name = document.getElementById("addOrgName").value.trim();
       const code = document.getElementById("addOrgCode").value.trim() || name.toUpperCase().replace(/\s+/g, "_");
       const err = document.getElementById("addOrgError");
@@ -3110,7 +3242,6 @@
         return;
       }
       try {
-        const id = "org_" + Date.now().toString(36);
         const res = await fetch("/api/fleet/organizations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3118,7 +3249,7 @@
         });
         if (res.ok) {
           closeAddOrgModal();
-          showToast(`✅ Đã thêm tổ chức ${name}`);
+          showToast(`✅ Đã lưu tổ chức ${name}`);
           await fetchMetadata();
         } else {
           if (err) { err.innerText = "Lỗi khi lưu tổ chức."; err.style.display = "block"; }
@@ -3140,8 +3271,11 @@
       }
     }
 
-    // Modal Add Site
+    // Modal Add / Edit Site
     function openAddSiteModal() {
+      document.getElementById("addSiteId").value = "";
+      const title = document.getElementById("modalSiteTitle");
+      if (title) title.innerText = "THÊM CHI NHÁNH / SITE";
       const sel = document.getElementById("addSiteOrgSelect");
       if (sel) {
         sel.innerHTML = "";
@@ -3158,11 +3292,38 @@
       const m = document.getElementById("modalAddSite");
       if (m) m.style.display = "flex";
     }
+
+    function openEditSiteModal(id) {
+      const site = fleetData.sites.find(s => s.id === id);
+      if (!site) return;
+      document.getElementById("addSiteId").value = site.id;
+      const title = document.getElementById("modalSiteTitle");
+      if (title) title.innerText = `CHỈNH SỬA CHI NHÁNH: ${site.name}`;
+      const sel = document.getElementById("addSiteOrgSelect");
+      if (sel) {
+        sel.innerHTML = "";
+        fleetData.organizations.forEach(o => {
+          const selected = o.id === site.organizationId ? 'selected' : '';
+          sel.innerHTML += `<option value="${o.id}" ${selected}>${o.name}</option>`;
+        });
+      }
+      document.getElementById("addSiteName").value = site.name;
+      document.getElementById("addSiteCode").value = site.code || "";
+      document.getElementById("addSiteAddress").value = site.address || "";
+      document.getElementById("addSitePhone").value = site.phone || "";
+      const err = document.getElementById("addSiteError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddSite");
+      if (m) m.style.display = "flex";
+    }
+
     function closeAddSiteModal() {
       const m = document.getElementById("modalAddSite");
       if (m) m.style.display = "none";
     }
+
     async function submitAddSite() {
+      const id = document.getElementById("addSiteId").value.trim() || ("site_" + Date.now().toString(36));
       const orgId = document.getElementById("addSiteOrgSelect").value;
       const name = document.getElementById("addSiteName").value.trim();
       const code = document.getElementById("addSiteCode").value.trim() || name.toUpperCase().replace(/\s+/g, "_");
@@ -3174,7 +3335,6 @@
         return;
       }
       try {
-        const id = "site_" + Date.now().toString(36);
         const res = await fetch("/api/fleet/sites", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3182,7 +3342,7 @@
         });
         if (res.ok) {
           closeAddSiteModal();
-          showToast(`✅ Đã thêm chi nhánh ${name}`);
+          showToast(`✅ Đã lưu chi nhánh ${name}`);
           await fetchMetadata();
         } else {
           if (err) { err.innerText = "Lỗi khi lưu chi nhánh."; err.style.display = "block"; }
@@ -3214,7 +3374,7 @@
 
       let list = systemUsers || [];
       if (search) {
-        list = list.filter(u => 
+        list = list.filter(u =>
           (u.username && u.username.toLowerCase().includes(search)) ||
           (u.fullName && u.fullName.toLowerCase().includes(search)) ||
           (u.role && u.role.toLowerCase().includes(search))
@@ -3267,7 +3427,8 @@
               ● ${u.isActive !== false ? 'Hoạt động' : 'Tạm khóa'}
             </span>
           </td>
-          <td style="text-align: right;">
+          <td style="text-align: right; white-space: nowrap;">
+            <button class="btn-primary" style="padding: 4px 8px; font-size: 0.72rem; margin-right: 6px;" onclick="openEditUserModal('${u.id}')" title="Chỉnh sửa tài khoản">✏️ Sửa</button>
             ${u.username === 'admin' ? '<span style="font-size:0.75rem; color:var(--text-dim);">(Mặc định)</span>' : `<button class="btn-delete-item" onclick="deleteUser('${u.id}')" title="Xóa tài khoản">🗑️ Xóa</button>`}
           </td>
         `;
@@ -3276,6 +3437,16 @@
     }
 
     function openAddUserModal() {
+      document.getElementById("addUserId").value = "";
+      const title = document.getElementById("modalUserTitle");
+      if (title) title.innerText = "TẠO TÀI KHOẢN NGƯỜI DÙNG MỚI";
+      const uInput = document.getElementById("addUserUsername");
+      if (uInput) { uInput.value = ""; uInput.disabled = false; }
+      const pLbl = document.getElementById("lblUserPassword");
+      if (pLbl) pLbl.innerText = "Mật Khẩu (*)";
+      const pInput = document.getElementById("addUserPassword");
+      if (pInput) { pInput.value = "123456"; pInput.placeholder = "123456"; }
+
       const orgSel = document.getElementById("addUserOrgSelect");
       if (orgSel) {
         orgSel.innerHTML = '<option value="">(Không gán / Toàn hệ thống)</option>';
@@ -3284,8 +3455,6 @@
         });
       }
       onAddUserOrgChanged();
-      document.getElementById("addUserUsername").value = "";
-      document.getElementById("addUserPassword").value = "123456";
       document.getElementById("addUserFullName").value = "";
       document.getElementById("addUserEmail").value = "";
       document.getElementById("addUserRole").value = "Operator";
@@ -3294,10 +3463,50 @@
       const m = document.getElementById("modalAddUser");
       if (m) m.style.display = "flex";
     }
+
+    function openEditUserModal(id) {
+      const u = systemUsers.find(user => user.id === id);
+      if (!u) return;
+      document.getElementById("addUserId").value = u.id;
+      const title = document.getElementById("modalUserTitle");
+      if (title) title.innerText = `CHỈNH SỬA TÀI KHOẢN: @${u.username}`;
+
+      const uInput = document.getElementById("addUserUsername");
+      if (uInput) { uInput.value = u.username; uInput.disabled = true; }
+      const pLbl = document.getElementById("lblUserPassword");
+      if (pLbl) pLbl.innerText = "Đổi Mật Khẩu (Để trống nếu giữ nguyên)";
+      const pInput = document.getElementById("addUserPassword");
+      if (pInput) { pInput.value = ""; pInput.placeholder = "(Giữ nguyên mật khẩu cũ)"; }
+
+      document.getElementById("addUserFullName").value = u.fullName || "";
+      document.getElementById("addUserEmail").value = u.email || "";
+      document.getElementById("addUserRole").value = u.role || "Operator";
+
+      const orgSel = document.getElementById("addUserOrgSelect");
+      if (orgSel) {
+        orgSel.innerHTML = '<option value="">(Không gán / Toàn hệ thống)</option>';
+        fleetData.organizations.forEach(o => {
+          const selected = o.id === u.organizationId ? 'selected' : '';
+          orgSel.innerHTML += `<option value="${o.id}" ${selected}>${o.name}</option>`;
+        });
+      }
+      onAddUserOrgChanged();
+      const siteSel = document.getElementById("addUserSiteSelect");
+      if (siteSel && u.siteId) {
+        siteSel.value = u.siteId;
+      }
+
+      const err = document.getElementById("addUserError");
+      if (err) err.style.display = "none";
+      const m = document.getElementById("modalAddUser");
+      if (m) m.style.display = "flex";
+    }
+
     function closeAddUserModal() {
       const m = document.getElementById("modalAddUser");
       if (m) m.style.display = "none";
     }
+
     function onAddUserOrgChanged() {
       const orgId = document.getElementById("addUserOrgSelect")?.value;
       const siteSel = document.getElementById("addUserSiteSelect");
@@ -3311,7 +3520,10 @@
         siteSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
       });
     }
+
     async function submitAddUser() {
+      const id = document.getElementById("addUserId").value.trim() || ("usr_" + Date.now().toString(36));
+      const isEdit = !!document.getElementById("addUserId").value.trim();
       const username = document.getElementById("addUserUsername").value.trim();
       const password = document.getElementById("addUserPassword").value.trim();
       const fullName = document.getElementById("addUserFullName").value.trim();
@@ -3321,8 +3533,13 @@
       const siteId = document.getElementById("addUserSiteSelect").value;
       const err = document.getElementById("addUserError");
 
-      if (!username || !password || !fullName) {
-        if (err) { err.innerText = "Vui lòng nhập tên đăng nhập, mật khẩu và họ tên."; err.style.display = "block"; }
+      if (!username || !fullName) {
+        if (err) { err.innerText = "Vui lòng nhập tên đăng nhập và họ tên."; err.style.display = "block"; }
+        return;
+      }
+
+      if (!isEdit && !password) {
+        if (err) { err.innerText = "Vui lòng nhập mật khẩu cho tài khoản mới."; err.style.display = "block"; }
         return;
       }
 
@@ -3330,30 +3547,31 @@
       const site = fleetData.sites.find(s => s.id === siteId);
 
       try {
-        const id = "usr_" + Date.now().toString(36);
+        const payload = {
+          id,
+          username,
+          fullName,
+          email,
+          role,
+          organizationId: orgId || null,
+          organizationName: org ? org.name : null,
+          siteId: siteId || null,
+          siteName: site ? site.name : null,
+          isActive: true
+        };
+        if (password) payload.password = password;
+
         const res = await fetch("/api/fleet/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id,
-            username,
-            password,
-            fullName,
-            email,
-            role,
-            organizationId: orgId || null,
-            organizationName: org ? org.name : null,
-            siteId: siteId || null,
-            siteName: site ? site.name : null,
-            isActive: true
-          })
+          body: JSON.stringify(payload)
         });
         if (res.ok) {
           closeAddUserModal();
-          showToast(`✅ Đã tạo tài khoản @${username}!`);
+          showToast(`✅ Đã lưu tài khoản @${username}!`);
           await fetchMetadata();
         } else {
-          if (err) { err.innerText = "Lỗi khi tạo tài khoản."; err.style.display = "block"; }
+          if (err) { err.innerText = "Lỗi khi lưu tài khoản."; err.style.display = "block"; }
         }
       } catch (e) {
         if (err) { err.innerText = "Lỗi kết nối: " + e.message; err.style.display = "block"; }
@@ -3373,5 +3591,5 @@
     }
   </script>
 </body>
-</html>
 
+</html>

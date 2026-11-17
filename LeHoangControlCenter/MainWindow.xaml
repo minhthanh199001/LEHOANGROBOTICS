@@ -3323,7 +3323,7 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="🤖 ĐỘI XE ROBOTS (Bấm thẻ để chuyển Map &amp; điều khiển)" FontSize="11" FontWeight="Bold" Foreground="#00E5FF" VerticalAlignment="Center" />
                             <Border Background="#162238" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding EnterpriseRobots.Count, StringFormat='{}{0} Robot'}" FontSize="10" FontWeight="SemiBold" Foreground="#38BDF8" />
+                                <TextBlock Text="{Binding FilteredRobots.Count, StringFormat='{}{0} Robot'}" FontSize="10" FontWeight="SemiBold" Foreground="#38BDF8" />
                             </Border>
                         </StackPanel>
                         <Button HorizontalAlignment="Right" Command="{Binding ShowEnterpriseCommand}" Content="Quản lý Robots ➔" Style="{StaticResource CyberButton}" FontSize="10" Padding="6,2" />
@@ -3331,7 +3331,7 @@
 
                     <!-- Dynamic horizontal list of robots from Enterprise database -->
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding EnterpriseRobots}">
+                        <ItemsControl ItemsSource="{Binding FilteredRobots}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" />

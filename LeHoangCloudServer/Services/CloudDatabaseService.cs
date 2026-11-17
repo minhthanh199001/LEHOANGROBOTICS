@@ -237,9 +237,38 @@ public class CloudDatabaseService
     {
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
-        using var cmd = new SqliteCommand("DELETE FROM Organizations WHERE Id = @Id;", conn);
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.ExecuteNonQuery();
+        using var tran = conn.BeginTransaction();
+        try
+        {
+            // 1. Xoá tất cả robots thuộc các sites của tổ chức này
+            using var delRobots = new SqliteCommand(@"
+                DELETE FROM Robots WHERE SiteId IN (SELECT Id FROM Sites WHERE OrganizationId = @Id);", conn, tran);
+            delRobots.Parameters.AddWithValue("@Id", id);
+            delRobots.ExecuteNonQuery();
+
+            // 2. Hủy gán người dùng khỏi tổ chức & site này
+            using var unassignUsers = new SqliteCommand(@"
+                UPDATE UserAccounts SET OrganizationId = NULL, SiteId = NULL WHERE OrganizationId = @Id;", conn, tran);
+            unassignUsers.Parameters.AddWithValue("@Id", id);
+            unassignUsers.ExecuteNonQuery();
+
+            // 3. Xoá các chi nhánh (Sites) thuộc tổ chức
+            using var delSites = new SqliteCommand("DELETE FROM Sites WHERE OrganizationId = @Id;", conn, tran);
+            delSites.Parameters.AddWithValue("@Id", id);
+            delSites.ExecuteNonQuery();
+
+            // 4. Xoá tổ chức
+            using var cmd = new SqliteCommand("DELETE FROM Organizations WHERE Id = @Id;", conn, tran);
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.ExecuteNonQuery();
+
+            tran.Commit();
+        }
+        catch
+        {
+            tran.Rollback();
+            throw;
+        }
     }
 
     public List<CloudSite> GetSites(string? orgId = null)
@@ -291,9 +320,31 @@ public class CloudDatabaseService
     {
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
-        using var cmd = new SqliteCommand("DELETE FROM Sites WHERE Id = @Id;", conn);
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.ExecuteNonQuery();
+        using var tran = conn.BeginTransaction();
+        try
+        {
+            // 1. Xoá robots thuộc chi nhánh này
+            using var delRobots = new SqliteCommand("DELETE FROM Robots WHERE SiteId = @Id;", conn, tran);
+            delRobots.Parameters.AddWithValue("@Id", id);
+            delRobots.ExecuteNonQuery();
+
+            // 2. Hủy gán người dùng khỏi chi nhánh này
+            using var unassignUsers = new SqliteCommand("UPDATE UserAccounts SET SiteId = NULL WHERE SiteId = @Id;", conn, tran);
+            unassignUsers.Parameters.AddWithValue("@Id", id);
+            unassignUsers.ExecuteNonQuery();
+
+            // 3. Xoá chi nhánh
+            using var cmd = new SqliteCommand("DELETE FROM Sites WHERE Id = @Id;", conn, tran);
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.ExecuteNonQuery();
+
+            tran.Commit();
+        }
+        catch
+        {
+            tran.Rollback();
+            throw;
+        }
     }
 
     public void SaveRobot(CloudRobotItem robot)
