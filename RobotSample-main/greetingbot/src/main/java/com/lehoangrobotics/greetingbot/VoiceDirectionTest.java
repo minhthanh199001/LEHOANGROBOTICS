@@ -62,6 +62,10 @@ final class VoiceDirectionTest implements AutoCloseable {
         try {
             input.start(url, token, new OpenAISpeechInput.Listener() {
                 private boolean current() { return enabled && !closed && run == generation; }
+                @Override public void calibrating() { main.post(() -> {
+                    if (!current()) return;
+                    status = "Đang đo tiếng ồn nền… Chờ dòng ‘OpenAI đang nghe’ rồi nói."; host.changed();
+                }); }
                 @Override public void listening() { main.post(() -> {
                     if (!current() || turning) return;
                     if (captureId.isEmpty()) status = "OpenAI đang nghe (60 giây): Hello robot / robot ơi.";

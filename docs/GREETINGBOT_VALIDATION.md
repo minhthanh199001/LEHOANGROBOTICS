@@ -1,5 +1,14 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản thử ổn định hướng âm 1.3.1
+
+- Lần thử 1.3.0 tiếp theo, log đã ghi nhận **“robot ơi” → góc 330,45° → SDK hoàn tất wakeUp**; người vận hành xác nhận **robot xoay 1 lần, các lần sau không xoay**. Các lần bị chặn vẫn nhận đúng câu gọi, nhưng bộ lọc toàn đoạn báo `unstable_direction`.
+- Đối chiếu mẫu native thấy một cụm hướng chính quanh 280–300° xen các mẫu nhảy về 0° hoặc hướng khác trong cùng đoạn thu. Bản 1.3.1 chọn cụm đa số rõ ràng thay vì bắt tất cả mẫu trong đoạn đồng nhất; giữ điều kiện active, cùng boot ID/cửa sổ thu, ít nhất 3 mẫu/100 ms, trên 60% số mẫu active và độ tập trung/độ lệch của cụm.
+- App đo trung vị 20 khung tiếng nền trước khi nghe, tránh ngưỡng khởi tạo thấp làm tiếng quạt mở đoạn thu 4,5 giây liên tục. Giao diện yêu cầu chờ hiệu chỉnh xong trước khi nói.
+- Android **16 test / 0 lỗi**, build thành công. Backend **41 kiểm tra thành công**, bổ sung trường hợp góc chủ đạo có nhiễu, vòng 360°, hai nguồn ngang nhau và đa số yếu phải bị loại. Kiểm tra VAD xác nhận nền quạt đều không mở đoạn nói, vẫn nhận mức giọng cao hơn nền và không bị một tiếng click làm lệch hiệu chỉnh.
+- Đã cài APK 1.3.1. SHA-256 file bàn giao `releases/LeHoangGreetingbot_v1.3.1-debug.apk`: `CAC0BAE244566CA441D355193F81404070D1A8D1CB80D31B1C5032A09DB21936`.
+- **Đang chờ kiểm tra xoay lặp lại trên bản 1.3.1.** Một lần SDK báo hoàn tất và một lần người vận hành thấy xoay chưa chứng minh hoạt động ổn định ở hai phía.
+
 ## Bản thử MicroArray 1.3.0
 
 - Người vận hành xác nhận bản 1.2.0 đã nhận đúng câu gọi qua OpenAI, nhưng chưa có góc nên không xoay. SDK/map vẫn hoạt động.
@@ -8,7 +17,7 @@
 - Android: **13 test / 0 lỗi**, build APK thành công. Backend: **37 kiểm tra thành công**, gồm định dạng góc, phép hiệu chỉnh +30°, góc 0°/vòng 360°, số mẫu tối thiểu, mẫu inactive, tiếng từ nhiều hướng, cửa sổ thời gian và các kiểm tra OpenAI trước đó. Fleet integration: **39 kiểm tra thành công** trên DB riêng.
 - Đã cài bản 1.3.0 qua ADB Wi-Fi; SDK kết nối, đã định vị, bản đồ `LH2-1006084342`, 5 điểm. Proxy `127.0.0.1:5053` báo `direction.ready=true`, `state=streaming`.
 - Đã quan sát app nhận góc phần cứng khớp đoạn thu: 30° (3 và 8 mẫu), 27,18° (7 mẫu), 10,69° (20 mẫu). Cả chuỗi native → proxy → Android đã thông. Các đoạn này chưa nhận đúng câu gọi, nên không phát lệnh `wakeUp`. Những đoạn góc không ổn định bị loại.
-- Lần thử 1.3.0 đầu, người vận hành báo **không cử động**; log còn lại không có câu gọi hợp lệ/lệnh xoay. Đã bổ sung chẩn đoán số mẫu, nguyên nhân không ghép được góc và số ký tự nhận dạng; không ghi audio hoặc khóa. **Chưa nghiệm thu xoay vật lý; đang chờ lần thử có đồng thời câu gọi đúng và góc hợp lệ.**
+- Lần thử 1.3.0 đầu, người vận hành báo **không cử động**; log còn lại không có câu gọi hợp lệ/lệnh xoay. Đã bổ sung chẩn đoán số mẫu, nguyên nhân không ghép được góc và số ký tự nhận dạng; không ghi audio hoặc khóa. Lần sau đã có một lần xoay được xác nhận, nhưng chưa ổn định; xem bản 1.3.1 ở trên.
 - APK bàn giao `releases/LeHoangGreetingbot_v1.3.0-debug.apk`, SHA-256 `72C939EDA01ED9C7277A2E35716EFC1278232A966765D57EDE598C9222123ED3`.
 - Bản này vẫn cần PC/proxy/ADB hoạt động. Server vận hành `192.168.0.123:5050` chưa được triển khai lại; không thay DB Fleet hiện tại.
 

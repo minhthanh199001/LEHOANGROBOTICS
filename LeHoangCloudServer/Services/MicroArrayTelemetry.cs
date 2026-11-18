@@ -59,15 +59,21 @@ public sealed class MicroArrayTelemetry(IConfiguration configuration) : Backgrou
     {
         if (start < 1 || end < start || end - start > 6500) return null;
         var voice = samples.Where(x => x.Active == 1 && x.RawAngle is >= 0 and <= 360
-            && x.AtUnixMs >= start - 250 && x.AtUnixMs <= end + 200).DistinctBy(x => x.AtUnixMs).ToArray();
+            && x.AtUnixMs >= start - 250 && x.AtUnixMs <= end + 200).DistinctBy(x => x.AtUnixMs).OrderBy(x => x.AtUnixMs).ToArray();
         if (voice.Length < 3 || voice[^1].AtUnixMs - voice[0].AtUnixMs < 100) return null;
-        var angles = voice.Select(x => (x.RawAngle + 30) % 360d).ToArray();
+        // DSP occasionally reports a short jump to a different direction during one utterance.
+        // Use a tightly grouped majority; retain the ambiguity guard for competing speakers.
+        double Distance(double a, double b) => Math.Abs((a - b + 540) % 360 - 180);
+        var inliers = voice.Select(seed => voice.Where(x => Distance((x.RawAngle + 30) % 360d,
+            (seed.RawAngle + 30) % 360d) <= 25).ToArray()).OrderByDescending(x => x.Length).First();
+        if (inliers.Length < 3 || inliers.Length <= voice.Length * .60 || inliers[^1].AtUnixMs - inliers[0].AtUnixMs < 100) return null;
+        var angles = inliers.Select(x => (x.RawAngle + 30) % 360d).ToArray();
         double sine = angles.Sum(x => Math.Sin(x * Math.PI / 180)), cosine = angles.Sum(x => Math.Cos(x * Math.PI / 180));
-        if (Math.Sqrt(sine * sine + cosine * cosine) / voice.Length < .92) return null;
+        if (Math.Sqrt(sine * sine + cosine * cosine) / inliers.Length < .92) return null;
         double mean = (Math.Atan2(sine, cosine) * 180 / Math.PI + 360) % 360;
         double spread = angles.Max(x => Math.Abs((x - mean + 540) % 360 - 180));
         if (spread > 35) return null;
-        return new(DirectionSource, mean, voice[^1].AtUnixMs, voice.Length, spread, start, end);
+        return new(DirectionSource, mean, inliers[^1].AtUnixMs, inliers.Length, spread, start, end);
     }
     protected override async Task ExecuteAsync(CancellationToken stop)
     {

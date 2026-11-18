@@ -16,6 +16,7 @@ import org.json.JSONObject;
 /** Orion PCM capture -> authenticated LAN proxy -> OpenAI. No OpenAI key on the robot. */
 final class OpenAISpeechInput {
     interface Listener {
+        void calibrating();
         void listening();
         void speechStarted(String id, long startedAt);
         void sending(String id, long startedAt, long endedAt);
@@ -58,11 +59,11 @@ final class OpenAISpeechInput {
                 if (input.getState() != AudioRecord.STATE_INITIALIZED || cancelled) throw new InterruptedException();
                 input.startRecording();
                 if (input.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) throw new IllegalStateException("Không mở được microphone.");
-                listener.listening();
+                listener.calibrating();
                 short[] stereo = new short[1024];
                 byte[] pre = new byte[9600]; int preCount = 0, prePosition = 0;
                 ByteArrayOutputStream phrase = null;
-                double noise = 100;
+                SpeechNoiseFloor noise = new SpeechNoiseFloor();
                 int serial = 0, loudFrames = 0;
                 long started = 0, lastLoud = 0;
                 String id = "";
@@ -83,9 +84,14 @@ final class OpenAISpeechInput {
                     long now = SystemClock.elapsedRealtime();
                     if (paused) { phrase = null; preCount = 0; prePosition = 0; loudFrames = 0; continue; }
                     double rms = samples == 0 ? 0 : Math.sqrt(square / samples);
-                    boolean loud = rms > Math.max(280, noise * 2.8);
+                    if (!noise.ready()) {
+                        noise.calibrate(rms);
+                        if (noise.ready()) listener.listening();
+                        continue;
+                    }
+                    boolean loud = noise.loud(rms);
                     if (phrase == null) {
-                        if (!loud) noise = Math.max(40, Math.min(2000, noise * .98 + rms * .02));
+                        if (!loud) noise.quiet(rms);
                         if (loud) {
                             phrase = new ByteArrayOutputStream(160000);
                             for (int i = 0; i < preCount; i++) phrase.write(pre[(prePosition - preCount + pre.length + i) % pre.length]);

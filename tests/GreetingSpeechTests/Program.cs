@@ -101,6 +101,15 @@ Check(MicroArrayTelemetry.Select(Samples(60, 60, 60), 10000, 20000) is null, "Re
 Check(MicroArrayTelemetry.Select(Samples(60, 60, 60).Select(x => x with { AtUnixMs = 10000 }), 10000, 10500) is null,
     "Repeated copies of one sample are insufficient");
 Check(MicroArrayTelemetry.Select(Samples(60, 60, 60), 10500, 10000) is null, "Reject clock reversal");
+var noisy = MicroArrayTelemetry.Select(Samples(295, 290, 300, 295, 0, 295, 0, 300, 290), 10000, 11000);
+Check(noisy is { SampleCount: 7 } && Math.Abs(noisy.Angle - 325) < 1, "Isolated DSP angle jumps do not discard the dominant direction");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60, 240, 240, 240), 10000, 11000) is null,
+    "Two equal competing directions remain ambiguous");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60, 240, 240), 10000, 11000) is null,
+    "A weak 60 percent majority is still insufficient");
+var noisyWrap = MicroArrayTelemetry.Select(Samples(328, 330, 332, 330, 180, 330, 180), 10000, 11000);
+Check(noisyWrap is { SampleCount: 5 } && Math.Min(noisyWrap.Angle, 360 - noisyWrap.Angle) < 1,
+    "Dominant direction works across 360-degree wraparound");
 Console.WriteLine($"Greeting speech and MicroArray: {checks} checks passed. No real audio or API key used.");
 
 sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
