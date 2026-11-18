@@ -7,7 +7,9 @@
 - **26 kiểm tra API tự kết nối**, gồm chế độ tắt/bật, đăng ký lặp không tạo trùng, chống chiếm ID, bảo toàn cấu hình sau đăng ký lại/khởi động lại, sync cần mã thiết bị, không lưu mã thô và từ chối Origin/Host sai. **14 kiểm tra giới hạn truy cập LAN**; Speech/MicroArray giữ đủ **50 kiểm tra thành công**.
 - Fleet integration **44 kiểm tra thành công** trên bản sao DB cũ. Gói publish đã qua **9 kiểm tra updater Windows PowerShell 5**, gồm bật LAN mode, lưu góc bù qua khởi động lại và sao lưu DB.
 - APK 1.4.0 đã cài Wi-Fi ADB; SDK kết nối, đã định vị, đọc bản đồ `LH2-1006084342`. SHA-256 `releases/LeHoangGreetingbot_v1.4.0-debug.apk`: `46CF5413A996790B70154121FEE00CEA4D69F62257D03AAD7338A7D9BF63B3B8`.
-- Đã chuẩn bị và đối chiếu 39 file runtime tại `bin\greeting-web-20261118-v1.4.0-auto`, launcher `CAP_NHAT_GREETING_WEB_TU_DONG.cmd` trên server. Chờ khởi động bản Web này để kiểm tra tự kết nối và đồng bộ cấu hình với robot thật; bản Web đang chạy trước đó chưa có endpoint đăng ký tự động.
+- Đã chuẩn bị và đối chiếu 39 file runtime tại `bin\greeting-web-20261118-v1.4.0-auto`; người vận hành đã khởi động launcher `CAP_NHAT_GREETING_WEB_TU_DONG.cmd` trên server. `/api/greeting/access` xác nhận `managementMode=lan`, `automaticEnrollment=true`. Robot tự đăng ký bằng danh tính đã lưu, không tạo robot/mã thủ công từ máy phát triển.
+- API vận hành xác nhận robot trực tuyến, SDK sẵn sàng, bản đồ `LH2-1006084342`, đủ **5 điểm**. Kiểm tra đồng bộ thật: đổi bù góc trên server thành **26°**, đọc được **26°** trong cấu hình riêng của app robot; sau đó khôi phục **25°** và xác nhận app đã nhận lại **25°**. Không phát lệnh di chuyển trong lượt kiểm tra này.
+- Kiểm tra bằng trình duyệt mới: mở Web → tab **GREETINGBOT**, danh sách/robot/bản đồ/5 điểm và cấu hình **25°** tự tải; không hiện bước mã quản trị hoặc mã ghép nối. Fleet tiếp tục trả 1 tổ chức, 1 chi nhánh, 1 robot Luckibot và 12 đơn đang hoạt động. Thuật toán giọng nói và cấu hình proxy PC/ADB giữ nguyên.
 
 ## Chuẩn bị cập nhật Web vận hành qua SMB
 
@@ -18,7 +20,7 @@
 - Đã chép và đối chiếu SHA-256 **39 file runtime** trong `bin\greeting-web-20261118-v1.3.6`. Có launcher local `CAP_NHAT_GREETING_WEB.cmd`, `XEM_MA_GREETING.cmd` và hướng dẫn trong thư mục server. Máy server không cần .NET SDK để chạy gói này.
 - Người vận hành đã chạy launcher **trên chính máy server**. HTTP xác nhận `192.168.0.123:5050` trả Web mới có tab Greetingbot/trường góc bù; `/js/greeting.js` khớp chính xác gói đã kiểm tra và `/api/greeting/robots` trả JSON 401 khi chưa nhập mã quản trị. Fleet tiếp tục trả 1 tổ chức, 1 chi nhánh, 1 robot, 12 đơn đang hoạt động. Thuật toán/ứng dụng giọng nói 1.3.6 giữ nguyên.
 - Bản chụp SQLite sau triển khai xác nhận hai bảng Greetingbot được tạo trong đúng DB cũ; schema và toàn bộ dữ liệu `Organizations`, `Sites`, `UserAccounts` khớp bản chụp trước cập nhật. Các trường trạng thái robot tiếp tục được cập nhật theo Fleet đang hoạt động.
-- Robot thật vẫn kết nối SDK, đã định vị và đọc bản đồ `LH2-1006084342`. Mã ghép nối cũ bị server mới từ chối; đang chờ tạo mã thiết bị trên Web vận hành để ghép nối và kiểm tra đồng bộ cấu hình cuối cùng.
+- Sau lần cập nhật Web đầu tiên, mã ghép nối cũ bị từ chối. Luồng thủ công này đã được thay bằng tự đăng ký/kết nối LAN ở 1.4.0; xem kết quả triển khai đã xác minh phía trên.
 
 ## Bản giảm trễ / ghép hướng theo giọng 1.3.6
 
@@ -122,7 +124,6 @@
 
 - Người vận hành nghe thử để đánh giá chất lượng/âm lượng thực tế; hệ thống đã xác nhận hoàn tất chu trình thu/phát, chưa có xác nhận nghe từ người tại robot.
 - Thử đi tới điểm được người vận hành lựa chọn và dừng. Robot đã định vị; chưa gửi lệnh di chuyển vật lý trong quá trình kiểm thử.
-- Web mới trên server Windows `192.168.0.123:5050` đã chạy; cần hoàn tất ghép nối app và kiểm tra cấu hình trên robot thật.
-- Ghép nối lại với server vận hành sau cập nhật. Luồng bản đồ/điểm và ACK đã kiểm tra với robot thật trên server kiểm thử cổng 5051, không phải bản đang chạy trên 192.168.0.123.
+- Tự kết nối và cấu hình góc bù đã kiểm tra với robot thật trên server vận hành `192.168.0.123:5050`. ACK điều hướng/ghi-phát trước đó được kiểm tra trên server thử cổng 5051; chuyến đi vật lý tới điểm được chọn vẫn cần nghiệm thu tại nơi vận hành.
 
 Không coi các kiểm tra giả lập giao thức là bằng chứng robot đã di chuyển hoặc người vận hành đã nghe âm thanh. Không thay đổi vị trí robot, bản đồ, app mặc định khởi động hay dữ liệu Fleet hiện có trong quá trình cài thử.

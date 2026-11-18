@@ -20,7 +20,7 @@ Thông tin kết nối được lưu trước khi gửi đăng ký, giữ qua kh
 
 Server bật chế độ này bằng `GREETING_LAN_AUTO_PAIRING=true` hoặc tham số `-EnableLanAutoPairing` của updater. Chế độ mặc định trên môi trường khác vẫn dùng mã quản trị. Truy cập tự động chỉ nhận địa chỉ IPv4 riêng cùng subnet của giao diện server đang phục vụ; không tin `X-Forwarded-For`, không nhận Origin/Referer khác Web và yêu cầu Host bằng IP thật của server. App đăng ký không có Origin của trình duyệt; các lượt sync tiếp theo luôn cần mã riêng từng thiết bị, server chỉ lưu SHA-256 của mã đó.
 
-Gói triển khai tự động đã chuẩn bị tại `bin\greeting-web-20261118-v1.4.0-auto` trong share server. Chạy **một lần trên chính máy server** bằng đường dẫn local:
+Gói triển khai tự động tại `bin\greeting-web-20261118-v1.4.0-auto` trong share server đã được người vận hành khởi động ngày 18/11/2026. Robot đã tự xuất hiện trên Web, SDK sẵn sàng, đủ 5 điểm; cấu hình bù góc từ Web đã được xác minh trên robot thật. Khi cần khởi động lại bản này, chạy **trên chính máy server** bằng đường dẫn local:
 
 ```text
 F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer\CAP_NHAT_GREETING_WEB_TU_DONG.cmd
