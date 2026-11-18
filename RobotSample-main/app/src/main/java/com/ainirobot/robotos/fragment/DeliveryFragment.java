@@ -1153,25 +1153,41 @@ public class DeliveryFragment extends Fragment {
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                rowLp.bottomMargin = dpToPx(10);
+                rowLp.bottomMargin = dpToPx(8);
                 row.setLayoutParams(rowLp);
                 mContainerStationButtons.addView(row);
             }
 
-            Button btn = new Button(getContext());
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dpToPx(46), 1.0f);
+            TextView btn = new TextView(getContext());
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dpToPx(50), 1.0f);
             lp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
             btn.setLayoutParams(lp);
 
             btn.setBackgroundResource(R.drawable.bg_station_glass_button);
             btn.setTextColor(0xFFFFFFFF);
-            // Giảm kích thước chữ nút điểm đến, tắt ép in hoa (allCaps) và padding nhỏ gọn để tên bàn không bị vỡ/xuống dòng
-            btn.setTransformationMethod(null);
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, stationName.length() > 9 ? 10.5f : 11.5f);
-            btn.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
+            btn.setGravity(Gravity.CENTER);
+            btn.setClickable(true);
+            btn.setFocusable(true);
+            btn.setIncludeFontPadding(false);
+            btn.setPadding(dpToPx(4), dpToPx(2), dpToPx(4), dpToPx(2));
             btn.setMaxLines(2);
             btn.setEllipsize(TextUtils.TruncateAt.END);
+            btn.setLineSpacing(0, 0.92f);
+
+            // Cân chỉnh cỡ chữ theo độ dài để tên điểm đến hiển thị rõ ràng, không bị tràn hay cắt chữ
+            if (stationName.length() > 14) {
+                btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
+            } else if (stationName.length() > 8) {
+                btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            } else {
+                btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            }
             btn.setText(stationName);
+
+            try {
+                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                        btn, 8, 12, 1, TypedValue.COMPLEX_UNIT_SP);
+            } catch (Throwable ignored) {}
 
             // Click destination -> Assign to current active tray!
             btn.setOnClickListener(new View.OnClickListener() {
@@ -1183,6 +1199,19 @@ public class DeliveryFragment extends Fragment {
 
             if (row != null) {
                 row.addView(btn);
+            }
+        }
+
+        // Bổ sung các ô placeholder vô hình để hàng cuối luôn có kích thước đều tăm tắp với các hàng trên
+        if (row != null && mStationsList.size() % cols != 0) {
+            int remainder = cols - (mStationsList.size() % cols);
+            for (int k = 0; k < remainder; k++) {
+                View placeholder = new View(getContext());
+                LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(0, dpToPx(50), 1.0f);
+                plp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
+                placeholder.setLayoutParams(plp);
+                placeholder.setVisibility(View.INVISIBLE);
+                row.addView(placeholder);
             }
         }
     }
@@ -2505,25 +2534,26 @@ public class DeliveryFragment extends Fragment {
     }
 
     private void rebuildCruiseStationChips() {
-        if (mContainerCruiseStations == null)
+        if (mContainerCruiseStations == null || getContext() == null)
             return;
         mContainerCruiseStations.removeAllViews();
 
         int columns = 3;
         LinearLayout currentRow = null;
+        int placedCount = 0;
 
         for (int i = 0; i < mStationsList.size(); i++) {
             final String stationName = mStationsList.get(i);
             if (stationName.equalsIgnoreCase("Stand-by Point"))
                 continue;
 
-            if (i % columns == 0 || currentRow == null) {
+            if (placedCount % columns == 0) {
                 currentRow = new LinearLayout(getContext());
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
                 currentRow.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
-                currentRow.setPadding(0, 0, 0, 8);
+                currentRow.setPadding(0, 0, 0, dpToPx(8));
                 mContainerCruiseStations.addView(currentRow);
             }
 
@@ -2532,12 +2562,14 @@ public class DeliveryFragment extends Fragment {
 
             final TextView chip = new TextView(getContext());
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    0, 48, 1.0f);
-            lp.setMargins(4, 0, 4, 0);
+                    0, dpToPx(46), 1.0f);
+            lp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
             chip.setLayoutParams(lp);
             chip.setGravity(Gravity.CENTER);
-            chip.setTextSize(13);
+            chip.setTextSize(12);
             chip.setTypeface(null, Typeface.BOLD);
+            chip.setMaxLines(2);
+            chip.setEllipsize(TextUtils.TruncateAt.END);
 
             if (isSelected) {
                 chip.setBackgroundResource(R.drawable.bg_btn_table_selected);
@@ -2561,7 +2593,23 @@ public class DeliveryFragment extends Fragment {
                 }
             });
 
-            currentRow.addView(chip);
+            if (currentRow != null) {
+                currentRow.addView(chip);
+            }
+            placedCount++;
+        }
+
+        // Fill remaining items in the last row for uniform layout
+        if (currentRow != null && placedCount % columns != 0) {
+            int remainder = columns - (placedCount % columns);
+            for (int k = 0; k < remainder; k++) {
+                View placeholder = new View(getContext());
+                LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(0, dpToPx(46), 1.0f);
+                plp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
+                placeholder.setLayoutParams(plp);
+                placeholder.setVisibility(View.INVISIBLE);
+                currentRow.addView(placeholder);
+            }
         }
 
         // Update Route Summary Text
