@@ -91,7 +91,7 @@ var right = MicroArrayTelemetry.Select(Samples(60, 61, 59, 60), 10000, 10500);
 Check(right is not null && Math.Abs(right.Angle - 90) < .01 && right.Source == MicroArrayTelemetry.DirectionSource,
     "Return calibrated native direction with provenance");
 Check(right is { CaptureStartUnixMs: 10000, CaptureEndUnixMs: 10500, AtUnixMs: 10300 }, "Echo the exact capture and native sample timestamp");
-Check(MicroArrayTelemetry.Select(Samples(60, 60), 10000, 10500) is null, "Single/transient directions cannot trigger motion");
+Check(MicroArrayTelemetry.Select(Samples(60), 10000, 10500) is null, "A single direction cannot trigger motion");
 Check(MicroArrayTelemetry.Select(Samples(60, 60, 60).Select(x => x with { Active = 0 }), 10000, 10500) is null,
     "Inactive DSP retains old angles and must never trigger motion");
 Check(MicroArrayTelemetry.Select(Samples(-1, -1, -1), 10000, 10500) is null, "Reject missing DSP direction");
@@ -118,6 +118,21 @@ Check(MicroArrayTelemetry.SelectSpeechWindow(voiceAndTail, 10000, 12000, 13000) 
     "Reject voice activity outside the recording");
 Check(MicroArrayTelemetry.SelectSpeechWindow(voiceAndTail, 10000, 12000, 9000) is null,
     "Reject reversed voice timestamps");
+var pair = MicroArrayTelemetry.Select(Samples(60, 70), 10000, 10500);
+Check(pair is { SampleCount: 2, SampleSpanMs: 100 } && Math.Abs(pair.Angle - 95) < .01,
+    "Accept two consecutive coherent native samples for a short call");
+Check(MicroArrayTelemetry.Select(Samples(60, 80), 10000, 10500) is null,
+    "Two changing directions are insufficient");
+Check(MicroArrayTelemetry.Select(new[] { new MicroArraySample(10000, 1, 60), new MicroArraySample(10300, 1, 60) }, 10000, 10500) is null,
+    "Two samples separated by a long gap are insufficient");
+var competing = Samples(60, 60, 60, 60, 60, 60, 240, 240, 240, 240, 240, 240);
+Check(MicroArrayTelemetry.SelectSpeechWindow(competing, 10000, 11500, 11100) is null,
+    "Do not guess between competing directions over a full recording");
+var focused = MicroArrayTelemetry.SelectSpeechWindow(competing, 10000, 11500, 11100, 10200);
+Check(focused is not null && Math.Abs(focused.Angle - 90) < .01,
+    "Select the coherent direction around sustained recorded voice energy");
+Check(MicroArrayTelemetry.SelectSpeechWindow(competing, 10000, 11500, 11100, 12000) is null,
+    "Reject a focus timestamp outside the spoken portion");
 Console.WriteLine($"Greeting speech and MicroArray: {checks} checks passed. No real audio or API key used.");
 
 sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler

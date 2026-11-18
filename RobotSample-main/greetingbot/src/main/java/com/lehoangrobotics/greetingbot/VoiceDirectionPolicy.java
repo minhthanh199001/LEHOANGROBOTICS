@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 /** Keyword and freshness checks, independent of Android and the physical robot. */
 final class VoiceDirectionPolicy {
     static final long ANGLE_MAX_AGE_MS = 5000;
-    static final long COOLDOWN_MS = 2000;
+    static final long COOLDOWN_MS = 500;
     private static final Pattern KEYWORD = Pattern.compile("(?:^| )(hello robot|robot oi)(?: |$)");
     private final LinkedHashSet<String> consumed = new LinkedHashSet<>();
     private boolean enabled, turning, consumedUtterance;
@@ -85,6 +85,7 @@ final class VoiceDirectionPolicy {
     }
     void wakeAngle(double angle, long now) { if (enabled && !turning && validAngle(angle)) { wakeAngle = angle % 360; angleAt = now; } }
     void clearAngle() { wakeAngle = Double.NaN; angleAt = Long.MIN_VALUE; }
+    boolean consumed(String eventId) { return eventId != null && consumed.contains(eventId); }
     double select(String heard, double explicitAngle, String eventId, long now) {
         if (!enabled || turning || consumedUtterance || now < cooldownUntil || keyword(heard).isEmpty()) return Double.NaN;
         if (eventId != null && consumed.contains(eventId)) return Double.NaN;

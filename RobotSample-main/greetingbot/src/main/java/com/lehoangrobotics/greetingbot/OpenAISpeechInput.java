@@ -52,7 +52,7 @@ final class OpenAISpeechInput {
                     || (base.getPath() != null && !base.getPath().isEmpty() && !base.getPath().equals("/")))
                     throw new IllegalArgumentException("Địa chỉ server giọng nói không hợp lệ.");
                 String server = baseUrl.replaceAll("/+$", "");
-                JSONObject ready = request(server + "/api/greeting/speech/status", token, null, "", 0, 0, 0);
+                JSONObject ready = request(server + "/api/greeting/speech/status", token, null, "", 0, 0, 0, 0);
                 if (!ready.optBoolean("ready")) throw new IllegalStateException("Server chưa cấu hình khóa OpenAI.");
                 JSONObject directionStatus = ready.optJSONObject("direction");
                 if (directionStatus == null || !directionStatus.optBoolean("ready"))
@@ -100,6 +100,8 @@ final class OpenAISpeechInput {
                 byte[] pre = new byte[16000]; int preCount = 0, prePosition = 0;
                 ByteArrayOutputStream phrase = null;
                 SpeechNoiseFloor noise = new SpeechNoiseFloor();
+                SpeechScanPolicy scan = new SpeechScanPolicy();
+                VoiceFocus focus = new VoiceFocus();
                 int serial = 0, loudFrames = 0;
                 long started = 0, lastLoud = 0, lastFrame = 0, lastMeter = 0;
                 double peakRms = 0;
@@ -139,30 +141,39 @@ final class OpenAISpeechInput {
                             phrase = new ByteArrayOutputStream(160000);
                             for (int i = 0; i < preCount; i++) phrase.write(pre[(prePosition - preCount + pre.length + i) % pre.length]);
                             started = now; lastLoud = now; loudFrames = 1; id = "audio-" + (++serial);
+                            scan.begin();
+                            focus.begin();
                             listener.speechStarted(id, started);
                         }
                     }
                     if (phrase != null) {
                         phrase.write(bytes);
+                        focus.observe(now, rms);
                         if (loud) { lastLoud = now; loudFrames++; }
-                        if (now - lastLoud >= 800 || now - started >= 4500) {
-                            byte[] pcm = phrase.toByteArray(); phrase = null; preCount = 0; prePosition = 0;
-                            if (loudFrames >= 3 && now - started >= 450 && pcm.length >= 14400) {
+                        SpeechScanPolicy.Scan action = scan.next(now - started, now - lastLoud, loudFrames, phrase.size());
+                        if (action != SpeechScanPolicy.Scan.NONE) {
+                            byte[] pcm = phrase.toByteArray();
+                            if (action != SpeechScanPolicy.Scan.PREVIEW) { phrase = null; preCount = 0; prePosition = 0; }
+                            if (action != SpeechScanPolicy.Scan.DISCARD) {
                                 listener.sending(id, started, now);
                                 // The reader continues during upload; every buffered frame keeps its actual capture time.
                                 long offset = System.currentTimeMillis() - SystemClock.elapsedRealtime();
                                 long startUnix = started + offset, endUnix = now + offset;
-                                JSONObject result = request(server + "/api/greeting/speech/transcribe", token, wave(pcm), bootId, startUnix, endUnix, lastLoud + offset);
+                                long requestAt = SystemClock.elapsedRealtime();
+                                JSONObject result = request(server + "/api/greeting/speech/transcribe", token, wave(pcm), bootId, startUnix, endUnix,
+                                    lastLoud + offset, focus.at() > 0 ? Math.min(focus.at(), lastLoud) + offset : 0);
                                 if (cancelled) break;
                                 MicroArrayReading direction = MicroArrayReading.parse(result.optString("direction", "null"), startUnix, endUnix, offset);
                                 android.util.Log.i("GreetingVoice", "Capture " + result.optString("captureStatus")
                                     + "; transcript chars=" + result.optString("text").length()
-                                    + "; parsed angle=" + (direction == null ? "none" : direction.angle));
+                                    + "; parsed angle=" + (direction == null ? "none" : direction.angle)
+                                    + "; stage=" + action + "; captureMs=" + (now - started)
+                                    + "; asrMs=" + (SystemClock.elapsedRealtime() - requestAt));
                                 listener.result(id, result.optString("text"), now, direction);
                                 listener.listening();
                             } else android.util.Log.i("GreetingVoice", "Short audio ignored: loudFrames=" + loudFrames
                                 + "; durationMs=" + (now - started) + "; pcmBytes=" + pcm.length);
-                            loudFrames = 0;
+                            if (phrase == null) loudFrames = 0;
                         }
                     } else {
                         for (byte value : bytes) { pre[prePosition] = value; prePosition = (prePosition + 1) % pre.length; preCount = Math.min(pre.length, preCount + 1); }
@@ -192,7 +203,7 @@ final class OpenAISpeechInput {
         AudioRecord input = recorder; if (input != null) try { input.stop(); } catch (Exception ignored) {}
         Thread thread = worker; if (thread != null) thread.interrupt();
     }
-    private JSONObject request(String url, String token, byte[] wave, String bootId, long startUnix, long endUnix, long voiceEndUnix) throws Exception {
+    private JSONObject request(String url, String token, byte[] wave, String bootId, long startUnix, long endUnix, long voiceEndUnix, long focusUnix) throws Exception {
         if (cancelled) throw new InterruptedException();
         HttpURLConnection request = (HttpURLConnection) new java.net.URL(url).openConnection();
         connection = request;
@@ -206,6 +217,7 @@ final class OpenAISpeechInput {
                 request.setRequestProperty("X-Audio-Start-Ms", Long.toString(startUnix));
                 request.setRequestProperty("X-Audio-End-Ms", Long.toString(endUnix));
                 request.setRequestProperty("X-Voice-End-Ms", Long.toString(voiceEndUnix));
+                if (focusUnix > 0) request.setRequestProperty("X-Voice-Focus-Ms", Long.toString(focusUnix));
                 try (java.io.OutputStream output = request.getOutputStream()) { output.write(wave); }
             }
             int code = request.getResponseCode();

@@ -41,4 +41,11 @@ public class OpenAISpeechInputTest {
         window.observe(360, 11000); window.end("a", 12000);
         assertEquals(0, window.forResult("a", 13000), 0);
     }
+    @Test public void aFinalScanCanRefineTheDirectionFromItsPreview() {
+        CapturedSoundAngle window = new CapturedSoundAngle(); window.begin("a", 10000);
+        window.end("a", 11400); assertTrue(window.observe(30, 11000));
+        assertFalse(window.observe(90, 12000));
+        window.end("a", 13000); assertTrue(window.observe(90, 12000));
+        assertEquals(90, window.forResult("a", 14000), 0);
+    }
 }

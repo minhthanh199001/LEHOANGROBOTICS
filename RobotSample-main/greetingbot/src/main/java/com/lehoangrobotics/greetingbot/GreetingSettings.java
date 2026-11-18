@@ -4,7 +4,7 @@ import org.json.JSONObject;
 
 final class GreetingSettings {
     double linearSpeed = 0.3, angularSpeed = 0.7, arrivalTolerance = 0.2;
-    double voiceAngleOffset = 10;
+    double voiceAngleOffset = 25;
     int obstacleTimeoutMs = 30000, microphoneSeconds = 5, playbackVolume = 60;
 
     void update(JSONObject json) {

@@ -53,4 +53,13 @@ public class VoiceDirectionPolicyTest {
         p.stop();
         assertTrue(Double.isNaN(p.select("Hello robot", 90, "c", 20000)));
     }
+    @Test public void acceptsANewCallHalfASecondAfterFinishingWithoutReplayingTheOldCall() {
+        VoiceDirectionPolicy p = new VoiceDirectionPolicy(); p.start(); p.speechStarted(10000);
+        assertEquals(90, p.select("robot ơi", 90, "a", 10100), 0); p.finished(11000);
+        p.speechStarted(11100);
+        assertTrue(Double.isNaN(p.select("robot ơi", 270, "b", 11499)));
+        assertEquals(270, p.select("robot ơi", 270, "b", 11500), 0);
+        p.finished(12000); p.speechStarted(13000);
+        assertTrue(Double.isNaN(p.select("robot ơi", 90, "a", 13001)));
+    }
 }

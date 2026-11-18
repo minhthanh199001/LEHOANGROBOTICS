@@ -12,10 +12,10 @@
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
 - Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
 
-## Giọng nói OpenAI / test hướng âm — bản thử 1.3.5
+## Giọng nói OpenAI / test hướng âm — bản thử 1.3.6
 
 1. Mở app từ Home / Application Center của robot. Dừng điều hướng và test ghi/phát âm thanh.
-2. Ngắt dây sạc trước khi kiểm tra chuyển động. Bấm **Test hướng âm**, chờ đo tiếng ồn nền khoảng 0,6 giây và dòng **OpenAI đang nghe**, đứng lệch bên trái/phải rồi nói câu gọi. Chờ robot hoàn tất và nghỉ ít nhất 2 giây trước lần gọi tiếp theo.
+2. Ngắt dây sạc trước khi kiểm tra chuyển động. Bấm **Test hướng âm**, chờ đo tiếng ồn nền khoảng 0,6 giây và dòng **OpenAI đang nghe**, đứng lệch bên trái/phải rồi nói câu gọi. Chờ robot hoàn tất và nghỉ nửa giây trước lần gọi tiếp theo.
 3. Xem dòng **Nghe được** và trạng thái góc MicroArray. App chỉ xử lý câu nhận dạng cuối cùng; câu nhận sai hoặc chưa có góc không sinh chuyển động.
 4. Nút **DỪNG CHUYỂN ĐỘNG**, nút dừng test, hết 60 giây hoặc rời màn hình đều kết thúc nghe và yêu cầu dừng vòng xoay đang chạy. Không tự tiếp tục sau khi quay lại app.
 
@@ -25,7 +25,9 @@ Audio của test ghi/phát vẫn chỉ ở RAM trên robot. Với test OpenAI, t
 
 OpenAI trả văn bản, không trả góc MicroArray. ROM V11.9 hiện không gửi góc vào callback app; `getVoiceAngle()` trả map rỗng. Bản 1.3.0 bổ sung cầu nối chẩn đoán **PC/ADB** đọc thụ động các mẫu `SoundInfoTask` của AgentService. Không thay callback của ứng dụng thu thập dữ liệu hệ thống, không truy cập socket microphone riêng và không yêu cầu root. Callback wake chuẩn vẫn được hỗ trợ nếu ROM phát sự kiện.
 
-Cầu nối chỉ bật với đúng SHA-256 AgentService 100.3.168 đã đối chiếu trên robot. Native `SoundInfoTask` cộng 30° vào `audio_angle` trước khi trả cho client Orion; cầu nối áp dụng cùng phép đổi tọa độ. Chỉ dùng mẫu `active=1`; giá trị khi `active=0` là góc cũ. Bản 1.3.1 chọn cụm góc trong bán kính 25° có **trên 60%** số mẫu active của đoạn thu, ít nhất 3 mẫu khác thời điểm và trải qua ít nhất 100 ms. Cụm đó vẫn phải ổn định (độ tập trung tròn ≥0,92; độ lệch lớn nhất ≤35°); các hướng cạnh tranh không có đa số rõ ràng bị loại. Nhờ vậy vài mẫu DSP nhảy hướng không làm mất toàn bộ câu gọi. Góc 0° hợp lệ; không lấy `beam_angle` làm góc người nói.
+Cầu nối chỉ bật với đúng SHA-256 AgentService 100.3.168 đã đối chiếu trên robot. Native `SoundInfoTask` cộng 30° vào `audio_angle` trước khi trả cho client Orion; cầu nối áp dụng cùng phép đổi tọa độ. Chỉ dùng mẫu `active=1`; giá trị khi `active=0` là góc cũ. Chọn cụm góc trong bán kính 25° có **trên 60%** số mẫu active trong cửa sổ xét. Với từ 3 mẫu, yêu cầu trải qua ít nhất 100 ms, độ tập trung tròn ≥0,92 và độ lệch lớn nhất ≤35°. Với câu ngắn chỉ có 2 mẫu, chỉ chấp nhận khi chúng cách nhau 80–180 ms và chênh nhau tối đa khoảng 10°; một mẫu đơn hoặc hai mẫu đổi hướng không đủ. Góc 0° hợp lệ; không lấy `beam_angle` làm góc người nói.
+
+Bản 1.3.6 dùng mức PCM của ba khung mạnh liên tiếp trong cửa sổ 300 ms để tìm phần giọng rõ; một tiếng click đơn không chọn được cửa sổ. Header `X-Voice-Focus-Ms` giúp xét hướng MicroArray trong ±200 ms quanh phần đó trước, rồi mới thử cả phần có tiếng nói. Cả hai cách vẫn phải đạt điều kiện mẫu hợp lệ; không phát lệnh khi dữ liệu thật chưa đủ.
 
 Trước khi nghe, app dùng trung vị 20 khung âm thanh để đo nền; tiếng quạt đều không tự mở một đoạn thu dài liên tục như khi khởi tạo ngưỡng cố định thấp. Một tiếng động ngắn trong lúc hiệu chỉnh không nâng toàn bộ ngưỡng nghe. Bước đo nền không lưu hoặc tải riêng audio.
 
@@ -33,11 +35,11 @@ Bản 1.3.3 giữ một luồng đọc PCM trong khi yêu cầu OpenAI đang x�
 
 Ngưỡng mở câu là tối thiểu RMS 200 hoặc gấp 2 nền đã đo, với ít nhất 3 khung lớn và audio tối thiểu 0,45 giây. Giao diện báo microphone đang có tín hiệu hay đang chờ giọng rõ hơn. Log chẩn đoán chỉ chứa mức RMS, ngưỡng, số khung và thời gian; không ghi bản thu hoặc khóa.
 
-Bản 1.3.4 giữ trước câu 0,5 giây và đợi im lặng 0,8 giây để giảm cắt mất từ. Header `X-Voice-End-Ms` chỉ vị trí khung tiếng nói cuối; proxy không dùng tiếng nền sau đó để chọn hướng. Callback wake trực tiếp từ SDK được ưu tiên khi có góc hợp lệ trong cùng câu. Có góc nhưng chưa nhận đúng một trong hai câu gọi thì app báo rõ và tiếp tục nghe.
+Bản 1.3.6 giữ trước câu 0,5 giây, gửi một lần nhận dạng sớm tại khoảng 1,4 giây nếu câu vẫn tiếp diễn, và kết thúc khi im lặng 0,6 giây hoặc thu đủ 3 giây. Mỗi câu tối đa hai yêu cầu ASR; ID câu gọi ngăn kết quả sớm/đầy đủ gây hai lượt xoay. Nếu kết quả sớm chưa đủ, kết quả đầy đủ có thể cập nhật góc tốt hơn của cùng câu. Header `X-Voice-End-Ms` chỉ vị trí khung tiếng nói cuối; proxy không dùng tiếng nền sau đó để chọn hướng. Callback wake trực tiếp từ SDK vẫn được ưu tiên. Có góc nhưng chưa nhận đúng một trong hai câu gọi thì app báo rõ và tiếp tục nghe. Các mốc này là lịch gửi; thời gian OpenAI/mạng được đo riêng trong log.
 
-Theo hiệu chỉnh của người vận hành, **bù thêm 10° theo chiều quay**, sau phép đổi tọa độ native +30°. Đổi góc SDK 0…360° sang góc có dấu trước khi bù: **+30° → +40°**, **−30° → −40°** (góc SDK 330° → 320°). Không cộng cố định +10° vào cả hai phía. Góc 0° giữ nguyên; độ lớn được giới hạn dưới 180° để không đổi sang chiều ngược lại khi SDK chọn đường quay ngắn nhất.
+Theo yêu cầu mới của người vận hành, **tổng mức bù là 25° theo chiều quay**, sau phép đổi tọa độ native +30°. Đổi góc SDK 0…360° sang góc có dấu trước khi bù: **+30° → +55°**, **−30° → −55°** (góc SDK 330° → 305°). Không cộng cố định +25° vào cả hai phía. Góc 0° giữ nguyên. Phép bù được giữ đầy đủ khi qua 180°: +175° → +200°, −175° → −200°; mã hóa lại 0…360° để SDK chọn đường tới cùng hướng đích.
 
-Chỉnh tại **Cấu hình → Giọng nói OpenAI → Bù theo chiều quay** hoặc trường cùng tên trong tab Greetingbot Web; mặc định 10, khoảng -90…90°. Giá trị dương tăng độ lớn góc ở cả hai chiều; giá trị âm giảm độ lớn, dừng ở 0° thay vì đảo chiều. Web đồng bộ qua `GreetingSettings.voiceAngleOffset`; giá trị Web thay cấu hình cục bộ khi robot ghép nối/đồng bộ với server đã cập nhật. Bù dựa trên số đo thân tiếp theo dùng đích đã hiệu chỉnh, không cộng thêm 10° lần nữa.
+Chỉnh tại **Cấu hình → Giọng nói OpenAI → Bù theo chiều quay** hoặc trường cùng tên trong tab Greetingbot Web; mặc định 25, khoảng -90…90°. Nếu nâng cấp thiết bị đã lưu giá trị cũ, đặt lại trường này thành 25; robot đang thử đã được lưu 25 qua giao diện app. Giá trị dương tăng độ lớn góc ở cả hai chiều; giá trị âm giảm độ lớn, dừng ở 0° thay vì đảo chiều. Web đồng bộ qua `GreetingSettings.voiceAngleOffset`; giá trị Web thay cấu hình cục bộ khi robot ghép nối/đồng bộ với server đã cập nhật. Bù dựa trên số đo thân tiếp theo dùng đích đã hiệu chỉnh, không áp dụng mức bù cấu hình lần thứ hai.
 
 Lệnh dùng `wakeUp(reqId, angle, false, listener)` để không phân góc sang chuyển động đầu riêng. App đọc `getPosition().theta` (radian) trước/sau và tính hướng tuyệt đối cần đạt. Khi SDK kết thúc còn sai 5–45°, app được bù **tối đa một lần**, chỉ khi còn quyền điều khiển, test vẫn bật và câu gọi chưa quá hạn 8 giây. Giữ ngừng nhận câu tiếp theo trong cả lúc đo/bù; dừng test hoặc RobotOS tiếp quản hủy phần bù chưa gửi. Sai lệch lớn hơn 45°, thiếu số đo hoặc hết hạn không sinh vòng bù. Giao diện hiển thị độ quay thực/yêu cầu và sai lệch còn lại; số đo thân vẫn không thay cho kiểm chứng đúng hướng người gọi.
 
@@ -63,11 +65,11 @@ Trên robot: **Cấu hình → Giọng nói OpenAI**, server `http://127.0.0.1:5
 
 Để chạy trên server LAN hiện có, cập nhật server bằng script giữ nguyên DB ở phần dưới, thiết lập `OPENAI_API_KEY_FILE` và `GREETING_SPEECH_TOKEN` cho tiến trình server; đổi URL giọng nói trên robot sang URL server LAN. Tham số `-OpenAiKeyFile` và `-SpeechTokenFile` của `Update-GreetingServer.ps1` hỗ trợ nạp file khóa và mã DPAPI được tạo **trên chính máy/tài khoản server**. File DPAPI không giải mã được khi sao chép sang máy/tài khoản khác.
 
-Kiểm tra proxy bằng `GET /api/greeting/speech/status` có Bearer token; trường `direction.ready` xác nhận luồng phần cứng. `POST /api/greeting/speech/transcribe` nhận body WAV PCM16 mono 16 kHz, tối đa 8 giây; các header `X-Robot-Boot-Id`, `X-Audio-Start-Ms`, `X-Audio-End-Ms`, `X-Voice-End-Ms` dùng ghép góc. `captureStatus` chỉ chứa chẩn đoán số lượng mẫu/trạng thái/thời gian, không chứa bản thu. Token sai trả 401; chưa cấu hình trả 503; audio sai trả 400; đang bận trả 429. Không có endpoint đọc khóa OpenAI.
+Kiểm tra proxy bằng `GET /api/greeting/speech/status` có Bearer token; trường `direction.ready` xác nhận luồng phần cứng. `POST /api/greeting/speech/transcribe` nhận body WAV PCM16 mono 16 kHz, tối đa 8 giây; các header `X-Robot-Boot-Id`, `X-Audio-Start-Ms`, `X-Audio-End-Ms`, `X-Voice-End-Ms`, `X-Voice-Focus-Ms` dùng ghép góc. `captureStatus` chỉ chứa chẩn đoán số lượng mẫu/trạng thái/thời gian, không chứa bản thu. Token sai trả 401; chưa cấu hình trả 503; audio sai trả 400; đang bận trả 429. Không có endpoint đọc khóa OpenAI.
 
 ## Biên dịch
 
-Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.3.5 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
+Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.3.6 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
 
 ```powershell
 cd RobotSample-main
@@ -86,11 +88,13 @@ Nếu source nằm trên ổ mạng Windows có đường dẫn dài, chuyển r
 
 Khi đó APK nằm tại `C:/greetingbot-build/outputs/apk/debug/greetingbot-debug.apk`. Hai module Android cũ vẫn dùng cấu hình build của chúng.
 
-APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.5-debug.apk`; bản 1.3.3 và 1.3.1 được giữ để khôi phục. Các bản 1.1.0, 1.3.2 và 1.3.4 đã được rút khỏi gói bàn giao sau thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.6-debug.apk`; bản 1.3.5 và các bản trước còn được giữ để khôi phục. Các bản 1.1.0, 1.3.2 và 1.3.4 đã được rút khỏi gói bàn giao sau thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+
+Thuật toán nhận dạng/hướng âm đã được người vận hành xác nhận nhạy và chính xác, được giữ tại tag `greetingbot-v1.3.6-voice-stable`. Xem [mốc thuật toán đã xác nhận](GREETINGBOT_VOICE_STABLE.md) trước khi chỉnh sửa phần này. Thay mức bù trong cấu hình không cần sửa thuật toán thu/nhận dạng/lọc góc.
 
 ```powershell
 adb connect 192.168.0.23:5555
-adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.5-debug.apk
+adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.6-debug.apk
 ```
 
 Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng `am start` để thay thế bước cấp quyền SDK. Muốn tự khởi động: Developer Settings → Boot Apps → Lê Hoàng Greetingbot. Không cần thay app mặc định trong lần cài đặt thử.

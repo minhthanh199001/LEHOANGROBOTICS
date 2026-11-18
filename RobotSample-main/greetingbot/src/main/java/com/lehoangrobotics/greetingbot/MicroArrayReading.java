@@ -7,7 +7,7 @@ final class MicroArrayReading {
     private static final String SOURCE = "orion-microarray-native-debug";
     String source;
     Double angle, spreadDegrees;
-    Long atUnixMs, captureStartUnixMs, captureEndUnixMs;
+    Long atUnixMs, captureStartUnixMs, captureEndUnixMs, sampleSpanMs;
     Integer sampleCount;
     long atElapsed;
 
@@ -17,7 +17,9 @@ final class MicroArrayReading {
             if (value == null || !SOURCE.equals(value.source) || value.angle == null
                 || !VoiceDirectionPolicy.validAngle(value.angle) || value.spreadDegrees == null
                 || Double.isNaN(value.spreadDegrees) || value.spreadDegrees < 0 || value.spreadDegrees > 35
-                || value.sampleCount == null || value.sampleCount < 3 || value.sampleCount > 100
+                || value.sampleCount == null || value.sampleCount < 2 || value.sampleCount > 100
+                || (value.sampleCount == 2 && (value.sampleSpanMs == null || value.sampleSpanMs < 80
+                    || value.sampleSpanMs > 180 || value.spreadDegrees > 5.01))
                 || value.atUnixMs == null || value.captureStartUnixMs == null || value.captureEndUnixMs == null
                 || startUnix <= 0 || endUnix < startUnix || endUnix - startUnix > 6500
                 || value.captureStartUnixMs != startUnix || value.captureEndUnixMs != endUnix

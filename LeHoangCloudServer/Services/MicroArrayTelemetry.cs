@@ -6,7 +6,7 @@ namespace LeHoangCloudServer.Services;
 
 public sealed record MicroArraySample(long AtUnixMs, int Active, int RawAngle);
 public sealed record MicroArrayDirection(string Source, double Angle, long AtUnixMs, int SampleCount,
-    double SpreadDegrees, long CaptureStartUnixMs, long CaptureEndUnixMs);
+    double SpreadDegrees, long CaptureStartUnixMs, long CaptureEndUnixMs, long SampleSpanMs);
 
 /// <summary>Read-only diagnostic bridge. Does not replace Orion's microphone/data-collection callbacks.</summary>
 public sealed class MicroArrayTelemetry(IConfiguration configuration) : BackgroundService
@@ -26,23 +26,23 @@ public sealed class MicroArrayTelemetry(IConfiguration configuration) : Backgrou
 
     public object Status { get { lock (_sync) return new { enabled = _serial.Length > 0, ready = Fresh(), state = _state }; } }
     private bool Fresh() => _verified && _lastArrival > 0 && Environment.TickCount64 - _lastArrival < 2000;
-    public MicroArrayDirection? ForCapture(string bootId, long start, long end, long? voiceEnd = null)
+    public MicroArrayDirection? ForCapture(string bootId, long start, long end, long? voiceEnd = null, long? focus = null)
     {
         lock (_sync)
         {
             if (!Fresh() || bootId.Length == 0 || !string.Equals(bootId, _bootId, StringComparison.OrdinalIgnoreCase)) return null;
-            return SelectSpeechWindow(_samples, start, end, voiceEnd);
+            return SelectSpeechWindow(_samples, start, end, voiceEnd, focus);
         }
     }
-    public object CaptureStatus(string bootId, long start, long end, long? voiceEnd = null)
+    public object CaptureStatus(string bootId, long start, long end, long? voiceEnd = null, long? focus = null)
     {
         lock (_sync)
         {
             var window = _samples.Where(x => x.AtUnixMs >= start - 250 && x.AtUnixMs <= (voiceEnd ?? end) + 200).ToArray();
             int active = window.Count(x => x.Active == 1 && x.RawAngle is >= 0 and <= 360);
             return new { state = !Fresh() ? "stream_unavailable" : bootId != _bootId ? "wrong_robot" :
-                window.Length == 0 ? "no_matching_timestamps" : active < 3 ? "insufficient_active_samples" :
-                SelectSpeechWindow(window, start, end, voiceEnd) is null ? "unstable_direction" : "matched",
+                window.Length == 0 ? "no_matching_timestamps" : active < 2 ? "insufficient_active_samples" :
+                SelectSpeechWindow(window, start, end, voiceEnd, focus) is null ? "unstable_direction" : "matched",
                 samples = window.Length, activeSamples = active,
                 latestDeltaMs = _samples.Count == 0 ? (long?)null : _samples[^1].AtUnixMs - end };
         }
@@ -60,26 +60,34 @@ public sealed class MicroArrayTelemetry(IConfiguration configuration) : Backgrou
         if (start < 1 || end < start || end - start > 6500) return null;
         var voice = samples.Where(x => x.Active == 1 && x.RawAngle is >= 0 and <= 360
             && x.AtUnixMs >= start - 250 && x.AtUnixMs <= end + 200).DistinctBy(x => x.AtUnixMs).OrderBy(x => x.AtUnixMs).ToArray();
-        if (voice.Length < 3 || voice[^1].AtUnixMs - voice[0].AtUnixMs < 100) return null;
+        if (voice.Length < 2 || voice[^1].AtUnixMs - voice[0].AtUnixMs < 80) return null;
         // DSP occasionally reports a short jump to a different direction during one utterance.
         // Use a tightly grouped majority; retain the ambiguity guard for competing speakers.
         double Distance(double a, double b) => Math.Abs((a - b + 540) % 360 - 180);
         var inliers = voice.Select(seed => voice.Where(x => Distance((x.RawAngle + 30) % 360d,
             (seed.RawAngle + 30) % 360d) <= 25).ToArray()).OrderByDescending(x => x.Length).First();
-        if (inliers.Length < 3 || inliers.Length <= voice.Length * .60 || inliers[^1].AtUnixMs - inliers[0].AtUnixMs < 100) return null;
+        long span = inliers[^1].AtUnixMs - inliers[0].AtUnixMs;
+        if (inliers.Length < 2 || inliers.Length <= voice.Length * .60 || span < (inliers.Length == 2 ? 80 : 100)) return null;
         var angles = inliers.Select(x => (x.RawAngle + 30) % 360d).ToArray();
         double sine = angles.Sum(x => Math.Sin(x * Math.PI / 180)), cosine = angles.Sum(x => Math.Cos(x * Math.PI / 180));
         if (Math.Sqrt(sine * sine + cosine * cosine) / inliers.Length < .92) return null;
         double mean = (Math.Atan2(sine, cosine) * 180 / Math.PI + 360) % 360;
         double spread = angles.Max(x => Math.Abs((x - mean + 540) % 360 - 180));
         if (spread > 35) return null;
-        return new(DirectionSource, mean, inliers[^1].AtUnixMs, inliers.Length, spread, start, end);
+        if (inliers.Length == 2 && (span > 180 || spread > 5.01)) return null;
+        return new(DirectionSource, mean, inliers[^1].AtUnixMs, inliers.Length, spread, start, end, span);
     }
-    public static MicroArrayDirection? SelectSpeechWindow(IEnumerable<MicroArraySample> samples, long start, long end, long? voiceEnd)
+    public static MicroArrayDirection? SelectSpeechWindow(IEnumerable<MicroArraySample> samples, long start, long end, long? voiceEnd, long? focus = null)
     {
-        if (voiceEnd is null) return Select(samples, start, end);
-        if (voiceEnd < start || voiceEnd > end) return null;
-        return Select(samples.Where(x => x.AtUnixMs <= voiceEnd.Value + 200), start, end);
+        if (start < 1 || end < start || end - start > 6500) return null;
+        long lastVoice = voiceEnd ?? end;
+        if (lastVoice < start || lastVoice > end || (focus.HasValue && (focus < start - 250 || focus > lastVoice))) return null;
+        var speech = samples.Where(x => x.AtUnixMs <= lastVoice + 200).ToArray();
+        if (focus.HasValue) {
+            var focused = Select(speech.Where(x => Math.Abs(x.AtUnixMs - focus.Value) <= 200), start, end);
+            if (focused is not null) return focused;
+        }
+        return Select(speech, start, end);
     }
     protected override async Task ExecuteAsync(CancellationToken stop)
     {

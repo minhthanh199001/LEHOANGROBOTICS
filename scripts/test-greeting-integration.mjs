@@ -106,12 +106,12 @@ try {
   check(stopDelivery.data.command.type==='stop_navigation', 'Stop takes priority and cancels queued navigation');
   check((await call(robotPath)).data.commands.find(c=>c.id===pending.data.id).status==='failed', 'Queued motion cancelled by stop');
   await sync(snapshot,[{id:stopRequest.data.id,status:'completed',message:'Stopped'}]);
-  const settings={linearSpeed:0.25,angularSpeed:0.6,arrivalTolerance:0.15,obstacleTimeoutMs:20000,microphoneSeconds:3,playbackVolume:40,voiceAngleOffset:10};
+  const settings={linearSpeed:0.25,angularSpeed:0.6,arrivalTolerance:0.15,obstacleTimeoutMs:20000,microphoneSeconds:3,playbackVolume:40,voiceAngleOffset:25};
   check((await call(robotPath+'/settings','PUT',{...settings,linearSpeed:5})).status===400, 'Invalid movement speed rejected');
   check((await call(robotPath+'/settings','PUT',{...settings,voiceAngleOffset:91})).status===400, 'Invalid sound angle calibration rejected');
   check((await call(robotPath+'/settings','PUT',settings)).status===200, 'Settings persisted');
   check((await sync()).data.settings.microphoneSeconds===3, 'Settings delivered to device');
-  check((await sync()).data.settings.voiceAngleOffset===10, 'Sound angle offset delivered to device');
+  check((await sync()).data.settings.voiceAngleOffset===25, 'Sound angle offset delivered to device');
   const mic=await call(robotPath+'/commands','POST',command('microphone_test'));
   check(mic.status===202 && (await sync()).data.command.type==='microphone_test', 'Microphone test delivered');
   await sync({...snapshot,microphoneState:'recording'},[{id:mic.data.id,status:'running',message:'Recording'}]);
@@ -119,7 +119,7 @@ try {
   await sync(snapshot,[{id:mic.data.id,status:'completed',message:'Replayed'}]);
   await stop(); await start();
   const restored=await call(robotPath);
-  check(restored.data.settings.linearSpeed===0.25 && restored.data.commands.find(c=>c.id===mic.data.id).status==='completed', 'Settings and command results survive restart');
+  check(restored.data.settings.linearSpeed===0.25 && restored.data.settings.voiceAngleOffset===25 && restored.data.commands.find(c=>c.id===mic.data.id).status==='completed', 'Settings, voice compensation and command results survive restart');
   check((await sync()).status===200, 'Pairing survives server restart');
   const lost=await call(robotPath+'/commands','POST',command());
   check((await sync()).data.command.id===lost.data.id, 'Deliver command whose response will be lost');

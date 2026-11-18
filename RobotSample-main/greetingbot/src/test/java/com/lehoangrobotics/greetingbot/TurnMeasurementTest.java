@@ -18,14 +18,16 @@ public class TurnMeasurementTest {
         assertEquals(-40, TurnMeasurement.signedAngle(TurnMeasurement.withOffset(330, 10)), .001);
         assertEquals(345, TurnMeasurement.withOffset(355, 10), .001);
         assertTrue(Double.isNaN(TurnMeasurement.withOffset(31, 91)));
+        assertEquals(55, TurnMeasurement.withOffset(30, 25), .001);
+        assertEquals(305, TurnMeasurement.withOffset(330, 25), .001);
     }
-    @Test public void compensationKeepsZeroAndCannotReverseAtTheHalfTurnBoundary() {
+    @Test public void compensationKeepsZeroAndAppliesTheFullCorrectionAcrossHalfATurn() {
         assertEquals(0, TurnMeasurement.withOffset(0, 10), 0);
         assertEquals(0, TurnMeasurement.withOffset(360, 10), 0);
-        double positive = TurnMeasurement.signedAngle(TurnMeasurement.withOffset(175, 10));
-        double negative = TurnMeasurement.signedAngle(TurnMeasurement.withOffset(185, 10));
-        assertTrue(positive > 179 && positive < 180);
-        assertTrue(negative < -179 && negative > -180);
+        assertEquals(200, TurnMeasurement.compensatedSigned(175, 25), .001);
+        assertEquals(-200, TurnMeasurement.compensatedSigned(185, 25), .001);
+        assertEquals(200, TurnMeasurement.withOffset(175, 25), .001);
+        assertEquals(160, TurnMeasurement.withOffset(185, 25), .001);
     }
     @Test public void negativeCalibrationReducesMagnitudeWithoutReversingTheTurn() {
         assertEquals(20, TurnMeasurement.withOffset(30, -10), .001);
@@ -37,6 +39,10 @@ public class TurnMeasurementTest {
         double calibrated = TurnMeasurement.withOffset(330, 10);
         assertEquals(-10, TurnMeasurement.residual(0, Math.toRadians(30), calibrated), .001);
         assertEquals(0, TurnMeasurement.residual(0, Math.toRadians(40), calibrated), .001);
+    }
+    @Test public void feedbackMeasuresTheSameFinalHeadingWhenTheSdkUsesTheShorterPath() {
+        assertEquals(0, TurnMeasurement.residual(0, Math.toRadians(160), TurnMeasurement.withOffset(175, 25)), .001);
+        assertEquals(0, TurnMeasurement.residual(0, Math.toRadians(-160), TurnMeasurement.withOffset(185, 25)), .001);
     }
     @Test public void calculatesTheRemainingTurnInTheSdkClockwiseConvention() {
         assertEquals(16, TurnMeasurement.residual(0, Math.toRadians(-164), 180), .001);

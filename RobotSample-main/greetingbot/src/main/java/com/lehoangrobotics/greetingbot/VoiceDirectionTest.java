@@ -22,7 +22,7 @@ final class VoiceDirectionTest implements AutoCloseable {
     private final Context context;
     private final Host host;
     private volatile boolean enabled;
-    private boolean closed, turning, sdkActionRunning;
+    private boolean closed, turning, sdkActionRunning, captureHasDirectDirection;
     private int generation, motionSerial;
     private String status = "Chưa bật test hướng âm OpenAI.", heard = "", lastKeyword = "", captureId = "", micStatus = "";
     private double lastAngle = Double.NaN, sourceAngle = Double.NaN;
@@ -80,21 +80,21 @@ final class VoiceDirectionTest implements AutoCloseable {
                 }); }
                 @Override public void speechStarted(String id, long startedAt) { main.post(() -> {
                     if (!current() || turning) return;
-                    captureId = id; capture.begin(id, startedAt); capture.observe(sourceAngle, sourceAt); lastAngle = Double.NaN;
+                    captureId = id; capture.begin(id, startedAt); captureHasDirectDirection = capture.observe(sourceAngle, sourceAt); lastAngle = Double.NaN;
                     captureHeading = Double.NaN;
                     heading(value -> { if (current() && !turning && captureId.equals(id)) captureHeading = value; });
                     policy.speechStarted(startedAt); status = "Đang thu câu gọi…"; host.changed();
                 }); }
                 @Override public void sending(String id, long startedAt, long endedAt) { main.post(() -> {
                     if (!current() || turning || !captureId.equals(id)) return;
-                    capture.end(id, endedAt); capture.observe(sourceAngle, sourceAt);
+                    capture.end(id, endedAt); if (capture.observe(sourceAngle, sourceAt)) captureHasDirectDirection = true;
                     status = "OpenAI đang nhận dạng câu vừa nói…"; host.changed();
                 }); }
                 @Override public void result(String id, String text, long endedAt, MicroArrayReading direction) { main.post(() -> {
-                    if (!current() || turning || !captureId.equals(id)) return;
+                    if (!current() || turning || !captureId.equals(id) || policy.consumed(id)) return;
                     heard = clipped(text);
                     long now = SystemClock.elapsedRealtime();
-                    if (direction != null && !VoiceDirectionPolicy.validAngle(capture.forResult(id, now))) {
+                    if (direction != null && !captureHasDirectDirection) {
                         capture.observe(direction.angle, direction.atElapsed);
                         lastAngle = direction.angle;
                         Log.i("GreetingVoice", "Native MicroArray via ADB: angle=" + direction.angle + "; samples=" + direction.sampleCount);
@@ -116,7 +116,7 @@ final class VoiceDirectionTest implements AutoCloseable {
         if (!enabled || turning || !VoiceDirectionPolicy.validAngle(angle)) return;
         sourceAngle = angle % 360; sourceAt = SystemClock.elapsedRealtime();
         // Tie the direction to audio capture, not to the time a delayed cloud response arrives.
-        capture.observe(sourceAngle, sourceAt);
+        if (capture.observe(sourceAngle, sourceAt)) captureHasDirectDirection = true;
         Log.i("GreetingVoice", "MicroArray direction=" + sourceAngle);
     }
     boolean onModuleRequest(int id, String type, String text, String params) {
@@ -144,10 +144,10 @@ final class VoiceDirectionTest implements AutoCloseable {
         double offset = host.angleOffset();
         double target = policy.select(text, TurnMeasurement.withOffset(angle, offset), eventId, SystemClock.elapsedRealtime());
         if (!VoiceDirectionPolicy.validAngle(target)) {
-            status = "Đã nhận câu gọi; chờ hết khoảng nghỉ 2 giây sau xoay rồi gọi tiếp."; host.changed(); return;
+            status = "Đã nhận câu gọi; chờ hết nửa giây nghỉ sau xoay rồi gọi tiếp."; host.changed(); return;
         }
         lastAngle = angle; lastKeyword = keyword; turning = true; input.pause(true);
-        double signedSource = TurnMeasurement.signedAngle(angle), signedTarget = TurnMeasurement.signedAngle(target);
+        double signedSource = TurnMeasurement.signedAngle(angle), signedTarget = TurnMeasurement.compensatedSigned(angle, offset);
         status = String.format(java.util.Locale.US, "Đang xoay theo “%s” · góc %+.0f° · bù %+.0f° → %+.0f°",
             keyword, signedSource, signedTarget - signedSource, signedTarget);
         Log.i("GreetingVoice", "Directional compensation: source=" + signedSource + "; configured=" + offset

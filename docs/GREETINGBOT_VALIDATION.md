@@ -1,12 +1,23 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản giảm trễ / ghép hướng theo giọng 1.3.6
+
+- Người vận hành xác nhận 1.3.5 đã xoay đúng, nhưng hay báo MicroArray không ổn định và phải gọi lặp lại; yêu cầu tổng mức bù 25°. Log có câu “Hello robot” đúng nhưng chỉ 2 mẫu active nên bản cũ từ chối; các đoạn nền kéo dài đến 4,5 giây.
+- Đã đặt mặc định 25° theo chiều quay và lưu đúng 25 trên robot bằng giao diện cấu hình. Không thay thông tin kết nối. Giảm khoảng nghỉ sau xoay từ 2 giây xuống 0,5 giây.
+- Nhận dạng sớm tại 1,4 giây, kết thúc sau 0,6 giây im lặng hoặc 3 giây thu. ID câu gọi và trạng thái đã thực hiện loại kết quả trùng; góc kết quả đầy đủ được phép thay góc tạm từ preview, còn góc trực tiếp của SDK vẫn được ưu tiên.
+- Tìm phần năng lượng giọng liên tục 300 ms, dùng cửa sổ native ±200 ms quanh đó để giảm ảnh hưởng hướng nền khác. Với câu ngắn, cho phép cặp mẫu native active độc lập cách 80–180 ms, lệch tối đa 10°; vẫn từ chối một mẫu, hai mẫu đổi hướng hoặc cách xa nhau. Phản hồi có `sampleSpanMs`, app kiểm tra lại điều kiện cặp mẫu.
+- Android **34 test / 0 lỗi**; Speech/MicroArray **50 kiểm tra thành công**; Fleet integration **41 kiểm tra thành công** trên DB riêng. Bao gồm lịch nhận dạng sớm, không gửi một click đơn, chống lặp lệnh, tinh chỉnh góc cùng câu, cửa sổ giọng, cặp mẫu, offset 25° đồng bộ Web → thiết bị và giữ qua khởi động lại server.
+- Trong 5 câu “robot ơi” ghi lại của lượt thử, cả 5 có góc hợp lệ và hoàn tất xoay; không có câu đúng từ khóa bị loại góc trong mẫu này. Thu trước khi gửi 1.403–1.428 giây; ASR 0.906–1.098 giây. Có lượt dùng cặp 2 mẫu hợp lệ. Bù thân đưa lệnh 180° tới số đo 179,60°; lệnh 150° tới 148,85°. Đây là mẫu thử tại một robot/phòng, không phải bảo đảm mọi môi trường.
+- Người vận hành xác nhận: **“Robot đã nhận diện chính xác và nhạy rồi. hãy lưu giữ thuật toán này lại.”** Giữ mốc `greetingbot-v1.3.6-voice-stable`; thông số nhận dạng/ghép hướng được ghi trong `GREETINGBOT_VOICE_STABLE.md`.
+- Đã cài bản bàn giao 1.3.6 và cập nhật proxy; `direction.ready=true`, native streaming. SDK kết nối, đã định vị, 5 điểm. APK bàn giao giữ nguyên thuật toán nhận dạng vừa xác nhận; phép bù góc còn giữ đủ 25° khi qua nửa vòng. SHA-256 `releases/LeHoangGreetingbot_v1.3.6-debug.apk`: `B3DACB3C4C4E2B3B5C81DA2241F86F04608C687855E996C5666545C3762D0B65`.
+
 ## Bản sửa bù theo chiều quay 1.3.5
 
 - Người vận hành làm rõ: góc dương phải +10°, góc âm phải −10°. Bản 1.3.4 cộng cố định +10° làm giảm độ lớn góc âm: log góc native 302,20° (−57,80°) gửi lệnh 312,20° (−47,80°), thân quay 46,85°. Đây là lỗi công thức; đã sửa theo chiều quay, cùng dữ liệu trên sẽ gửi 292,20° (−67,80°).
 - Chuyển sang góc có dấu trước khi bù độ lớn rồi mã hóa lại cho SDK. Giữ 0°, chặn đổi chiều ở biên 180° và khi cấu hình giảm góc về dưới 0°. Giao diện robot/log hiển thị dấu góc nguồn, số bù thực tế và góc đích. Nhãn cấu hình app/Web làm rõ ý nghĩa; không đổi tên trường JSON/schema.
 - Android **25 test / 0 lỗi**, build/cài 1.3.5 thành công. Kiểm tra hai chiều, góc nhỏ âm 355°, 0°/360°, biên nửa vòng, cấu hình giảm góc và vòng bù số đo không áp offset lần thứ hai. Backend/API giữ nguyên so với bản đã qua 44 kiểm tra Speech/MicroArray và 41 kiểm tra Fleet.
 - Hash APK trên robot khớp `releases/LeHoangGreetingbot_v1.3.5-debug.apk`: `692D60FA08172E0799A35C0AEDAD95014B9B3488B048AAAB41FDAC2BF8F67169`. SDK vẫn kết nối/đã định vị, đọc 5 điểm trên `LH2-1006084342`.
-- Đang chờ xác nhận thử thực tế hai phía với cách bù đã sửa. APK 1.3.4 được rút khỏi gói bàn giao; bản cũ còn trong lịch sử Git.
+- Người vận hành sau đó xác nhận đã xoay đúng, nhưng báo không ổn định MicroArray xuất hiện nhiều; phần này được xử lý tiếp ở 1.3.6. APK 1.3.4 được rút khỏi gói bàn giao; bản cũ còn trong lịch sử Git.
 
 ## Bản thử offset +10° / bù góc 1.3.4
 

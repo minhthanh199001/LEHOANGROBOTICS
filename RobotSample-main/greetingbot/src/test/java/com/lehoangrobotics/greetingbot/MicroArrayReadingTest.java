@@ -21,4 +21,11 @@ public class MicroArrayReadingTest {
         assertNull(MicroArrayReading.parse("{}", 10000, 12000, 9000));
         assertNull(MicroArrayReading.parse("null", 10000, 12000, 9000));
     }
+    @Test public void twoNativeSamplesNeedAnIndependentTightConsecutivePair() {
+        String pair = frame.replace("\"sampleCount\":4", "\"sampleCount\":2,\"sampleSpanMs\":100");
+        assertNotNull(MicroArrayReading.parse(pair, 10000, 12000, 9000));
+        assertNull(MicroArrayReading.parse(pair.replace("\"sampleSpanMs\":100", "\"sampleSpanMs\":250"), 10000, 12000, 9000));
+        assertNull(MicroArrayReading.parse(pair.replace("\"spreadDegrees\":2", "\"spreadDegrees\":6"), 10000, 12000, 9000));
+        assertNull(MicroArrayReading.parse(frame.replace("\"sampleCount\":4", "\"sampleCount\":2"), 10000, 12000, 9000));
+    }
 }

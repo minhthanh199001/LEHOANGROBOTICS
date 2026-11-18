@@ -10,7 +10,7 @@ public class GreetingSettings
     [Range(5000, 120000)] public int ObstacleTimeoutMs { get; set; } = 30000;
     [Range(2, 15)] public int MicrophoneSeconds { get; set; } = 5;
     [Range(0, 100)] public int PlaybackVolume { get; set; } = 60;
-    [Range(-90.0, 90.0)] public double VoiceAngleOffset { get; set; } = 10;
+    [Range(-90.0, 90.0)] public double VoiceAngleOffset { get; set; } = 25;
 }
 
 public class GreetingRegistration
