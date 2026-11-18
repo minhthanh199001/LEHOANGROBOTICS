@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
+    namespace 'com.lehoangrobotics.cloudmanager'
     compileSdkVersion 29
 
     defaultConfig {

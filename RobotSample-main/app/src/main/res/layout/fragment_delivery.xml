@@ -14,11 +14,67 @@
         android:paddingTop="14dp"
         android:paddingBottom="16dp">
 
-        <!-- TOP STATUS BAR: Menu Dots on Left, Time, Wifi & Battery on Right -->
+        <!-- TOP BRAND & STATUS ROW: "LÊ HOÀNG ROBOTICS" on Left, Time & Battery on Right (Wifi removed) -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="26dp"
+            android:layout_marginBottom="4dp">
+
+            <!-- Brand Title on Title row -->
+            <TextView
+                android:id="@+id/tv_brand_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:text="LÊ HOÀNG ROBOTICS"
+                android:textColor="#BAE6FD"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04" />
+
+            <!-- Right Status: Time & Battery (on same row with title) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_clock_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="11:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- Compatibility hidden wifi pill -->
+                <TextView
+                    android:id="@+id/tv_wifi_pill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_battery_pill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋 47%"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <!-- ROW 2: MENU DOTS (•••) ON LEFT -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="38dp"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="10dp">
 
             <!-- Left: Circular Menu dots (•••) -->
             <TextView
@@ -72,44 +128,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone" />
-
-            <!-- Right Status: Time, Wifi, Battery -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tv_clock_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="17:01"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginEnd="8dp" />
-
-                <TextView
-                    android:id="@+id/tv_wifi_pill"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="📶"
-                    android:textColor="#38BDF8"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="6dp" />
-
-                <TextView
-                    android:id="@+id/tv_battery_pill"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🔋 29%"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
         </RelativeLayout>
 
         <!-- UPPER SECTION: LEFT 3 ACTION BUTTONS + 3 TRAY SHELVES + RIGHT T-SHIRT BUTTON -->
@@ -142,16 +160,16 @@
                     android:clickable="true"
                     android:focusable="true" />
 
-                <!-- 2. Chuyển ngôn ngữ ([A] icon) -->
+                <!-- 2. Chuyển ngôn ngữ (Chữ VI không cờ) -->
                 <TextView
                     android:id="@+id/btn_language"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="@drawable/bg_circle_icon"
                     android:gravity="center"
-                    android:text="[A]"
+                    android:text="VI"
                     android:textColor="#BAE6FD"
-                    android:textSize="13sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="10dp"
                     android:clickable="true"
@@ -1858,7 +1876,7 @@
                 android:layout_centerInParent="true"
                 android:text="Lựa chọn ngôn ngữ"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -1876,14 +1894,6 @@
                     android:textColor="#FFFFFF"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:layout_marginEnd="6dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="📶"
-                    android:textColor="#38BDF8"
-                    android:textSize="11sp"
                     android:layout_marginEnd="6dp" />
 
                 <TextView
@@ -2160,14 +2170,6 @@
                     android:textColor="#FFFFFF"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:layout_marginEnd="6dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="📶"
-                    android:textColor="#38BDF8"
-                    android:textSize="11sp"
                     android:layout_marginEnd="6dp" />
 
                 <TextView

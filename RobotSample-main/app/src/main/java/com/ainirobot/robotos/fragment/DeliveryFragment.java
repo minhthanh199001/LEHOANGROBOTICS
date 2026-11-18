@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -1157,13 +1158,18 @@ public class DeliveryFragment extends Fragment {
             }
 
             Button btn = new Button(getContext());
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dpToPx(48), 1.0f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dpToPx(46), 1.0f);
             lp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
             btn.setLayoutParams(lp);
 
             btn.setBackgroundResource(R.drawable.bg_station_glass_button);
             btn.setTextColor(0xFFFFFFFF);
-            btn.setTextSize(14);
+            // Giảm kích thước chữ nút điểm đến, tắt ép in hoa (allCaps) và padding nhỏ gọn để tên bàn không bị vỡ/xuống dòng
+            btn.setTransformationMethod(null);
+            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, stationName.length() > 9 ? 10.5f : 11.5f);
+            btn.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
+            btn.setMaxLines(2);
+            btn.setEllipsize(TextUtils.TruncateAt.END);
             btn.setText(stationName);
 
             // Click destination -> Assign to current active tray!
@@ -2908,9 +2914,9 @@ public class DeliveryFragment extends Fragment {
         } catch (Throwable ignored) {
         }
 
-        // 1. Language button top status bar
+        // 1. Language button top status bar (bỏ lá cờ, chỉ để VI hoặc EN)
         if (mBtnLanguage != null) {
-            mBtnLanguage.setText(isEnglish ? "🇬🇧 EN" : "🇻🇳 VI");
+            mBtnLanguage.setText(isEnglish ? "EN" : "VI");
         }
 
         // 2. Tray Badges
