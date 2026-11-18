@@ -60,6 +60,8 @@ Nếu triển khai theo cách hiện có (dịch vụ, Docker...), cấu hình b
 4. Cấp quyền microphone lần đầu bằng nút test trên robot. Nếu công tắc microphone toàn hệ thống đang tắt, bật trên robot trước khi thử giọng nói.
 5. Mở Map Tool, chọn đúng bản đồ và định vị tại vị trí thật. Quay về Greetingbot, kiểm tra **Đã định vị**, chọn điểm để di chuyển.
 
+Nút **Ngắt kết nối** trong cấu hình app xóa mã thiết bị đã lưu và đưa URL về mặc định `http://192.168.0.123:5050`. Chức năng SDK trên robot vẫn dùng được khi chưa ghép nối Web.
+
 Server chỉ lưu SHA-256 của mã thiết bị. Mã quản trị Web chỉ nằm trong bộ nhớ trang, không ghi localStorage. Nếu mất mã ghép nối, tạo ID thiết bị mới và ghép lại; bản này chưa có chức năng xoay mã/xóa Greetingbot.
 
 ## Luồng đồng bộ và giới hạn

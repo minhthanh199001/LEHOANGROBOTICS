@@ -450,7 +450,11 @@ public final class MainActivity extends Activity {
         EditText mapPackage = field(fields, "Tên gói ứng dụng Map Tool (tùy chọn)", preferences.getString("mapToolPackage", "com.ainirobot.maptool"), false);
         ScrollView scroll = new ScrollView(this); scroll.addView(fields);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Kết nối Web quản lý").setView(scroll)
-            .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null).create();
+            .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null)
+            .setNeutralButton("Ngắt kết nối", (d, which) -> {
+                preferences.edit().remove("deviceToken").remove("serverUrl").apply();
+                configureCloud(); webMessage = "Chưa ghép nối Web quản lý"; render();
+            }).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String server = url.getText().toString().trim().replaceAll("/+$", "");
             try {
