@@ -45,6 +45,7 @@ import com.ainirobot.robotos.bridge.RobotBridgeServer;
 import com.ainirobot.robotos.bridge.RobotMapManager;
 import com.ainirobot.robotos.bridge.RobotPosePersistenceManager;
 import com.ainirobot.robotos.bridge.TTSPlayer;
+import com.ainirobot.robotos.maputils.GlobalData;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -80,7 +81,7 @@ public class DeliveryFragment extends Fragment {
     };
 
     private int mActiveTray = 1; // 1, 2, or 3
-    private String mCurrentMap = "tăng 2-1110154527";
+    private String mCurrentMap = "";
     private final List<String> mStationsList = new ArrayList<>();
 
     // Listener for map changes triggered by Desktop PC
@@ -92,6 +93,12 @@ public class DeliveryFragment extends Fragment {
                     @Override
                     public void run() {
                         Log.i(TAG, "Map places changed (" + mapName + "), reloading stations in DeliveryFragment...");
+                        if (!TextUtils.isEmpty(mapName)) {
+                            mCurrentMap = mapName;
+                            if (GlobalData.getInstance() != null) {
+                                GlobalData.getInstance().setCurrentMapName(mapName);
+                            }
+                        }
                         loadStationsFromMap();
                     }
                 });
@@ -400,9 +407,10 @@ public class DeliveryFragment extends Fragment {
             mBtnRefreshStations.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    checkAndSyncCurrentMap();
                     loadStationsFromMap();
                     updateBatteryStatus();
-                    Toast.makeText(getContext(), "Đã tải lại danh sách điểm bàn!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Đang đồng bộ điểm theo bản đồ hiện tại...", Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -902,7 +910,35 @@ public class DeliveryFragment extends Fragment {
         super.onResume();
         updateClock();
         updateBatteryStatus();
+        checkAndSyncCurrentMap();
         loadStationsFromMap();
+    }
+
+    private void checkAndSyncCurrentMap() {
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                RobotApi.getInstance().getMapName(0, new com.ainirobot.coreservice.client.listener.CommandListener() {
+                    @Override
+                    public void onResult(int result, String message, String extraData) {
+                        if (!TextUtils.isEmpty(message) && !message.equalsIgnoreCase(mCurrentMap)) {
+                            Log.i(TAG, "CoreService active map changed to: " + message);
+                            mCurrentMap = message;
+                            if (GlobalData.getInstance() != null) {
+                                GlobalData.getInstance().setCurrentMapName(message);
+                            }
+                            if (getActivity() != null) {
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        loadStationsFromMap();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void updateBatteryStatus() {
@@ -1084,6 +1120,12 @@ public class DeliveryFragment extends Fragment {
     private void loadStationsFromMap() {
         mStationsList.clear();
         try {
+            // Luôn đồng bộ tên bản đồ đang hoạt động từ RobotMapManager / GlobalData
+            String activeMap = RobotMapManager.getCurrentMapName();
+            if (!TextUtils.isEmpty(activeMap)) {
+                mCurrentMap = activeMap;
+            }
+            Log.i(TAG, "Loading stations for current map: " + mCurrentMap);
             JsonObject mapData = RobotMapManager.buildMapDataJson(mCurrentMap);
             if (mapData != null && mapData.has("currentMap")) {
                 mCurrentMap = mapData.get("currentMap").getAsString();
@@ -1105,24 +1147,11 @@ public class DeliveryFragment extends Fragment {
             Log.e(TAG, "Error loading places: " + t.getMessage());
         }
 
-        // Default stations matching the user's setup if empty
-        if (mStationsList.isEmpty()) {
-            mStationsList.add("Stand-by Point");
-            mStationsList.add("cafe");
-            mStationsList.add("phòng họp");
-            mStationsList.add("tivi");
-            mStationsList.add("Bàn 1");
-            mStationsList.add("Bàn 2");
-            mStationsList.add("Bàn 3");
-            mStationsList.add("Bàn 4");
-            mStationsList.add("Bàn 5");
-        } else {
-            // Prioritize: cafe, phòng họp, tivi, Stand-by Point
-            prioritizeStation("tivi");
-            prioritizeStation("phòng họp");
-            prioritizeStation("cafe");
-            prioritizeStation("Stand-by Point");
-        }
+        // Tự động sắp xếp các điểm ưu tiên nếu tồn tại trong bản đồ hiện tại
+        prioritizeStation("tivi");
+        prioritizeStation("phòng họp");
+        prioritizeStation("cafe");
+        prioritizeStation("Stand-by Point");
 
         rebuildStationButtons();
     }
@@ -1141,6 +1170,17 @@ public class DeliveryFragment extends Fragment {
         if (mContainerStationButtons == null || getContext() == null)
             return;
         mContainerStationButtons.removeAllViews();
+
+        if (mStationsList.isEmpty()) {
+            TextView emptyTv = new TextView(getContext());
+            emptyTv.setText(mIsEnglish ? "No delivery stations found on this map." : "Bản đồ hiện tại chưa có điểm bàn nào.");
+            emptyTv.setTextColor(0xFF94A3B8);
+            emptyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            emptyTv.setGravity(Gravity.CENTER);
+            emptyTv.setPadding(0, dpToPx(30), 0, dpToPx(30));
+            mContainerStationButtons.addView(emptyTv);
+            return;
+        }
 
         int cols = 4;
         LinearLayout row = null;

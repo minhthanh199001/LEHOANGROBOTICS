@@ -399,6 +399,9 @@ public class RobotCommandHandler {
                     try {
                         client.send(mapData.toString());
                     } catch (Throwable ignored) {}
+
+                    // Notify local app UI (DeliveryFragment) to immediately reload stations for the new map
+                    RobotMapManager.notifyMapPlacesChanged(mapName);
                 }
             }
         });
@@ -577,6 +580,9 @@ public class RobotCommandHandler {
                 try {
                     client.send(mapData.toString());
                 } catch (Throwable ignored) {}
+
+                // Notify local app UI (DeliveryFragment) to immediately reload stations for the new map
+                RobotMapManager.notifyMapPlacesChanged(mapName);
 
                 // 2. Delay 600ms for SLAM system to finish loading map into memory
                 new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {

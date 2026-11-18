@@ -108,6 +108,22 @@ public class RobotOSApplication extends Application {
                 initSkillApi();
                 // Start Le Hoang Robotics Bridge server for PC control
                 com.ainirobot.robotos.bridge.RobotBridgeManager.getInstance().startBridge(mContext);
+
+                // Tự động nhận diện bản đồ hiện tại từ CoreService
+                try {
+                    RobotApi.getInstance().getMapName(0, new com.ainirobot.coreservice.client.listener.CommandListener() {
+                        @Override
+                        public void onResult(int result, String message, String extraData) {
+                            if (!android.text.TextUtils.isEmpty(message)) {
+                                Log.i(TAG, "Active CoreService map detected on start: " + message);
+                                if (com.ainirobot.robotos.maputils.GlobalData.getInstance() != null) {
+                                    com.ainirobot.robotos.maputils.GlobalData.getInstance().setCurrentMapName(message);
+                                }
+                                com.ainirobot.robotos.bridge.RobotMapManager.notifyMapPlacesChanged(message);
+                            }
+                        }
+                    });
+                } catch (Throwable ignored) {}
             }
 
             @Override

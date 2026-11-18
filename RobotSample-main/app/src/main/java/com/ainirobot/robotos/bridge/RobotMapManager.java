@@ -314,7 +314,23 @@ public class RobotMapManager {
     public static void switchMap(final String mapName, final CommandListener listener) {
         try {
             if (RobotApi.getInstance().isApiConnectedService()) {
-                RobotApi.getInstance().switchMap(0, mapName, listener);
+                RobotApi.getInstance().switchMap(0, mapName, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
+                        if (ok) {
+                            try {
+                                if (GlobalData.getInstance() != null) {
+                                    GlobalData.getInstance().setCurrentMapName(mapName);
+                                }
+                            } catch (Throwable ignored) {}
+                            notifyMapPlacesChanged(mapName);
+                        }
+                        if (listener != null) {
+                            listener.onResult(result, message);
+                        }
+                    }
+                });
             } else if (listener != null) {
                 listener.onResult(Definition.ACTION_RESPONSE_ALREADY_RUN, "CoreService not connected");
             }
