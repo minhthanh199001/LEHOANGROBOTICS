@@ -673,7 +673,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void OnConnectionStateChanged(bool connected)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
                 IsConnected = connected;
                 ConnectionStatusText = connected ? "ĐÃ KẾT NỐI" : "CHƯA KẾT NỐI";
@@ -710,7 +710,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void OnTelemetryReceived(TelemetryMessage telemetry)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
                 RobotId = telemetry.RobotId;
                 if (telemetry.Battery != null)
@@ -779,11 +779,11 @@ namespace LeHoangControlCenter.ViewModels
 
                     var currentPoint = new Point(CanvasRobotLeft, CanvasRobotTop);
                     if (TrajectoryPath.Count == 0 ||
-                        (Math.Abs(TrajectoryPath.Last().X - currentPoint.X) > 2 ||
-                         Math.Abs(TrajectoryPath.Last().Y - currentPoint.Y) > 2))
+                        (Math.Abs(TrajectoryPath.Last().X - currentPoint.X) > 6 ||
+                         Math.Abs(TrajectoryPath.Last().Y - currentPoint.Y) > 6))
                     {
                         TrajectoryPath.Add(currentPoint);
-                        if (TrajectoryPath.Count > 150)
+                        if (TrajectoryPath.Count > 100)
                         {
                             TrajectoryPath.RemoveAt(0);
                         }
@@ -794,11 +794,11 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     RobotState = telemetry.Status.State;
                     string incomingMap = string.IsNullOrEmpty(telemetry.Status.CurrentMap) ? "--" : telemetry.Status.CurrentMap;
-                    if (incomingMap != "--" && incomingMap != CurrentMap)
+                    if (incomingMap != "--" && incomingMap != "Bản đồ Mặc định" && !string.Equals(incomingMap, CurrentMap, StringComparison.OrdinalIgnoreCase))
                     {
                         SwitchToMapLocal(incomingMap);
                     }
-                    else
+                    else if (incomingMap != "--" && incomingMap != "Bản đồ Mặc định")
                     {
                         CurrentMap = incomingMap;
                     }
@@ -832,7 +832,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void OnMapDataReceived(MapDataMessage data)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
                 CurrentMap = data.CurrentMap;
                 SelectedMap = data.CurrentMap;
@@ -883,7 +883,8 @@ namespace LeHoangControlCenter.ViewModels
                 int bmpW = 52;
                 int bmpH = 76;
 
-                if (!string.IsNullOrEmpty(data.ImageBase64))
+                bool needReloadImage = _rawMapSource == null || !string.Equals(data.CurrentMap, CurrentMap, StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrEmpty(data.ImageBase64) && needReloadImage)
                 {
                     try
                     {
@@ -916,6 +917,12 @@ namespace LeHoangControlCenter.ViewModels
                     {
                         AddLog($"[LỖI TẢI ẢNH BẢN ĐỒ] {ex.Message}");
                     }
+                }
+                else if (_rawMapSource != null)
+                {
+                    bmpW = _rawMapSource.PixelWidth;
+                    bmpH = _rawMapSource.PixelHeight;
+                    MockMapVisibility = Visibility.Collapsed;
                 }
                 else
                 {
@@ -975,7 +982,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void OnCommandResultReceived(CommandResultMessage result)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
                 if (result.Success)
                 {
@@ -990,7 +997,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void OnLogOccurred(string log)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
             {
                 AddLog(log);
             });

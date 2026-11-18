@@ -119,7 +119,7 @@ namespace LeHoangControlCenter.Services
 
         private async Task ReceiveLoopAsync(CancellationToken token)
         {
-            var buffer = new byte[8192];
+            var buffer = new byte[32768];
             using var ms = new MemoryStream();
 
             try

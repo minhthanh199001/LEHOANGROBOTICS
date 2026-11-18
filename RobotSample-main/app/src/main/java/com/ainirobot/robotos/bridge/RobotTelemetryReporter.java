@@ -29,7 +29,7 @@ public class RobotTelemetryReporter {
     private final RobotBridgeServer mServer;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private boolean mIsRunning = false;
-    private static final long REPORT_INTERVAL_MS = 500; // 2Hz
+    private static final long REPORT_INTERVAL_MS = 150; // ~6.6Hz smooth real-time telemetry
 
     private Pose2d mCurrentPose = new Pose2d(0, 0, 0, 0);
     private boolean mIsCharging = false;
@@ -224,35 +224,33 @@ public class RobotTelemetryReporter {
                     public void onResult(int result, String message, String extraData) {
                         if (result == Definition.RESULT_OK && !TextUtils.isEmpty(message)) {
                             boolean changed = !message.equals(mCurrentMapName);
-                            mCurrentMapName = message;
-                            if (GlobalData.getInstance() != null) {
-                                GlobalData.getInstance().setCurrentMapName(message);
-                            }
-                            if (changed || System.currentTimeMillis() - mLastMapBroadcastTime > 10000) {
-                                mLastMapBroadcastTime = System.currentTimeMillis();
+                            if (changed) {
+                                Log.i(TAG, "Map changed from '" + mCurrentMapName + "' to '" + message + "'. Broadcasting new map data...");
+                                mCurrentMapName = message;
+                                if (GlobalData.getInstance() != null) {
+                                    GlobalData.getInstance().setCurrentMapName(message);
+                                }
                                 broadcastMapData();
                             }
                         }
                     }
                 });
-            } else {
-                if (System.currentTimeMillis() - mLastMapBroadcastTime > 10000) {
-                    mLastMapBroadcastTime = System.currentTimeMillis();
-                    broadcastMapData();
-                }
             }
         } catch (Throwable t) {
             Log.w(TAG, "queryMapInfo error: " + t.getMessage());
         }
     }
 
-    private long mLastMapBroadcastTime = 0;
-
     private void broadcastMapData() {
         try {
             if (mServer != null) {
                 JsonObject mapData = RobotMapManager.buildMapDataJson(mCurrentMapName);
                 mServer.broadcastTelemetry(mapData.toString());
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "broadcastMapData error: " + t.getMessage());
+        }
+    }
             }
         } catch (Throwable t) {
             Log.e(TAG, "broadcastMapData error: " + t.getMessage());
