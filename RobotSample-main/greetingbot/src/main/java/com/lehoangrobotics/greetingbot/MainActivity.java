@@ -39,22 +39,24 @@ public final class MainActivity extends Activity {
     private final AudioLoopback audio = new AudioLoopback();
     private SharedPreferences preferences;
     private CloudSync cloud;
-    private boolean connected, foreground, suspended, localized, destroyed, refreshing, pendingMicrophone;
+    private VoiceDirectionTest voiceDirection;
+    private boolean connected, foreground, suspended, localized, destroyed, refreshing, pendingMicrophone, pendingVoiceDirection;
     private int requestId = 100, navigationGeneration, refreshGeneration;
     private String mapName = "", target = "", navigation = "idle", microphone = "idle";
     private String message = "Đang kết nối RobotOS…", webMessage = "Chưa cấu hình Web quản lý";
     private String navigationCommand = "", stopCommand = "";
     private String refreshCommand = "";
     private JSONArray places = new JSONArray();
-    private TextView sdkText, mapText, messageText, webText, emptyText;
+    private TextView sdkText, mapText, messageText, webText, emptyText, voiceText;
     private LinearLayout placeList;
-    private Button refreshButton, stopButton, micButton;
+    private Button refreshButton, stopButton, micButton, voiceButton;
     private final ArrayList<Button> placeButtons = new ArrayList<>();
     private long lastRefresh;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (destroyed) return;
             if (pendingMicrophone && ready()) { pendingMicrophone = false; microphoneTest(""); }
+            if (pendingVoiceDirection && ready() && voiceDirection != null) { pendingVoiceDirection = false; voiceDirection.start(); }
             if (ready() && !refreshing && !navigation.equals("checking") && !navigation.equals("stopping") &&
                 SystemClock.elapsedRealtime() - lastRefresh > 5000) refresh(null);
             render();
@@ -77,10 +79,15 @@ public final class MainActivity extends Activity {
             @Override public void connection(String status) { webMessage = status; render(); }
         });
         configureCloud();
-        robot.connectServer(this, new ApiListener() {
+        robot.connectServer(getApplicationContext(), new ApiListener() {
             @Override public void handleApiConnected() { main.post(() -> {
                 if (destroyed) return;
                 connected = true; suspended = false;
+                if (voiceDirection == null) voiceDirection = new VoiceDirectionTest(MainActivity.this, new VoiceDirectionTest.Host() {
+                    @Override public boolean canControl() { return ready() && navigation.equals("idle") && !audio.busy(); }
+                    @Override public int nextId() { return MainActivity.this.nextId(); }
+                    @Override public void changed() { render(); }
+                });
                 android.util.Log.i("Greetingbot", "SDK connected; ACL=" + com.ainirobot.coreservice.utils.SettingDataHelper.getInstance().getRobotInt("current_pkg_acl") + "; RobotOS=" + robot.getVersion());
                 robot.setCallback(new ModuleCallbackApi() {
                     @Override public void onSuspend() { main.post(() -> loseControl("RobotOS đang tiếp quản (dừng khẩn, sạc hoặc ứng dụng khác).")); }
@@ -89,7 +96,9 @@ public final class MainActivity extends Activity {
                         suspended = false; message = "RobotOS đã trả quyền điều khiển.";
                         if (ready()) refresh(null); render();
                     }); }
-                    @Override public boolean onSendRequest(int id, String type, String text, String params) { return false; }
+                    @Override public boolean onSendRequest(int id, String type, String text, String params) {
+                        return voiceDirection != null && voiceDirection.onModuleRequest(id, type, text, params);
+                    }
                 });
                 message = "Đã kết nối SDK. Mở app từ Home của RobotOS để nhận quyền điều khiển.";
                 if (ready()) refresh(null); render();
@@ -105,6 +114,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onPause() {
         // Stop while the Activity still has control. Never resume a previous movement automatically.
+        pendingVoiceDirection = false;
+        if (voiceDirection != null && voiceDirection.active()) voiceDirection.stop("Đã dừng test hướng âm khi app rời màn hình.", null);
         if (ready() && (navigation.equals("moving") || navigation.equals("checking"))) stopNavigation("");
         foreground = false; refreshing = false; refreshGeneration++; navigationGeneration++;
         if (!navigationCommand.isEmpty()) cloud.result(navigationCommand, "failed", "Ứng dụng đã rời màn hình.");
@@ -115,6 +126,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         destroyed = true; main.removeCallbacks(tick); audio.cancel();
+        if (voiceDirection != null) voiceDirection.close();
         if (cloud != null) cloud.close();
         if (connected) robot.disconnectApi();
         super.onDestroy();
@@ -138,6 +150,7 @@ public final class MainActivity extends Activity {
     private void loseControl(String why) {
         if (destroyed) return;
         suspended = true; localized = false; refreshing = false; refreshGeneration++; navigationGeneration++;
+        if (voiceDirection != null) voiceDirection.controlLost("RobotOS đang tiếp quản; test hướng âm đã dừng.");
         if (!navigationCommand.isEmpty()) cloud.result(navigationCommand, "failed", why);
         if (!stopCommand.isEmpty()) cloud.result(stopCommand, "failed", why);
         if (!refreshCommand.isEmpty()) cloud.result(refreshCommand, "failed", why);
@@ -228,6 +241,9 @@ public final class MainActivity extends Activity {
         navigate(name, expectedMap, commandId, Long.MAX_VALUE);
     }
     private void navigate(String name, String expectedMap, String commandId, long deadline) {
+        if (voiceDirection != null && voiceDirection.active()) {
+            message = "Dừng test hướng âm trước khi điều hướng."; cloud.result(commandId, "failed", message); render(); return;
+        }
         if (!ready() || !navigation.equals("idle")) { cloud.result(commandId, "failed", "Robot chưa sẵn sàng hoặc đang điều hướng."); return; }
         navigationCommand = commandId; target = name; navigation = "checking";
         message = "Đang kiểm tra bản đồ và định vị…"; render();
@@ -285,6 +301,12 @@ public final class MainActivity extends Activity {
         message = "Đã dừng điều hướng."; render();
     }
     private void stopNavigation(String commandId) {
+        if (voiceDirection != null && voiceDirection.active()) {
+            cloud.result(commandId, "running", "Đang yêu cầu dừng test hướng âm.");
+            voiceDirection.stop("Đã tắt nghe từ khóa; đang dừng xoay nếu có.",
+                (ok, text) -> cloud.result(commandId, ok ? "completed" : "failed", text));
+            return;
+        }
         if (!ready()) { cloud.result(commandId, "failed", "RobotOS đang giữ quyền điều khiển."); return; }
         if (navigation.equals("idle") || navigation.equals("checking")) { stopCommand = commandId; stopped(); return; }
         if (navigation.equals("stopping")) { cloud.result(commandId, "failed", "Đang chờ SDK xác nhận dừng."); return; }
@@ -308,6 +330,9 @@ public final class MainActivity extends Activity {
     }
 
     private void microphoneTest(String commandId) {
+        if (voiceDirection != null && voiceDirection.active()) {
+            message = "Dừng test hướng âm trước khi ghi âm/phát loa."; cloud.result(commandId, "failed", message); render(); return;
+        }
         if (!ready()) { cloud.result(commandId, "failed", "Ứng dụng chưa có quyền điều khiển RobotOS."); return; }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             cloud.result(commandId, "failed", "Chưa cấp quyền microphone trên màn hình robot.");
@@ -327,7 +352,17 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(code, permissions, grantResults);
         if (code == 7 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) pendingMicrophone = true;
+        else if (code == 8 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) pendingVoiceDirection = true;
         else { message = "Cần cấp quyền microphone để ghi âm."; render(); }
+    }
+
+    private void toggleVoiceDirection() {
+        if (voiceDirection == null) return;
+        if (voiceDirection.active()) { voiceDirection.stop("Đã dừng test hướng âm.", null); return; }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 8); return;
+        }
+        voiceDirection.start();
     }
 
     private void executeRemote(JSONObject command, long deadline) {
@@ -384,10 +419,12 @@ public final class MainActivity extends Activity {
         button("Mở ứng dụng bản đồ", tools, v -> openMapTool());
         button("Kết nối Web", tools, v -> showConfiguration());
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL); root.addView(actions);
-        stopButton = button("■  DỪNG ĐIỀU HƯỚNG", actions, v -> stopNavigation("")); stopButton.setTextColor(Color.rgb(183, 28, 28));
+        stopButton = button("■  DỪNG CHUYỂN ĐỘNG", actions, v -> stopNavigation("")); stopButton.setTextColor(Color.rgb(183, 28, 28));
         micButton = button("●  Test microphone → phát lại qua loa", actions, v -> {
             if (audio.busy()) audio.cancel(); else microphoneTest("");
         });
+        voiceButton = button("◎  Test hướng âm: Hello robot / robot ơi", root, v -> toggleVoiceDirection());
+        voiceText = label("Bấm test rồi gọi robot từ một hướng. Test tự tắt sau 60 giây.", 15); voiceText.setMaxLines(3); root.addView(voiceText);
         TextView heading = label("CHỌN ĐIỂM ĐẾN", 18); heading.setTypeface(null, Typeface.BOLD); root.addView(heading);
         emptyText = label("Chưa có điểm. Tạo bản đồ và điểm trong Map Tool của robot, sau đó bấm Đọc lại điểm.", 18); root.addView(emptyText);
         ScrollView pointsScroll = new ScrollView(this); root.addView(pointsScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -414,9 +451,13 @@ public final class MainActivity extends Activity {
         setText(mapText, "Bản đồ: " + (mapName.isEmpty() ? "Chưa đọc được" : mapName));
         setText(messageText, message); setText(webText, webMessage);
         refreshButton.setEnabled(ready && !refreshing && !navigation.equals("checking") && !navigation.equals("stopping"));
-        for (Button button : placeButtons) button.setEnabled(ready && localized && navigation.equals("idle") && Boolean.TRUE.equals(button.getTag()));
-        stopButton.setEnabled(ready && !navigation.equals("stopping") && !navigation.equals("idle"));
-        micButton.setEnabled(ready || audio.busy());
+        boolean voiceActive = voiceDirection != null && voiceDirection.active();
+        for (Button button : placeButtons) button.setEnabled(ready && !voiceActive && localized && navigation.equals("idle") && Boolean.TRUE.equals(button.getTag()));
+        stopButton.setEnabled(ready && (voiceActive || (!navigation.equals("stopping") && !navigation.equals("idle"))));
+        micButton.setEnabled((ready && !voiceActive) || audio.busy());
+        voiceButton.setEnabled(voiceActive || (ready && voiceDirection != null && navigation.equals("idle") && !audio.busy()));
+        setText(voiceButton, voiceActive ? "■  Dừng test hướng âm / dừng xoay" : "◎  Test hướng âm: Hello robot / robot ơi");
+        if (voiceDirection != null) setText(voiceText, voiceDirection.display());
         setText(micButton, audio.busy() ? "■  Hủy kiểm tra microphone" : "●  Test microphone → phát lại qua loa");
         if (cloud != null) {
             try { cloud.snapshot(new JSONObject().put("sdkConnected", connected).put("authorized", authorized)

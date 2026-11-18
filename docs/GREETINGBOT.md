@@ -1,6 +1,6 @@
 # Greetingbot — Android, Web và server
 
-Ứng dụng riêng `com.lehoangrobotics.greetingbot`, dùng `robotservice.jar` hiện có của Orion. Module Luckibot `:app`, Cloud Mobile và giao thức FleetHub hiện tại tiếp tục phát triển độc lập. Greetingbot được quản lý trong tab **GREETINGBOT** trên cùng Web/server ASP.NET.
+Ứng dụng riêng `com.lehoangrobotics.greetingbot`, dùng `robotservice.jar` để điều khiển phần cứng và AgentOS SDK để nhận giọng nói trên robot chạy AgentOS. Module Luckibot `:app`, Cloud Mobile và giao thức FleetHub hiện tại tiếp tục phát triển độc lập. Greetingbot được quản lý trong tab **GREETINGBOT** trên cùng Web/server ASP.NET.
 
 ## Chức năng
 
@@ -10,10 +10,26 @@
 - Ghi âm 2–15 giây rồi phát lại **âm thanh vừa ghi**, không chuyển thành TTS. Theo hướng dẫn Orion: `MIC`, 16 kHz, PCM16, đầu vào stereo; tách kênh trái và phát mono qua loa media. Âm thanh chỉ ở RAM, không tải lên server.
 - Web cấu hình tốc độ tiến/xoay, khoảng kiểm tra đã tới điểm, thời gian chờ vật cản, thời gian ghi âm và mức phát lại. Cấu hình lưu SQLite trên server và bộ nhớ riêng của app.
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
+- Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
+
+## Test hướng âm — bản thử 1.1.0
+
+1. Mở app từ Home / Application Center của robot. Dừng điều hướng và test ghi/phát âm thanh.
+2. Ngắt dây sạc trước khi kiểm tra chuyển động. Bấm **Test hướng âm**, đứng lệch bên trái/phải rồi nói câu gọi.
+3. Xem dòng **Nghe được** và trạng thái góc MicroArray. App chỉ xử lý câu nhận dạng cuối cùng; câu nhận sai hoặc chưa có góc không sinh chuyển động.
+4. Nút **DỪNG CHUYỂN ĐỘNG**, nút dừng test, hết 60 giây hoặc rời màn hình đều kết thúc nghe và yêu cầu dừng vòng xoay đang chạy. Không tự tiếp tục sau khi quay lại app.
+
+ROM được kiểm tra là `V11.9.2026052915.MINUUO`, chạy dịch vụ **AgentOS** `com.ainirobot.agentservice`. Các hàm `SkillApi.setRecognizable`, `setRecognizeModeForce` và getter tương ứng trong dịch vụ này không triển khai nhận dạng. Bản thử dùng AgentOS SDK **0.4.5**, `AppAgent` / `OnTranscribeListener`, mở microphone trong thời gian test và tắt bộ lọc `isEnableWakeFree` để thu cả tiếng nói từ bên cạnh. Khi dừng, trả lại trạng thái microphone/bộ lọc trước test. Không đăng ký action AI; tắt lập kế hoạch bằng mô hình ngôn ngữ.
+
+App dùng định danh client phát triển `com.lehoangrobotics.greetingbot` trong `assets/actionRegistry.json`, không mượn App ID của ứng dụng khác. Nếu triển khai các action/nhân vật trên nền tảng Orion, thay bằng App ID được đăng ký cho ứng dụng tại portal của đơn vị vận hành.
+
+Nguồn góc: trường góc âm thanh cụ thể trong callback giọng nói, sự kiện `REQ_SPEECH_WAKEUP` qua Core SDK, hoặc thông báo wake của hệ thống. Receiver wake yêu cầu quyền signature riêng; ROM kiểm tra chạy Core/Speech/Agent bằng UID hệ thống 1000. Không nhận góc từ Web, không tạo broadcast giả để kích hoạt chuyển động. Góc hết hạn, câu sai, callback trùng hoặc phiên đã dừng đều bị loại. Callback ASR của một số ROM AgentOS có thể không kèm góc; trong trường hợp đó app báo đang chờ MicroArray và không đoán hướng xoay.
+
+Tình trạng xác minh phần cứng được cập nhật trong `GREETINGBOT_VALIDATION.md`; bản thử chưa được coi là nghiệm thu xoay theo giọng nói cho tới khi thử thành công tại robot.
 
 ## Biên dịch
 
-Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK.
+Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot yêu cầu Android 8.0/API 26 trở lên từ bản 1.1.0. AgentOS SDK tải từ Maven chính thức của Orion; thông tin truy cập công khai theo tài liệu SDK nằm trong Gradle riêng của module Greetingbot.
 
 ```powershell
 cd RobotSample-main
@@ -23,11 +39,19 @@ dotnet build .\LeHoangCloudServer\LeHoangCloudServer.csproj -c Release
 node .\scripts\test-greeting-integration.mjs
 ```
 
-APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản bàn giao có trong `releases/LeHoangGreetingbot_v1.0.0-debug.apk`. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+Nếu source nằm trên ổ mạng Windows có đường dẫn dài, chuyển riêng thư mục đầu ra build sang ổ cục bộ:
+
+```powershell
+.\gradlew.bat :greetingbot:testDebugUnitTest :greetingbot:assembleDebug -PgreetingBuildDir=C:/greetingbot-build
+```
+
+Khi đó APK nằm tại `C:/greetingbot-build/outputs/apk/debug/greetingbot-debug.apk`. Hai module Android cũ vẫn dùng cấu hình build của chúng.
+
+APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử hướng âm có trong `releases/LeHoangGreetingbot_v1.1.0-debug.apk`; APK `1.0.0` vẫn được giữ để tham khảo. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
 
 ```powershell
 adb connect 192.168.0.23:5555
-adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.0.0-debug.apk
+adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.1.0-debug.apk
 ```
 
 Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng `am start` để thay thế bước cấp quyền SDK. Muốn tự khởi động: Developer Settings → Boot Apps → Lê Hoàng Greetingbot. Không cần thay app mặc định trong lần cài đặt thử.

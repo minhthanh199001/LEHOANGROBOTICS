@@ -1,5 +1,16 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản thử hướng âm 1.1.0 — đang chờ xác minh chuyển động
+
+- `:greetingbot:testDebugUnitTest` và `:greetingbot:assembleDebug`: thành công; **6 test / 0 lỗi**, kiểm tra hai câu gọi và dấu tiếng Việt, góc không hợp lệ, phân biệt góc âm thanh với tham số lệnh, hạn dùng góc, trùng callback và dừng phiên.
+- `:app:assembleDebug` / `:cloudmobile:assembleDebug`: thành công sau khi tích hợp AgentOS vào riêng module Greetingbot.
+- Bản cài đầu tiên dùng `SkillApi` cũ: người vận hành báo robot không chuyển động và nhận sai câu gọi. Chẩn đoán xác nhận robot chạy **AgentOS**, các hàm SDK cũ bật nghe/get trạng thái không thực hiện nhận dạng trong dịch vụ này. Không coi bản cài đầu là thành công.
+- Đã chuyển sang AgentOS SDK **0.4.5**, callback `OnTranscribeListener`, tắt lập kế hoạch AI và bỏ bộ lọc hướng nhìn trong thời gian test. Không dùng SDK 0.3.5 vì bản đó nối tới gói SpeechService cũ trên ROM này. Đã bổ sung các dependency AndroidX/coroutines cần cho service của SDK.
+- Đã xác minh binding thực tới `com.ainirobot.agentservice/com.ainirobot.agent.service.OpenAgentService`, app mở từ Home, SDK phần cứng kết nối và đọc bản đồ/5 điểm. Bắt đầu test làm biểu tượng microphone hệ thống chuyển sang bật. Bản sửa cuối không có crash khởi động mới; lỗi thiếu `NotificationCompat` trong một bản trung gian đã sửa trước khi đóng gói.
+- Receiver wake yêu cầu quyền signature riêng. CoreService, SpeechService và AgentService trên robot kiểm tra đều có UID hệ thống **1000**. Không phát broadcast hoặc câu ASR giả để tạo kết quả xoay.
+- Đã cài APK qua `192.168.0.23:5555`. SHA-256 của APK kéo lại từ máy khớp bản `releases/LeHoangGreetingbot_v1.1.0-debug.apk`: `BE440332A92E71EE1EFA3376DF5FB610F7F8FEFA149A07DD0CCA97788807B44A`.
+- **Chưa nghiệm thu**: cần người tại robot xác nhận ASR cuối nhận đúng hai câu gọi, SDK trả góc thật, robot xoay đúng hướng và dừng đúng. Callback AgentOS có thể không kèm góc; app sẽ báo chờ góc và không xoay nếu chưa có sự kiện MicroArray hợp lệ. Không dùng việc build thành công, bật microphone hoặc pass unit test làm bằng chứng robot đã xoay.
+
 ## Đã xác minh
 
 - Android `:greetingbot:assembleDebug`: thành công với Gradle 7.4, JDK 17, SDK 29, build-tools 30.0.3.
