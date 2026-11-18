@@ -124,6 +124,31 @@ Lệnh kiểm tra mở file nguồn ở chế độ chỉ đọc, tạo bản sa
 
 ### Thao tác trên máy server
 
+#### Gói đã chuẩn bị trong thư mục chia sẻ
+
+Thư mục vận hành được xác định là `\\192.168.0.123\LeHoangCloudServer`, tương ứng đường dẫn local `F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer` trên server. Database hiện có nằm tại `bin\Debug\net8.0\cloud_fleet.db`. Gói `bin\greeting-web-20261118-v1.3.6` đã được chép và đối chiếu SHA-256 đủ 39 file runtime; chưa thay tiến trình đang chạy.
+
+Trên **chính máy 192.168.0.123**, mở file local:
+
+```text
+F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer\CAP_NHAT_GREETING_WEB.cmd
+```
+
+Giữ cửa sổ server mở. Gói đã publish nên máy server chỉ cần .NET 8 runtime hiện có, không cần SDK hay checkout mới. Script từ chối chạy nhầm máy và từ chối đường dẫn database UNC. Nó chép bản chạy vào `%LOCALAPPDATA%\LeHoangRobotics\Greetingbot\server-*`, chuẩn bị mã quản trị DPAPI trước khi dừng server cũ, sao lưu DB rồi chạy bản mới với **cùng đường dẫn database**. Source và các file chạy Debug/Release cũ được giữ lại.
+
+Dùng `XEM_MA_GREETING.cmd` trong cùng thư mục local, cùng tài khoản Windows để xem mã quản trị. Sau khi ghép nối theo phần dưới, chọn robot trong tab **GREETINGBOT**, sửa **Bù theo chiều quay** rồi lưu. Mặc định 25°: hướng dương cộng 25°, hướng âm trừ 25°. Giá trị được đồng bộ xuống robot và lưu trong database.
+
+Đợt cập nhật Web này giữ cấu hình giọng nói `http://127.0.0.1:5053` cùng cầu nối PC/ADB đã được nghiệm thu. Không cần cài lại APK hay thay thuật toán giọng nói. Nếu cần quay lại Web cũ: dừng cửa sổ server mới, mở PowerShell tại thư mục server local rồi chạy `.\bin\Debug\net8.0\LeHoangCloudServer.exe`.
+
+Chuẩn bị gói tương tự cho lần sau bằng PowerShell 7 trên máy phát triển (đường dẫn đích và tên phiên bản phải mới; helper từ chối ghi đè launcher có sẵn):
+
+```powershell
+dotnet publish .\LeHoangCloudServer\LeHoangCloudServer.csproj -c Release --no-self-contained -o 'C:\GreetingPublish'
+.\scripts\Prepare-GreetingSharedDeployment.ps1 -PublishedDirectory 'C:\GreetingPublish' -ShareRoot '\\SERVER\LeHoangCloudServer' -TargetIp '192.168.0.123' -VersionName 'greeting-web-NEW-VERSION'
+```
+
+#### Cập nhật từ checkout có .NET SDK
+
 1. Cập nhật checkout từ GitHub về commit chứa Greetingbot.
 2. Xác định **đúng file `cloud_fleet.db` server đang dùng** (`DATABASE_PATH`, hoặc cạnh DLL/exe của server). Không thay file này bằng DB demo hay DB từ máy khác.
 3. Chạy trên chính máy server, trong thư mục checkout:

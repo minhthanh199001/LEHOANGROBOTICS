@@ -5,9 +5,21 @@ param(
     [switch]$ShowAdminKey,
     [string]$OpenAiKeyFile,
     [string]$SpeechTokenFile,
+    [string]$PublishedDirectory,
+    [string]$ExpectedHostIp,
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'LeHoangRobotics\Greetingbot')
 )
 $ErrorActionPreference = 'Stop'
+# Use this host's security module even when launched from a different PowerShell edition.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
+if ($ExpectedHostIp) {
+    if (-not (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop | Where-Object IPAddress -eq $ExpectedHostIp)) {
+        throw "Run this updater on server $ExpectedHostIp, using its local disk path. No server was stopped."
+    }
+    if ($DatabasePath -and $DatabasePath.StartsWith('\\')) {
+        throw 'Use the database local disk path on the server, not a network share path.'
+    }
+}
 $stateDirectory = [IO.Path]::GetFullPath($StateDirectory)
 $keyFile = Join-Path $stateDirectory 'admin-key.dpapi'
 
@@ -34,17 +46,43 @@ if ($SpeechTokenFile) {
     $preparedSpeechToken = [Net.NetworkCredential]::new('', $speechSecure).Password
     if ($preparedSpeechToken -notmatch '^[A-Za-z0-9_-]{32,128}$') { throw 'Ma ket noi giong noi khong hop le.' }
 }
-$dbFile = (Resolve-Path -LiteralPath $DatabasePath).Path
+$dbFile = (Resolve-Path -LiteralPath $DatabasePath).ProviderPath
 $repository = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repository 'LeHoangCloudServer\LeHoangCloudServer.csproj'
-if (!(Test-Path -LiteralPath $project)) { throw 'Can chay script tu checkout LEHOANGROBOTICS.' }
+if ($PublishedDirectory) {
+    $published = (Resolve-Path -LiteralPath $PublishedDirectory).ProviderPath
+    foreach ($required in @('LeHoangCloudServer.dll', 'LeHoangCloudServer.runtimeconfig.json', 'wwwroot\index.html', 'wwwroot\js\greeting.js')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $published $required) -PathType Leaf)) { throw "Incomplete published package: $required" }
+    }
+} elseif (!(Test-Path -LiteralPath $project)) { throw 'Can chay script tu checkout LEHOANGROBOTICS.' }
 $releaseDirectory = Join-Path $stateDirectory ('server-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $compileDirectory = Join-Path $stateDirectory ('build-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
 
-# Finish publishing before stopping the existing server.
-& dotnet publish $project -c Release --no-self-contained "-p:OutputPath=$compileDirectory" -o $releaseDirectory --nologo
-if ($LASTEXITCODE -ne 0) { throw 'Publish that bai. Server hien tai chua bi dung.' }
+# Prepare the complete version before stopping the existing server.
+if ($PublishedDirectory) {
+    $sourcePrefix = [IO.Path]::GetFullPath($published).TrimEnd('\') + '\'
+    if ([string]::Equals([IO.Path]::GetFullPath($releaseDirectory), $sourcePrefix.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFullPath($releaseDirectory).StartsWith($sourcePrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The version directory must not be inside the package being copied.'
+    }
+    Get-ChildItem -LiteralPath $published -Force | Copy-Item -Destination $releaseDirectory -Recurse -Force
+} else {
+    & dotnet publish $project -c Release --no-self-contained "-p:OutputPath=$compileDirectory" -o $releaseDirectory --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'Publish that bai. Server hien tai chua bi dung.' }
+}
+# Validate runtime and protected credentials before taking the running server down.
+$null = Get-Command dotnet -CommandType Application -ErrorAction Stop
+if (!(Test-Path -LiteralPath $keyFile)) {
+    $bytes = New-Object byte[] 32
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+    $newKey = [Convert]::ToBase64String($bytes)
+    $newKey | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Set-Content -LiteralPath $keyFile
+    $newKey = $null
+}
+$preparedAdminKey = Read-AdminKey
+if ($preparedAdminKey.Length -lt 24) { throw 'Protected admin key is invalid; existing server was not stopped.' }
 $listeners = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
 foreach ($serverProcessId in @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)) {
     $process = Get-CimInstance Win32_Process -Filter "ProcessId=$serverProcessId"
@@ -62,21 +100,13 @@ New-Item -ItemType Directory -Path $backup -Force | Out-Null
 foreach ($file in @($dbFile, ($dbFile + '-wal'), ($dbFile + '-shm'))) {
     if (Test-Path -LiteralPath $file) { Copy-Item -LiteralPath $file -Destination $backup }
 }
-if (!(Test-Path -LiteralPath $keyFile)) {
-    $bytes = New-Object byte[] 32
-    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
-    $newKey = [Convert]::ToBase64String($bytes)
-    $newKey | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Set-Content -LiteralPath $keyFile
-    $newKey = $null
-}
-$env:GREETING_ADMIN_KEY = Read-AdminKey
+$env:GREETING_ADMIN_KEY = $preparedAdminKey
 $env:DATABASE_PATH = $dbFile
 $env:ASPNETCORE_URLS = "http://0.0.0.0:$Port"
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
 $previousOpenAiFile = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY_FILE', 'Process')
 $previousSpeechToken = [Environment]::GetEnvironmentVariable('GREETING_SPEECH_TOKEN', 'Process')
-if ($OpenAiKeyFile) { $env:OPENAI_API_KEY_FILE = (Resolve-Path -LiteralPath $OpenAiKeyFile).Path }
+if ($OpenAiKeyFile) { $env:OPENAI_API_KEY_FILE = (Resolve-Path -LiteralPath $OpenAiKeyFile).ProviderPath }
 if ($SpeechTokenFile) {
     $env:GREETING_SPEECH_TOKEN = $preparedSpeechToken
 }
@@ -92,4 +122,5 @@ finally {
     if ($OpenAiKeyFile) { [Environment]::SetEnvironmentVariable('OPENAI_API_KEY_FILE', $previousOpenAiFile, 'Process') }
     if ($SpeechTokenFile) { [Environment]::SetEnvironmentVariable('GREETING_SPEECH_TOKEN', $previousSpeechToken, 'Process') }
     $preparedSpeechToken = $null; $speechSecure = $null
+    $preparedAdminKey = $null
 }
