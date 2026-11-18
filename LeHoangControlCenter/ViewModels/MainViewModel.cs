@@ -271,6 +271,31 @@ namespace LeHoangControlCenter.ViewModels
         [ObservableProperty]
         private double _mapDisplayHeight = 440.0;
 
+        // Map Viewport Rotation (Allows user to rotate map 180° or 0° to match desired real-world orientation)
+        [ObservableProperty]
+        private double _mapRotationAngle = 0.0;
+
+        public double MapCenterX => MapDisplayWidth / 2.0;
+        public double MapCenterY => MapDisplayHeight / 2.0;
+        public double StationInverseRotationAngle => -MapRotationAngle;
+        public string MapRotationButtonText => MapRotationAngle == 180.0 ? "🔄 Về 0°" : "🔄 Xoay 180°";
+
+        partial void OnMapRotationAngleChanged(double value)
+        {
+            OnPropertyChanged(nameof(StationInverseRotationAngle));
+            OnPropertyChanged(nameof(MapRotationButtonText));
+        }
+
+        partial void OnMapDisplayWidthChanged(double value)
+        {
+            OnPropertyChanged(nameof(MapCenterX));
+        }
+
+        partial void OnMapDisplayHeightChanged(double value)
+        {
+            OnPropertyChanged(nameof(MapCenterY));
+        }
+
         // Navigation View Switching
         [ObservableProperty]
         private string _selectedNavMenu = "Dashboard";
@@ -2216,6 +2241,13 @@ namespace LeHoangControlCenter.ViewModels
             MapPanX = 0.0;
             MapPanY = 0.0;
             MapZoomText = "100%";
+        }
+
+        [RelayCommand]
+        public void ToggleMapRotation()
+        {
+            MapRotationAngle = (MapRotationAngle == 0.0) ? 180.0 : 0.0;
+            AddLog($"🔄 [GÓC NHÌN BẢN ĐỒ] Đã xoay bản đồ {(MapRotationAngle == 180.0 ? "180° (Đảo chiều)" : "0° (Gốc)")}.");
         }
 
         public void ApplyZoom(double delta)
