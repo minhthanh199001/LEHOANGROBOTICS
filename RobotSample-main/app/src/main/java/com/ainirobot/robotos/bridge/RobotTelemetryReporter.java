@@ -39,6 +39,7 @@ public class RobotTelemetryReporter {
     private String mDoorStatus = "CLOSED";
     private String mCurrentMapName = "";
     private long mLastSlowQueryTime = 0;
+    private boolean mIsEstimated = true;
 
     private final Runnable mReportRunnable = new Runnable() {
         @Override
@@ -81,6 +82,18 @@ public class RobotTelemetryReporter {
         }
     };
 
+    private final StatusListener mEstimateListener = new StatusListener() {
+        @Override
+        public void onStatusUpdate(String type, String data) {
+            try {
+                org.json.JSONObject jsonObject = new org.json.JSONObject(data);
+                mIsEstimated = jsonObject.optBoolean("isPoseEstimate", false);
+            } catch (Exception e) {
+                mIsEstimated = false;
+            }
+        }
+    };
+
     public RobotTelemetryReporter(RobotBridgeServer server) {
         this.mServer = server;
     }
@@ -92,6 +105,8 @@ public class RobotTelemetryReporter {
         try {
             if (RobotApi.getInstance().isApiConnectedService()) {
                 RobotApi.getInstance().registerStatusListener(Constant.CoreDef.POSE_LISTEN, mPoseListener);
+                RobotApi.getInstance().registerStatusListener(Definition.STATUS_POSE_ESTIMATE, mEstimateListener);
+                mIsEstimated = RobotApi.getInstance().isRobotEstimate();
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to register pose listener: " + e.getMessage());
@@ -111,6 +126,7 @@ public class RobotTelemetryReporter {
         mHandler.removeCallbacks(mReportRunnable);
         try {
             RobotApi.getInstance().unregisterStatusListener(mPoseListener);
+            RobotApi.getInstance().unregisterStatusListener(mEstimateListener);
         } catch (Exception e) {
             Log.e(TAG, "Failed to unregister pose listener: " + e.getMessage());
         }
@@ -270,16 +286,29 @@ public class RobotTelemetryReporter {
             battery.addProperty("isCharging", mIsCharging);
             root.add("battery", battery);
 
-            // Pose
+            // Pose: Query direct from CoreService to guarantee real-time freshness
+            try {
+                if (RobotApi.getInstance().isApiConnectedService()) {
+                    com.ainirobot.coreservice.client.actionbean.Pose p = RobotApi.getInstance().getCurrentPose();
+                    if (p != null) {
+                        mCurrentPose = new Pose2d(p.getX(), p.getY(), p.getTheta(), 0);
+                        if (GlobalData.getInstance() != null) {
+                            GlobalData.getInstance().setNewestLocation(mCurrentPose);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+
             JsonObject pose = new JsonObject();
             pose.addProperty("x", mCurrentPose != null ? mCurrentPose.x : 0.0);
             pose.addProperty("y", mCurrentPose != null ? mCurrentPose.y : 0.0);
             pose.addProperty("theta", mCurrentPose != null ? mCurrentPose.t : 0.0);
 
-            boolean isEstimated = false;
+            boolean isEstimated = mIsEstimated;
             try {
                 if (RobotApi.getInstance().isApiConnectedService()) {
                     isEstimated = RobotApi.getInstance().isRobotEstimate();
+                    mIsEstimated = isEstimated;
                 }
             } catch (Throwable ignored) {
             }
