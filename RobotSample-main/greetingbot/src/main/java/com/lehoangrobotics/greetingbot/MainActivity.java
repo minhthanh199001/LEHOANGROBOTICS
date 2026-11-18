@@ -270,6 +270,7 @@ public final class MainActivity extends Activity {
     }
 
     private void finishNavigation(boolean ok, String why) {
+        navigationGeneration++;
         cloud.result(navigationCommand, ok ? "completed" : "failed", why);
         if (!stopCommand.isEmpty()) cloud.result(stopCommand, ok ? "completed" : "failed", "Điều hướng đã kết thúc: " + why);
         stopCommand = "";
@@ -291,9 +292,19 @@ public final class MainActivity extends Activity {
         cloud.result(commandId, "running", message); render();
         try {
             int accepted = robot.stopNavigation(nextId());
-            if (accepted < 0) { message = "SDK chưa nhận lệnh dừng: " + accepted; render(); }
-        } catch (Exception e) { message = "Không gửi được lệnh dừng: " + e.getMessage(); render(); }
+            if (accepted < 0) stopUnconfirmed("SDK chưa nhận lệnh dừng: " + accepted + ". Có thể bấm dừng để thử lại.");
+        } catch (Exception e) { stopUnconfirmed("Không gửi được lệnh dừng: " + e.getMessage()); }
         // Do not claim the robot stopped without ACTION_RESPONSE_STOP_SUCCESS.
+        final int generation = navigationGeneration;
+        main.postDelayed(() -> {
+            if (!destroyed && generation == navigationGeneration && navigation.equals("stopping"))
+                stopUnconfirmed("Chưa nhận xác nhận dừng từ SDK. Bấm dừng để thử lại hoặc dùng nút dừng vật lý.");
+        }, 5000);
+    }
+
+    private void stopUnconfirmed(String why) {
+        cloud.result(stopCommand, "failed", why); stopCommand = "";
+        navigation = "moving"; message = why; render();
     }
 
     private void microphoneTest(String commandId) {
