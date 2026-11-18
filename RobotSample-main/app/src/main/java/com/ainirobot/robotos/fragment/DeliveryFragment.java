@@ -105,11 +105,40 @@ public class DeliveryFragment extends Fragment {
     private TextView mBtnMenuDots;
     private TextView mBtnLocationFloor;
     private TextView mTvLocalizationStatus;
+    private TextView mBtnChargeDock;
     private TextView mBtnLanguage;
+    private TextView mBtnDishCollection;
     private TextView mTvBadgeTray1;
     private TextView mTvBadgeTray2;
     private TextView mTvBadgeTray3;
     private TextView mTvHeaderDestinations;
+
+    // 8. Language Selection Screen Views
+    private LinearLayout mPanelLanguageSelect;
+    private TextView mBtnLangBack;
+    private TextView mTvLangTitle;
+    private TextView mTvLangClock;
+    private TextView mTvLangBattery;
+    private RelativeLayout mLangItemVi;
+    private RelativeLayout mLangItemEn;
+    private RelativeLayout mLangItemZh;
+    private RelativeLayout mLangItemZht;
+    private RelativeLayout mLangItemJa;
+    private RelativeLayout mLangItemKo;
+    private RelativeLayout mLangItemTh;
+    private RelativeLayout mLangItemId;
+    private RelativeLayout mLangItemDe;
+    private TextView mIcCheckVi;
+    private TextView mIcCheckEn;
+    private TextView mIcCheckZh;
+
+    // 9. Table Clearing / Busboy Mode Views
+    private RelativeLayout mPanelCollectionMode;
+    private TextView mBtnCollectionMenuDots;
+    private TextView mTvCollectionClock;
+    private TextView mTvCollectionBattery;
+    private Button mBtnCollectionLocal;
+    private Button mBtnCollectionWashroom;
 
     private static final String PREF_KEY_LANGUAGE_IS_EN = "pref_key_language_is_en";
     private boolean mIsEnglish = false;
@@ -319,12 +348,41 @@ public class DeliveryFragment extends Fragment {
         mBtnMenuDots = root.findViewById(R.id.btn_menu_dots);
         mBtnLocationFloor = root.findViewById(R.id.btn_location_floor);
         mTvLocalizationStatus = root.findViewById(R.id.tv_localization_status);
+        mBtnChargeDock = root.findViewById(R.id.btn_charge_dock);
         mBtnLanguage = root.findViewById(R.id.btn_language);
+        mBtnDishCollection = root.findViewById(R.id.btn_dish_collection);
         mBtnModeTray = root.findViewById(R.id.btn_mode_tray);
         mTvBadgeTray1 = root.findViewById(R.id.tv_badge_tray_1);
         mTvBadgeTray2 = root.findViewById(R.id.tv_badge_tray_2);
         mTvBadgeTray3 = root.findViewById(R.id.tv_badge_tray_3);
         mTvHeaderDestinations = root.findViewById(R.id.tv_header_destinations);
+
+        // Language Select Overlay Views
+        mPanelLanguageSelect = root.findViewById(R.id.panel_language_select);
+        mBtnLangBack = root.findViewById(R.id.btn_lang_back);
+        mTvLangTitle = root.findViewById(R.id.tv_lang_title);
+        mTvLangClock = root.findViewById(R.id.tv_lang_clock);
+        mTvLangBattery = root.findViewById(R.id.tv_lang_battery);
+        mLangItemVi = root.findViewById(R.id.lang_item_vi);
+        mLangItemEn = root.findViewById(R.id.lang_item_en);
+        mLangItemZh = root.findViewById(R.id.lang_item_zh);
+        mLangItemZht = root.findViewById(R.id.lang_item_zht);
+        mLangItemJa = root.findViewById(R.id.lang_item_ja);
+        mLangItemKo = root.findViewById(R.id.lang_item_ko);
+        mLangItemTh = root.findViewById(R.id.lang_item_th);
+        mLangItemId = root.findViewById(R.id.lang_item_id);
+        mLangItemDe = root.findViewById(R.id.lang_item_de);
+        mIcCheckVi = root.findViewById(R.id.ic_check_vi);
+        mIcCheckEn = root.findViewById(R.id.ic_check_en);
+        mIcCheckZh = root.findViewById(R.id.ic_check_zh);
+
+        // Collection Mode Views
+        mPanelCollectionMode = root.findViewById(R.id.panel_collection_mode);
+        mBtnCollectionMenuDots = root.findViewById(R.id.btn_collection_menu_dots);
+        mTvCollectionClock = root.findViewById(R.id.tv_collection_clock);
+        mTvCollectionBattery = root.findViewById(R.id.tv_collection_battery);
+        mBtnCollectionLocal = root.findViewById(R.id.btn_collection_local);
+        mBtnCollectionWashroom = root.findViewById(R.id.btn_collection_washroom);
 
         try {
             if (getContext() != null) {
@@ -514,20 +572,64 @@ public class DeliveryFragment extends Fragment {
             }
         });
 
-        mBtnLocationFloor.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showFloorSwitchDialog();
-            }
-        });
+        // Left Action Strip: Charge Dock, Language, Dish Collection
+        if (mBtnChargeDock != null) {
+            mBtnChargeDock.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showAutoChargeDialog();
+                }
+            });
+        }
 
-        mBtnLocationFloor.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                showQuickRelocalizeDialog();
-                return true;
-            }
-        });
+        if (mBtnLanguage != null) {
+            mBtnLanguage.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.GONE);
+                    if (mPanelLanguageSelect != null) mPanelLanguageSelect.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+
+        if (mBtnLangBack != null) {
+            mBtnLangBack.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mPanelLanguageSelect != null) mPanelLanguageSelect.setVisibility(View.GONE);
+                    if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+
+        setupLanguageSelectionHandlers();
+
+        if (mBtnDishCollection != null) {
+            mBtnDishCollection.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    switchActiveMode(MODE_COLLECTION);
+                }
+            });
+        }
+
+        setupCollectionModeHandlers();
+
+        if (mBtnLocationFloor != null) {
+            mBtnLocationFloor.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showFloorSwitchDialog();
+                }
+            });
+            mBtnLocationFloor.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    showQuickRelocalizeDialog();
+                    return true;
+                }
+            });
+        }
 
         if (mTvLocalizationStatus != null) {
             mTvLocalizationStatus.setOnClickListener(new View.OnClickListener() {
@@ -538,19 +640,14 @@ public class DeliveryFragment extends Fragment {
             });
         }
 
-        mBtnLanguage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showLanguageSelectDialog();
-            }
-        });
-
-        mBtnModeTray.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(getContext(), "Chế độ giao hàng đa điểm 3 tầng", Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (mBtnModeTray != null) {
+            mBtnModeTray.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Toast.makeText(getContext(), "Chế độ giao hàng đa điểm 3 tầng", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
 
         mBtnTrayFloatingBell.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -792,7 +889,10 @@ public class DeliveryFragment extends Fragment {
 
     private void updateClock() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        mTvClockTime.setText(sdf.format(new Date()));
+        String timeStr = sdf.format(new Date());
+        if (mTvClockTime != null) mTvClockTime.setText(timeStr);
+        if (mTvLangClock != null) mTvLangClock.setText(timeStr);
+        if (mTvCollectionClock != null) mTvCollectionClock.setText(timeStr);
     }
 
     @Override
@@ -862,19 +962,39 @@ public class DeliveryFragment extends Fragment {
             } else if (level <= 40) {
                 color = 0xFFF59E0B; // Amber
             } else {
-                color = 0xFF7DD3FC; // Cyan
+                color = 0xFFFFFFFF; // Clean White like original OrionStar Lucki
             }
             if (getActivity() != null) {
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mTvBatteryPill.setText(text);
-                        mTvBatteryPill.setTextColor(color);
+                        if (mTvBatteryPill != null) {
+                            mTvBatteryPill.setText(text);
+                            mTvBatteryPill.setTextColor(color);
+                        }
+                        if (mTvLangBattery != null) {
+                            mTvLangBattery.setText(text);
+                            mTvLangBattery.setTextColor(color);
+                        }
+                        if (mTvCollectionBattery != null) {
+                            mTvCollectionBattery.setText(text);
+                            mTvCollectionBattery.setTextColor(color);
+                        }
                     }
                 });
             } else {
-                mTvBatteryPill.setText(text);
-                mTvBatteryPill.setTextColor(color);
+                if (mTvBatteryPill != null) {
+                    mTvBatteryPill.setText(text);
+                    mTvBatteryPill.setTextColor(color);
+                }
+                if (mTvLangBattery != null) {
+                    mTvLangBattery.setText(text);
+                    mTvLangBattery.setTextColor(color);
+                }
+                if (mTvCollectionBattery != null) {
+                    mTvCollectionBattery.setText(text);
+                    mTvCollectionBattery.setTextColor(color);
+                }
             }
         }
     }
@@ -889,9 +1009,9 @@ public class DeliveryFragment extends Fragment {
             mBtnClearTray1.setVisibility(View.VISIBLE);
         } else {
             mShelfTray1.setBackgroundResource(a1 ? R.drawable.bg_tray_shelf_active : R.drawable.bg_tray_shelf_normal);
-            mTvTray1Status.setText(a1 ? (mIsEnglish ? "Please select destination" : "Xin hãy lựa chọn")
-                    : (mIsEnglish ? "Tap to add" : "Nhấn để thêm"));
-            mTvTray1Status.setTextColor(a1 ? 0xFFFFFFFF : 0xFFE0F2FE);
+            mTvTray1Status.setText(a1 ? (mIsEnglish ? "Please select" : "Xin hãy lựa chọn")
+                    : (mIsEnglish ? "Please select" : "Xin hãy lựa chọn"));
+            mTvTray1Status.setTextColor(a1 ? 0xFFFFFFFF : 0xFFBAE6FD);
             mBtnClearTray1.setVisibility(View.GONE);
         }
 
@@ -904,9 +1024,9 @@ public class DeliveryFragment extends Fragment {
             mBtnClearTray2.setVisibility(View.VISIBLE);
         } else {
             mShelfTray2.setBackgroundResource(a2 ? R.drawable.bg_tray_shelf_active : R.drawable.bg_tray_shelf_normal);
-            mTvTray2Status.setText(a2 ? (mIsEnglish ? "Please select destination" : "Xin hãy lựa chọn")
-                    : (mIsEnglish ? "Tap to add" : "Nhấn để thêm"));
-            mTvTray2Status.setTextColor(a2 ? 0xFFFFFFFF : 0xFFE0F2FE);
+            mTvTray2Status.setText(a2 ? (mIsEnglish ? "Please select" : "Xin hãy lựa chọn")
+                    : (mIsEnglish ? "Tray 2 Tap to add" : "tầng2 Nhấn để thêm"));
+            mTvTray2Status.setTextColor(a2 ? 0xFFFFFFFF : 0xFFBAE6FD);
             mBtnClearTray2.setVisibility(View.GONE);
         }
 
@@ -919,9 +1039,9 @@ public class DeliveryFragment extends Fragment {
             mBtnClearTray3.setVisibility(View.VISIBLE);
         } else {
             mShelfTray3.setBackgroundResource(a3 ? R.drawable.bg_tray_shelf_active : R.drawable.bg_tray_shelf_normal);
-            mTvTray3Status.setText(a3 ? (mIsEnglish ? "Please select destination" : "Xin hãy lựa chọn")
-                    : (mIsEnglish ? "Tap to add" : "Nhấn để thêm"));
-            mTvTray3Status.setTextColor(a3 ? 0xFFFFFFFF : 0xFFE0F2FE);
+            mTvTray3Status.setText(a3 ? (mIsEnglish ? "Please select" : "Xin hãy lựa chọn")
+                    : (mIsEnglish ? "Tray 3 Tap to add" : "tầng3 Nhấn để thêm"));
+            mTvTray3Status.setTextColor(a3 ? 0xFFFFFFFF : 0xFFBAE6FD);
             mBtnClearTray3.setVisibility(View.GONE);
         }
     }
@@ -1020,7 +1140,7 @@ public class DeliveryFragment extends Fragment {
             return;
         mContainerStationButtons.removeAllViews();
 
-        int cols = 3;
+        int cols = 4;
         LinearLayout row = null;
 
         for (int i = 0; i < mStationsList.size(); i++) {
@@ -1995,6 +2115,10 @@ public class DeliveryFragment extends Fragment {
             mPanelDeliveryConfig.setVisibility(View.GONE);
         if (mPanelCruiseConfig != null)
             mPanelCruiseConfig.setVisibility(View.GONE);
+        if (mPanelCollectionMode != null)
+            mPanelCollectionMode.setVisibility(View.GONE);
+        if (mPanelLanguageSelect != null)
+            mPanelLanguageSelect.setVisibility(View.GONE);
 
         // Update tag indicators in mode switch panel
         if (mTagUsingTransport != null) {
@@ -2026,11 +2150,140 @@ public class DeliveryFragment extends Fragment {
                 break;
 
             case MODE_COLLECTION:
+                if (mPanelCollectionMode != null)
+                    mPanelCollectionMode.setVisibility(View.VISIBLE);
+                TTSPlayer.playVietnameseText("Đã vào chế độ thu thập. Sẵn sàng cho bộ sưu tập", null);
+                break;
+        }
+    }
+
+    private void showAutoChargeDialog() {
+        if (getContext() == null)
+            return;
+        new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle(mIsEnglish ? "Auto Recharge Station" : "Về Trạm sạc tự động")
+                .setMessage(mIsEnglish ? "Send robot back to charging dock now?"
+                        : "Bạn có muốn gửi robot quay về trạm sạc tự động ngay bây giờ?")
+                .setPositiveButton(mIsEnglish ? "Recharge" : "Về trạm sạc", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (mIsEnglish) {
+                            TTSPlayer.playEnglishText("Robot navigating to auto charging station", null);
+                        } else {
+                            TTSPlayer.playVietnameseText("Robot đang quay về trạm sạc tự động", null);
+                        }
+                        Toast.makeText(getContext(),
+                                mIsEnglish ? "Navigating to Auto Charge Dock..." : "Đang về trạm sạc tự động...",
+                                Toast.LENGTH_SHORT).show();
+                        RobotApi.getInstance().startNaviToAutoChargeAction(0, 5 * Definition.MINUTE, new ActionListener() {
+                            @Override
+                            public void onResult(int status, String responseString) {
+                                Log.i(TAG, "startNaviToAutoChargeAction result: " + status + " " + responseString);
+                            }
+
+                            @Override
+                            public void onError(int errorCode, String errorString) {
+                                Log.e(TAG, "startNaviToAutoChargeAction error: " + errorCode + " " + errorString);
+                            }
+
+                            @Override
+                            public void onStatusUpdate(int status, String data) {
+                            }
+                        });
+                    }
+                })
+                .setNegativeButton(mIsEnglish ? "Cancel" : "Hủy", null)
+                .show();
+    }
+
+    private void setupLanguageSelectionHandlers() {
+        View.OnClickListener langClick = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int id = v.getId();
+                if (id == R.id.lang_item_vi) {
+                    mIsEnglish = false;
+                    applyLanguage(false, true);
+                    Toast.makeText(getContext(), "Đã chuyển sang Tiếng Việt", Toast.LENGTH_SHORT).show();
+                } else if (id == R.id.lang_item_en) {
+                    mIsEnglish = true;
+                    applyLanguage(true, true);
+                    Toast.makeText(getContext(), "Switched to English", Toast.LENGTH_SHORT).show();
+                } else if (id == R.id.lang_item_zh || id == R.id.lang_item_zht) {
+                    Toast.makeText(getContext(), "已选择中文模式", Toast.LENGTH_SHORT).show();
+                    TTSPlayer.playVietnameseText("Chế độ tiếng Trung", null);
+                } else {
+                    Toast.makeText(getContext(), "Đã chọn ngôn ngữ!", Toast.LENGTH_SHORT).show();
+                }
+                updateLanguageCheckmarks();
+                if (mPanelLanguageSelect != null)
+                    mPanelLanguageSelect.setVisibility(View.GONE);
                 if (mPanelDeliveryConfig != null)
                     mPanelDeliveryConfig.setVisibility(View.VISIBLE);
-                TTSPlayer.playVietnameseText("Chế độ Thu dọn", null);
-                Toast.makeText(getContext(), "Chế độ Thu dọn", Toast.LENGTH_SHORT).show();
-                break;
+            }
+        };
+
+        if (mLangItemVi != null)
+            mLangItemVi.setOnClickListener(langClick);
+        if (mLangItemEn != null)
+            mLangItemEn.setOnClickListener(langClick);
+        if (mLangItemZh != null)
+            mLangItemZh.setOnClickListener(langClick);
+        if (mLangItemZht != null)
+            mLangItemZht.setOnClickListener(langClick);
+        if (mLangItemJa != null)
+            mLangItemJa.setOnClickListener(langClick);
+        if (mLangItemKo != null)
+            mLangItemKo.setOnClickListener(langClick);
+        if (mLangItemTh != null)
+            mLangItemTh.setOnClickListener(langClick);
+        if (mLangItemId != null)
+            mLangItemId.setOnClickListener(langClick);
+        if (mLangItemDe != null)
+            mLangItemDe.setOnClickListener(langClick);
+
+        updateLanguageCheckmarks();
+    }
+
+    private void updateLanguageCheckmarks() {
+        if (mIcCheckVi != null)
+            mIcCheckVi.setVisibility(!mIsEnglish ? View.VISIBLE : View.GONE);
+        if (mIcCheckEn != null)
+            mIcCheckEn.setVisibility(mIsEnglish ? View.VISIBLE : View.GONE);
+    }
+
+    private void setupCollectionModeHandlers() {
+        if (mBtnCollectionMenuDots != null) {
+            mBtnCollectionMenuDots.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openLeftDrawer();
+                }
+            });
+        }
+
+        if (mBtnCollectionLocal != null) {
+            mBtnCollectionLocal.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    TTSPlayer.playVietnameseText("Bắt đầu thu thập địa phương", null);
+                    Toast.makeText(getContext(), "Đang tuần tra thu dọn bát đĩa...", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (mBtnCollectionWashroom != null) {
+            mBtnCollectionWashroom.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String standby = findStandbyStation();
+                    TTSPlayer.playVietnameseText("Quay lại khu vực thu thập", null);
+                    Toast.makeText(getContext(), "Quay lại khu vực thu thập...", Toast.LENGTH_SHORT).show();
+                    mIsReturningHome = true;
+                    mCurrentSpeed = (mSpeedReturn > 0.1f) ? mSpeedReturn : 0.6f;
+                    navigateRobotTo(standby);
+                }
+            });
         }
     }
 

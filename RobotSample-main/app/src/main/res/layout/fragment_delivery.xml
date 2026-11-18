@@ -14,101 +14,71 @@
         android:paddingTop="14dp"
         android:paddingBottom="16dp">
 
-        <!-- TOP STATUS BAR -->
+        <!-- TOP STATUS BAR: Menu Dots on Left, Time, Wifi & Battery on Right -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="38dp"
-            android:layout_marginBottom="14dp">
+            android:layout_marginBottom="12dp">
 
-            <!-- Left Action Icons: ..., Location, Language, Tray Mode -->
-            <LinearLayout
+            <!-- Left: Circular Menu dots (•••) -->
+            <TextView
+                android:id="@+id/btn_menu_dots"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="•••"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Hidden compatibility tags to prevent any null reference -->
+            <TextView
+                android:id="@+id/btn_location_floor"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/btn_menu_dots"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_circle_icon"
-                    android:gravity="center"
-                    android:text="•••"
-                    android:textColor="#E0F2FE"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:layout_marginEnd="8dp" />
+            <TextView
+                android:id="@+id/tv_localization_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/btn_location_floor"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_circle_icon"
-                    android:gravity="center"
-                    android:text="📍"
-                    android:textColor="#BAE6FD"
-                    android:textSize="14sp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:layout_marginEnd="6dp" />
+            <TextView
+                android:id="@+id/btn_mode_tray"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/tv_localization_status"
-                    android:layout_width="wrap_content"
-                    android:layout_height="28dp"
-                    android:background="@drawable/bg_circle_cancel"
-                    android:gravity="center"
-                    android:paddingHorizontal="8dp"
-                    android:text="⚠️ MẤT VỊ TRÍ"
-                    android:textColor="#FCA5A5"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:visibility="gone"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:layout_marginEnd="6dp" />
+            <TextView
+                android:id="@+id/tv_badge_tray_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/btn_language"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:minWidth="44dp"
-                    android:paddingHorizontal="8dp"
-                    android:background="@drawable/bg_circle_icon"
-                    android:gravity="center"
-                    android:text="🇻🇳 VI"
-                    android:textColor="#BAE6FD"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:layout_marginEnd="8dp" />
+            <TextView
+                android:id="@+id/tv_badge_tray_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/btn_mode_tray"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_circle_icon"
-                    android:gravity="center"
-                    android:text="🍱"
-                    android:textColor="#BAE6FD"
-                    android:textSize="14sp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                
-            </LinearLayout>
+            <TextView
+                android:id="@+id/tv_badge_tray_3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
             <!-- Right Status: Time, Wifi, Battery -->
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="34dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:background="@drawable/bg_card_frosted_container"
-                android:paddingHorizontal="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -116,234 +86,233 @@
                     android:id="@+id/tv_clock_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="15:44"
+                    android:text="17:01"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:layout_marginEnd="8dp" />
 
                 <TextView
+                    android:id="@+id/tv_wifi_pill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="📶"
                     android:textColor="#38BDF8"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:layout_marginEnd="6dp" />
 
                 <TextView
                     android:id="@+id/tv_battery_pill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🔋 72%"
-                    android:textColor="#7DD3FC"
-                    android:textSize="12sp"
+                    android:text="🔋 29%"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </RelativeLayout>
 
-        <!-- UPPER SECTION: 3 STACKED HOLOGRAPHIC TRAY SHELVES -->
-        <RelativeLayout
+        <!-- UPPER SECTION: LEFT 3 ACTION BUTTONS + 3 TRAY SHELVES + RIGHT T-SHIRT BUTTON -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
 
-            <!-- 3 Vertical Tray Shelves -->
+            <!-- LEFT VERTICAL STRIP OF 3 ACTION ICONS -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginEnd="12dp">
 
-                <!-- TẦNG 1 (KHAY 1 - TRÊN CÙNG) -->
-                <RelativeLayout
-                    android:id="@+id/shelf_tray_1"
-                    android:layout_width="match_parent"
-                    android:layout_height="62dp"
+                <!-- 1. Về Trạm sạc (Pin icon 📍) -->
+                <TextView
+                    android:id="@+id/btn_charge_dock"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="📍"
+                    android:textColor="#BAE6FD"
+                    android:textSize="16sp"
                     android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_tray_shelf_active"
                     android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp">
+                    android:focusable="true" />
 
-                    <!-- Left: Micro tag TẦNG 1 & Clear button -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                <!-- 2. Chuyển ngôn ngữ ([A] icon) -->
+                <TextView
+                    android:id="@+id/btn_language"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="[A]"
+                    android:textColor="#BAE6FD"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <!-- 3. Chuyển vào chế độ dọn bàn (Dish/Bowl icon 🥣) -->
+                <TextView
+                    android:id="@+id/btn_dish_collection"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="🥣"
+                    android:textColor="#BAE6FD"
+                    android:textSize="16sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- 3 STACKED TRAY SHELVES WITH RIGHT FLOATING T-SHIRT BUTTON -->
+            <RelativeLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingEnd="46dp">
+
+                    <!-- TẦNG 1 -->
+                    <RelativeLayout
+                        android:id="@+id/shelf_tray_1"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_tray_shelf_active"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="12dp">
 
                         <TextView
                             android:id="@+id/btn_clear_tray_1"
                             android:layout_width="26dp"
                             android:layout_height="26dp"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
                             android:gravity="center"
                             android:text="✕"
-                            android:textColor="#FCA5A5"
+                            android:textColor="#FFFFFF"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:background="@drawable/bg_circle_cancel"
                             android:visibility="gone"
                             android:clickable="true"
-                            android:focusable="true"
-                            android:layout_marginEnd="8dp" />
+                            android:focusable="true" />
 
                         <TextView
-                            android:id="@+id/tv_badge_tray_1"
+                            android:id="@+id/tv_tray_1_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_tray_badge"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="3dp"
-                            android:text="TẦNG 1"
-                            android:textColor="#38BDF8"
-                            android:textSize="10sp"
+                            android:layout_centerInParent="true"
+                            android:text="Xin hãy lựa chọn"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
                             android:textStyle="bold" />
-                    </LinearLayout>
+                    </RelativeLayout>
 
-                    <!-- Status or Station Name in center -->
-                    <TextView
-                        android:id="@+id/tv_tray_1_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="Xin hãy lựa chọn"
-                        android:textColor="#FFFFFF"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
-                </RelativeLayout>
-
-                <!-- TẦNG 2 (KHAY 2 - Ở GIỮA) -->
-                <RelativeLayout
-                    android:id="@+id/shelf_tray_2"
-                    android:layout_width="match_parent"
-                    android:layout_height="62dp"
-                    android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_tray_shelf_normal"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                    <!-- TẦNG 2 -->
+                    <RelativeLayout
+                        android:id="@+id/shelf_tray_2"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_tray_shelf_normal"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="12dp">
 
                         <TextView
                             android:id="@+id/btn_clear_tray_2"
                             android:layout_width="26dp"
                             android:layout_height="26dp"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
                             android:gravity="center"
                             android:text="✕"
-                            android:textColor="#FCA5A5"
+                            android:textColor="#FFFFFF"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:background="@drawable/bg_circle_cancel"
                             android:visibility="gone"
                             android:clickable="true"
-                            android:focusable="true"
-                            android:layout_marginEnd="8dp" />
+                            android:focusable="true" />
 
                         <TextView
-                            android:id="@+id/tv_badge_tray_2"
+                            android:id="@+id/tv_tray_2_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_tray_badge"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="3dp"
-                            android:text="TẦNG 2"
-                            android:textColor="#7DD3FC"
-                            android:textSize="10sp"
+                            android:layout_centerInParent="true"
+                            android:text="tầng2 Nhấn để thêm"
+                            android:textColor="#BAE6FD"
+                            android:textSize="15sp"
                             android:textStyle="bold" />
-                    </LinearLayout>
+                    </RelativeLayout>
 
-                    <TextView
-                        android:id="@+id/tv_tray_2_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="tầng2 Nhấn để thêm"
-                        android:textColor="#BAE6FD"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-                </RelativeLayout>
-
-                <!-- TẦNG 3 (KHAY 3 - DƯỚI CÙNG) -->
-                <RelativeLayout
-                    android:id="@+id/shelf_tray_3"
-                    android:layout_width="match_parent"
-                    android:layout_height="62dp"
-                    android:background="@drawable/bg_tray_shelf_normal"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                    <!-- TẦNG 3 -->
+                    <RelativeLayout
+                        android:id="@+id/shelf_tray_3"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_tray_shelf_normal"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="12dp">
 
                         <TextView
                             android:id="@+id/btn_clear_tray_3"
                             android:layout_width="26dp"
                             android:layout_height="26dp"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
                             android:gravity="center"
                             android:text="✕"
-                            android:textColor="#FCA5A5"
+                            android:textColor="#FFFFFF"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:background="@drawable/bg_circle_cancel"
                             android:visibility="gone"
                             android:clickable="true"
-                            android:focusable="true"
-                            android:layout_marginEnd="8dp" />
+                            android:focusable="true" />
 
                         <TextView
-                            android:id="@+id/tv_badge_tray_3"
+                            android:id="@+id/tv_tray_3_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_tray_badge"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="3dp"
-                            android:text="TẦNG 3"
-                            android:textColor="#7DD3FC"
-                            android:textSize="10sp"
+                            android:layout_centerInParent="true"
+                            android:text="tầng3 Nhấn để thêm"
+                            android:textColor="#BAE6FD"
+                            android:textSize="15sp"
                             android:textStyle="bold" />
-                    </LinearLayout>
+                    </RelativeLayout>
+                </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tv_tray_3_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="tầng3 Nhấn để thêm"
-                        android:textColor="#BAE6FD"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-                </RelativeLayout>
-            </LinearLayout>
-
-            <!-- Floating uniform/hanger icon on right side -->
-            <TextView
-                android:id="@+id/btn_tray_floating_bell"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="@drawable/bg_circle_icon"
-                android:gravity="center"
-                android:text="👕"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:clickable="true"
-                android:focusable="true" />
-        </RelativeLayout>
+                <!-- Floating uniform/hanger icon on right side -->
+                <TextView
+                    android:id="@+id/btn_tray_floating_bell"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="👕"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </RelativeLayout>
+        </LinearLayout>
 
         <!-- MIDDLE SECTION: DESTINATIONS ENCLOSED IN FROSTED GLASS CONTAINER -->
         <LinearLayout
@@ -543,11 +512,12 @@
                     android:textStyle="bold" />
             </RelativeLayout>
 
-            <!-- Menu Item 1.5: Lấy lại vị trí (Relocalize) -->
+            <!-- Menu Item 1.5: Lấy lại vị trí (Relocalize - hidden to match OrionStar drawer) -->
             <RelativeLayout
                 android:id="@+id/btn_menu_relocalize"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
+                android:visibility="gone"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_drawer_item"
                 android:paddingHorizontal="12dp"
@@ -715,11 +685,12 @@
                     android:focusable="true" />
             </RelativeLayout>
 
-            <!-- Bottom Item 2: Lịch sử giao -->
+            <!-- Bottom Item 2: Lịch sử giao (hidden to match OrionStar drawer) -->
             <RelativeLayout
                 android:id="@+id/btn_menu_history"
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
+                android:visibility="gone"
                 android:paddingHorizontal="8dp"
                 android:clickable="true"
                 android:focusable="true">
@@ -1849,4 +1820,462 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- 8. LANGUAGE SELECTION OVERLAY (MATCHES VIDEO 65s) -->
+    <LinearLayout
+        android:id="@+id/panel_language_select"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_orion_gradient"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <!-- Top Header: Back Button, Title, Clock/Battery -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:id="@+id/btn_lang_back"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="❮"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tv_lang_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="Lựa chọn ngôn ngữ"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_lang_clock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="17:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📶"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_lang_battery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋 29%"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <!-- Languages List -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/container_language_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Tiếng Việt (Default) -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_vi"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Tiếng Việt"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/ic_check_vi"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="✓"
+                        android:textColor="#38BDF8"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <!-- English -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_en"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="English"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/ic_check_en"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="✓"
+                        android:textColor="#38BDF8"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </RelativeLayout>
+
+                <!-- 简体中文 -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_zh"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="简体中文"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/ic_check_zh"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="✓"
+                        android:textColor="#38BDF8"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </RelativeLayout>
+
+                <!-- 繁體中文 -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_zht"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="繁體中文"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- 日本語 -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_ja"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="日本語"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- 한국어 -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_ko"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="한국어"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- ไทย -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_th"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="ไทย"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- Bahasa Indonesia -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Bahasa Indonesia"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+
+                <!-- Deutsch -->
+                <RelativeLayout
+                    android:id="@+id/lang_item_de"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="Deutsch"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </RelativeLayout>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- 9. TABLE CLEARING / BUSBOY MODE (MATCHES VIDEO 70s & 72s) -->
+    <RelativeLayout
+        android:id="@+id/panel_collection_mode"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_orion_gradient"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <!-- Top Header: Menu Dots on Left, Time/Battery on Right -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_alignParentTop="true">
+
+            <TextView
+                android:id="@+id/btn_collection_menu_dots"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_circle_icon"
+                android:gravity="center"
+                android:text="•••"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_collection_clock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="17:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📶"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_collection_battery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋 29%"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <!-- Center Content: Title + Subtitle + Cyber Face -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Đã vào chế độ thu thập"
+                android:textColor="#FFFFFF"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sẵn sàng cho bộ sưu tập"
+                android:textColor="#BAE6FD"
+                android:textSize="15sp"
+                android:layout_marginBottom="44dp" />
+
+            <!-- Glowing Cyber Face (Smiling) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="86dp"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="^"
+                    android:textColor="#FFFFFF"
+                    android:textSize="38sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="32dp" />
+
+                <TextView
+                    android:layout_width="86dp"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_circle_icon"
+                    android:gravity="center"
+                    android:text="^"
+                    android:textColor="#FFFFFF"
+                    android:textSize="38sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Friendly Smile -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="╰──╯"
+                android:textColor="#67E8F9"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Bottom Action Buttons: Thu thập địa phương & Quay lại Khu vực thu thập -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- Button 1: Thu thập địa phương (Solid cyan capsule) -->
+            <Button
+                android:id="@+id/btn_collection_local"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_btn_delivery_fast"
+                android:text="Thu thập địa phương"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Button 2: Quay lại Khu vực thu thập (Outlined capsule) -->
+            <Button
+                android:id="@+id/btn_collection_washroom"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_pill_power"
+                android:text="Quay lại Khu vực thu thập"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </RelativeLayout>
 </FrameLayout>
