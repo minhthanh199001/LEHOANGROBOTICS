@@ -226,6 +226,10 @@ namespace LeHoangControlCenter.ViewModels
         {
             if (string.IsNullOrWhiteSpace(value) || value == CurrentMap) return;
             SwitchToMapLocal(value);
+            if (IsConnected)
+            {
+                _ = SwitchMapAsync();
+            }
         }
 
         [ObservableProperty]
@@ -2050,20 +2054,12 @@ namespace LeHoangControlCenter.ViewModels
             TargetDestination = dest;
             AddLog($"[ĐIỀU HƯỚNG] Gửi lệnh di chuyển tới: '{dest}'" + (x.HasValue ? $" (X={x:F2}m, Y={y:F2}m)" : ""));
 
-            if (IsCharging && !dest.ToLowerInvariant().Contains("sạc") && !dest.ToLowerInvariant().Contains("charge"))
-            {
-                AddLog($"⚡ [TRẠM SẠC] Robot đang ở trạm sạc. Gửi lệnh tách khỏi dock sạc để di chuyển tới '{dest}'...");
-                await ChargeAsync("STOP_CHARGE");
-                await Task.Delay(400);
-                await ChargeAsync("LEAVE_PILE");
-                await Task.Delay(1800);
-            }
-
             var cmd = new NavigateCommand
             {
                 Destination = dest,
                 X = x,
-                Y = y
+                Y = y,
+                MapName = CurrentMap
             };
             await _robotService.SendCommandAsync(cmd);
         }
@@ -2268,15 +2264,15 @@ namespace LeHoangControlCenter.ViewModels
             var allSaved = LoadAllSavedStations();
             var uniqueItems = new List<string>();
 
-            // Case A: User has configured elevator floors in FloorConfigs
-            if (FloorConfigs.Count > 0)
+            // Case A: Multi-floor elevator mode (User has configured more than 1 floor in FloorConfigs)
+            if (FloorConfigs.Count > 1)
             {
                 // ONLY show stations that belong to explicitly configured floors!
                 foreach (var fc in FloorConfigs)
                 {
                     if (string.IsNullOrWhiteSpace(fc.MapName)) continue;
                     string targetMap = fc.MapName.Trim();
-                    string floorLabel = !string.IsNullOrWhiteSpace(fc.FloorLabel) ? fc.FloorLabel.Trim() : "Tầng";
+                    string floorLabel = !string.IsNullOrWhiteSpace(fc.FloorLabel) ? fc.FloorLabel.Trim() : $"Tầng {fc.FloorNumber}";
 
                     var matchedStations = FindStationsForMap(allSaved, targetMap);
                     if (matchedStations != null)
@@ -2310,7 +2306,7 @@ namespace LeHoangControlCenter.ViewModels
             }
             else
             {
-                // Case B: No elevator floors configured. Use current active map stations without floor tags
+                // Case B: Single floor mode (0 or 1 floor configured). Use current active map stations without floor tags!
                 foreach (var st in MapStations)
                 {
                     if (string.IsNullOrWhiteSpace(st.Name)) continue;

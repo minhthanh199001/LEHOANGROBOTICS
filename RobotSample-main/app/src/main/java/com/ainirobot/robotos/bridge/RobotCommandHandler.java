@@ -32,7 +32,7 @@ public class RobotCommandHandler {
     private static int sMoveReqId = 2000;
 
     private final Handler mWatchdogHandler = new Handler(Looper.getMainLooper());
-    private static final long AUTO_STOP_DELAY_MS = 750; // Safety watchdog: stop after 750ms if no new pulse
+    private static final long AUTO_STOP_DELAY_MS = 1200; // Safety watchdog: stop after 1200ms if no new pulse
 
     private final Runnable mAutoStopRunnable = new Runnable() {
         @Override
@@ -130,6 +130,14 @@ public class RobotCommandHandler {
 
         Log.i(TAG, "Executing MOVE: " + action + " linearSpeed=" + linearSpeed + " angularSpeed=" + angularSpeed);
 
+        // Always stop any autonomous navigation or auto-charge lock before executing manual drive!
+        try {
+            RobotApi.getInstance().stopNavigation(0);
+        } catch (Throwable ignored) {}
+        try {
+            RobotApi.getInstance().stopAutoChargeAction(0, true);
+        } catch (Throwable ignored) {}
+
         CommandListener listener = new CommandListener() {
             @Override
             public void onResult(int result, String message) {
@@ -138,16 +146,15 @@ public class RobotCommandHandler {
             }
         };
 
-        int reqId = sMoveReqId++;
+        boolean isChargingNow = false;
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                isChargingNow = RobotApi.getInstance().getChargeStatus();
+            }
+        } catch (Throwable ignored) {}
+
         switch (action) {
             case "FORWARD":
-                // If robot is in charging pile and user wants to move forward, auto-undock
-                boolean isChargingNow = false;
-                try {
-                    if (RobotApi.getInstance().isApiConnectedService()) {
-                        isChargingNow = RobotApi.getInstance().getChargeStatus();
-                    }
-                } catch (Throwable ignored) {}
                 if (isChargingNow) {
                     Log.i(TAG, "User sent FORWARD while docked. Auto-leaving charging pile...");
                     try {
@@ -157,24 +164,39 @@ public class RobotCommandHandler {
                     return;
                 }
                 armSafetyWatchdog();
-                RobotApi.getInstance().goForward(reqId, linearSpeed, listener);
+                RobotApi.getInstance().goForward(0, linearSpeed, listener);
                 break;
             case "BACKWARD":
+                if (isChargingNow) {
+                    Log.i(TAG, "User sent BACKWARD while docked. Must undock forward first!");
+                    RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, listener);
+                    return;
+                }
                 armSafetyWatchdog();
-                RobotApi.getInstance().goBackward(reqId, linearSpeed, listener);
+                RobotApi.getInstance().goBackward(0, linearSpeed, listener);
                 break;
             case "TURN_LEFT":
+                if (isChargingNow) {
+                    Log.i(TAG, "User sent TURN_LEFT while docked. Must undock forward first!");
+                    RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, listener);
+                    return;
+                }
                 armSafetyWatchdog();
-                RobotApi.getInstance().turnLeft(reqId, angularSpeed, listener);
+                RobotApi.getInstance().turnLeft(0, angularSpeed, listener);
                 break;
             case "TURN_RIGHT":
+                if (isChargingNow) {
+                    Log.i(TAG, "User sent TURN_RIGHT while docked. Must undock forward first!");
+                    RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, listener);
+                    return;
+                }
                 armSafetyWatchdog();
-                RobotApi.getInstance().turnRight(reqId, angularSpeed, listener);
+                RobotApi.getInstance().turnRight(0, angularSpeed, listener);
                 break;
             case "STOP":
             default:
                 disarmSafetyWatchdog();
-                RobotApi.getInstance().stopMove(reqId, listener);
+                RobotApi.getInstance().stopMove(0, listener);
                 break;
         }
     }
@@ -214,29 +236,17 @@ public class RobotCommandHandler {
 
         if (!isCharging) {
             try {
-                Context ctx = RobotOSApplication.getInstance();
-                if (ctx != null) {
-                    IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-                    Intent bStatus = ctx.registerReceiver(null, ifilter);
-                    if (bStatus != null) {
-                        int status = bStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                        isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING);
-                    }
-                }
-            } catch (Throwable ignored) {}
-        }
-
-        if (!isCharging) {
-            try {
                 RobotApi.getInstance().stopNavigation(0);
+                RobotApi.getInstance().stopAutoChargeAction(0, true);
             } catch (Throwable ignored) {}
             onReady.run();
             return;
         }
 
-        Log.i(TAG, "⚡ Robot is currently in charging pile / charging state! Initiating auto-undock...");
+        Log.i(TAG, "⚡ Robot is currently in charging contacts. Initiating auto-undock...");
         try {
             RobotApi.getInstance().stopAutoChargeAction(0, true);
+            RobotApi.getInstance().stopNavigation(0);
         } catch (Throwable t) {
             Log.w(TAG, "stopAutoChargeAction error: " + t.getMessage());
         }
@@ -276,7 +286,7 @@ public class RobotCommandHandler {
                                 onReady.run();
                             }
                         }
-                    }, 500);
+                    }, 400);
                 }
             });
         } catch (Throwable t) {
@@ -324,10 +334,24 @@ public class RobotCommandHandler {
         // 1. Check if target is Charging Dock
         String lower = destination != null ? destination.toLowerCase() : "";
         if (lower.contains("charge") || lower.contains("sạc") || lower.contains("charging")) {
+            boolean isDocked = false;
+            try {
+                if (RobotApi.getInstance().isApiConnectedService()) {
+                    isDocked = RobotApi.getInstance().getChargeStatus();
+                }
+            } catch (Throwable ignored) {}
+            if (isDocked) {
+                Log.i(TAG, "Robot is already docked at charging station.");
+                sendResult(client, msgId, "CMD_NAVIGATE", true, 0, "Robot đã ở trạm sạc pin");
+                return;
+            }
+
             Log.i(TAG, "Navigating to Auto Charge Station...");
             try {
                 RobotApi.getInstance().stopNavigation(0);
+                RobotApi.getInstance().stopAutoChargeAction(0, true);
             } catch (Throwable ignored) {}
+
             RobotApi.getInstance().startNaviToAutoChargeAction(0, timeoutMs, new ActionListener() {
                 @Override
                 public void onResult(int status, String responseString) throws RemoteException {
@@ -339,7 +363,22 @@ public class RobotCommandHandler {
                 @Override
                 public void onError(int errorCode, String errorString) throws RemoteException {
                     Log.e(TAG, "AutoCharge onError: code=" + errorCode + ", err=" + errorString);
-                    sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                    // Fallback to navigating to Charging Point coordinates if auto-charge fails!
+                    if (x != null && y != null) {
+                        Log.i(TAG, "AutoCharge failed. Falling back to coordinates (" + x + ", " + y + ")...");
+                        navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                    } else {
+                        String currentMap = RobotMapManager.getCurrentMapName();
+                        JsonObject cp = RobotMapManager.getPlaceByName(currentMap, "Charging Point");
+                        if (cp == null) cp = RobotMapManager.getPlaceByName(currentMap, "Charging Pole");
+                        if (cp != null && cp.has("x") && cp.has("y")) {
+                            float cx = cp.get("x").getAsFloat();
+                            float cy = cp.get("y").getAsFloat();
+                            navigateByPose(client, msgId, destination, cx, cy, 0f, 1.2, timeoutMs);
+                        } else {
+                            sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                        }
+                    }
                 }
             });
             return;
@@ -355,7 +394,11 @@ public class RobotCommandHandler {
     }
 
     private void executeNavigationInternal(final WebSocket client, final String msgId, final String destination, final Float x, final Float y, final Float theta, final double maxDistance, final long timeoutMs) {
-        // 2. If destination is a Named Station on the Map, use native place navigation!
+        try {
+            RobotApi.getInstance().stopNavigation(0);
+            RobotApi.getInstance().stopAutoChargeAction(0, true);
+        } catch (Throwable ignored) {}
+
         boolean isCustomCoord = TextUtils.isEmpty(destination) 
                 || destination.startsWith("Điểm (") 
                 || destination.startsWith("Tọa độ (")
@@ -365,14 +408,14 @@ public class RobotCommandHandler {
             Log.i(TAG, "Navigating to Named Station via native route: " + destination);
             int navResult = -1;
             try {
-                navResult = RobotApi.getInstance().startNavigation(0, destination, 1.5, timeoutMs, new ActionListener() {
+                navResult = RobotApi.getInstance().startNavigation(0, destination, maxDistance, timeoutMs, new ActionListener() {
                     @Override
                     public void onResult(int status, String responseString) throws RemoteException {
                         Log.i(TAG, "Named Station onResult: status=" + status + ", resp=" + responseString);
                         boolean success = (status == Definition.RESULT_OK && !"false".equalsIgnoreCase(responseString));
                         if (!success && x != null && y != null) {
                             Log.w(TAG, "Named navigation returned false. Falling back to Pose navigation...");
-                            navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                            navigateByPose(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
                         } else {
                             sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
                         }
@@ -384,7 +427,7 @@ public class RobotCommandHandler {
                         // If named place failed and coordinates exist, fallback to Pose navigation
                         if (x != null && y != null) {
                             Log.i(TAG, "Falling back to Pose navigation...");
-                            navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                            navigateByPose(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
                         } else {
                             sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
                         }
@@ -397,14 +440,14 @@ public class RobotCommandHandler {
             // If startNavigation by name was rejected immediately (< 0) and coordinates exist, fallback to Pose right away!
             if (navResult < 0 && x != null && y != null) {
                 Log.w(TAG, "startNavigation by name rejected (code " + navResult + "). Fallback directly to Pose navigation...");
-                navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                navigateByPose(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
             }
             return;
         }
 
         // 3. For arbitrary floor click / custom coordinate: Navigate via Pose with No Directional Parking!
         if (x != null && y != null) {
-            navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+            navigateByPose(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
             return;
         }
 
@@ -425,37 +468,45 @@ public class RobotCommandHandler {
         });
     }
 
-    private void navigateByPose(final WebSocket client, final String msgId, String destination, float x, float y, Float theta, double maxDist, long timeoutMs) {
+    private void navigateByPose(final WebSocket client, final String msgId, final String destination, final float x, final float y, final Float theta, final double maxDist, final long timeoutMs) {
         try {
             RobotApi.getInstance().stopNavigation(0);
+            RobotApi.getInstance().stopAutoChargeAction(0, true);
         } catch (Throwable ignored) {}
-        Pose pose = new Pose(x, y, theta != null ? theta : 0f, destination != null ? destination : "");
-        pose.setNoDirectionalParking(true); // Don't spin in place to align angle!
-        pose.setIgnoreDistance(true);
-        Log.i(TAG, "Navigating via Pose (no directional parking): " + pose.toString());
-        try {
-            int ret = RobotApi.getInstance().startNavigation(0, pose, maxDist, timeoutMs, new ActionListener() {
-                @Override
-                public void onResult(int status, String responseString) throws RemoteException {
-                    Log.i(TAG, "Pose Navigate onResult: status=" + status + ", resp=" + responseString);
-                    boolean success = (status == Definition.RESULT_OK);
-                    sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
-                }
 
-                @Override
-                public void onError(int errorCode, String errorString) throws RemoteException {
-                    Log.e(TAG, "Pose Navigate onError: code=" + errorCode + ", err=" + errorString);
-                    sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+        // Small 150ms delay to let CoreService cleanly release the drive lock before starting next pose nav
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Pose pose = new Pose(x, y, theta != null ? theta : 0f, destination != null ? destination : "");
+                pose.setNoDirectionalParking(true); // Don't spin in place to align angle!
+                pose.setIgnoreDistance(true);
+                Log.i(TAG, "Navigating via Pose (no directional parking): " + pose.toString());
+                try {
+                    int ret = RobotApi.getInstance().startNavigation(0, pose, maxDist, timeoutMs, new ActionListener() {
+                        @Override
+                        public void onResult(int status, String responseString) throws RemoteException {
+                            Log.i(TAG, "Pose Navigate onResult: status=" + status + ", resp=" + responseString);
+                            boolean success = (status == Definition.RESULT_OK);
+                            sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
+                        }
+
+                        @Override
+                        public void onError(int errorCode, String errorString) throws RemoteException {
+                            Log.e(TAG, "Pose Navigate onError: code=" + errorCode + ", err=" + errorString);
+                            sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                        }
+                    });
+                    if (ret < 0) {
+                        Log.e(TAG, "Pose startNavigation returned error code: " + ret);
+                        sendResult(client, msgId, "CMD_NAVIGATE", false, ret, "Pose navigation returned code: " + ret);
+                    }
+                } catch (Throwable t) {
+                    Log.e(TAG, "Pose startNavigation exception: " + t.getMessage(), t);
+                    sendResult(client, msgId, "CMD_NAVIGATE", false, -1, t.getMessage());
                 }
-            });
-            if (ret < 0) {
-                Log.e(TAG, "Pose startNavigation returned error code: " + ret);
-                sendResult(client, msgId, "CMD_NAVIGATE", false, ret, "Pose navigation returned code: " + ret);
             }
-        } catch (Throwable t) {
-            Log.e(TAG, "Pose startNavigation exception: " + t.getMessage(), t);
-            sendResult(client, msgId, "CMD_NAVIGATE", false, -1, t.getMessage());
-        }
+        }, 150);
     }
 
     private void handleStopNavigate(final WebSocket client, final String msgId) {
@@ -771,6 +822,22 @@ public class RobotCommandHandler {
 
         switch (action) {
             case "START_CHARGE":
+                boolean isDocked = false;
+                try {
+                    if (RobotApi.getInstance().isApiConnectedService()) {
+                        isDocked = RobotApi.getInstance().getChargeStatus();
+                    }
+                } catch (Throwable ignored) {}
+                if (isDocked) {
+                    sendResult(client, msgId, "CMD_CHARGE", true, 0, "Robot đã ở trạm sạc pin");
+                    return;
+                }
+
+                try {
+                    RobotApi.getInstance().stopNavigation(0);
+                    RobotApi.getInstance().stopAutoChargeAction(0, true);
+                } catch (Throwable ignored) {}
+
                 RobotApi.getInstance().startNaviToAutoChargeAction(0, 3 * Definition.MINUTE, new ActionListener() {
                     @Override
                     public void onResult(int status, String responseString) throws RemoteException {
@@ -779,16 +846,32 @@ public class RobotCommandHandler {
 
                     @Override
                     public void onError(int errorCode, String errorString) throws RemoteException {
-                        sendResult(client, msgId, "CMD_CHARGE", false, errorCode, errorString);
+                        Log.w(TAG, "CMD_CHARGE startNaviToAutoChargeAction onError (" + errorCode + "). Fallback to Charging Point coordinates...");
+                        String currentMap = RobotMapManager.getCurrentMapName();
+                        JsonObject cp = RobotMapManager.getPlaceByName(currentMap, "Charging Point");
+                        if (cp == null) cp = RobotMapManager.getPlaceByName(currentMap, "Charging Pole");
+                        if (cp != null && cp.has("x") && cp.has("y")) {
+                            float cx = cp.get("x").getAsFloat();
+                            float cy = cp.get("y").getAsFloat();
+                            navigateByPose(client, msgId, "Charging Point", cx, cy, 0f, 1.2, 60000);
+                        } else {
+                            sendResult(client, msgId, "CMD_CHARGE", false, errorCode, errorString);
+                        }
                     }
                 });
                 break;
             case "STOP_CHARGE":
-                RobotApi.getInstance().stopAutoChargeAction(0, true);
+                try {
+                    RobotApi.getInstance().stopAutoChargeAction(0, true);
+                } catch (Throwable ignored) {}
                 sendResult(client, msgId, "CMD_CHARGE", true, 0, "Stopped auto charge");
                 break;
             case "LEAVE_PILE":
-                RobotApi.getInstance().leaveChargingPile(0, 0.5f, 0.5f, new CommandListener() {
+                try {
+                    RobotApi.getInstance().stopAutoChargeAction(0, true);
+                    RobotApi.getInstance().stopNavigation(0);
+                } catch (Throwable ignored) {}
+                RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, new CommandListener() {
                     @Override
                     public void onResult(int result, String message) {
                         sendResult(client, msgId, "CMD_CHARGE", true, result, message);

@@ -231,6 +231,7 @@ public class RobotTelemetryReporter {
                                     GlobalData.getInstance().setCurrentMapName(message);
                                 }
                                 broadcastMapData();
+                                RobotMapManager.notifyMapPlacesChanged(message);
                             }
                         }
                     }

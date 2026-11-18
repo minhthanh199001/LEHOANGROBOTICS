@@ -8658,17 +8658,17 @@
 
                         <!-- D-Pad (Giữ chuột để chạy, thả ra tự dừng an toàn) -->
                         <StackPanel HorizontalAlignment="Center" Margin="0,0,0,12">
-                            <Button Command="{Binding MoveCommand}" CommandParameter="FORWARD" Content="▲ TIẾN" Width="95" Height="38" Margin="0,0,0,6" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để tiến, nhả ra tự dừng" FontWeight="Bold" />
+                            <Button CommandParameter="FORWARD" Content="▲ TIẾN" Width="95" Height="38" Margin="0,0,0,6" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để tiến, nhả ra tự dừng" FontWeight="Bold" />
 
                             <StackPanel Orientation="Horizontal">
-                                <Button Command="{Binding MoveCommand}" CommandParameter="TURN_LEFT" Content="◄ TRÁI" Width="72" Height="38" Margin="0,0,6,0" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để quay trái" FontWeight="Bold" />
+                                <Button CommandParameter="TURN_LEFT" Content="◄ TRÁI" Width="72" Height="38" Margin="0,0,6,0" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để quay trái" FontWeight="Bold" />
 
                                 <Button Command="{Binding MoveCommand}" CommandParameter="STOP" Content="■ DỪNG" Width="76" Height="38" Margin="0,0,6,0" Style="{StaticResource CyberButton}" Background="#DC2626" Foreground="#FFFFFF" FontWeight="Bold" ToolTip="Dừng ngay lập tức" />
 
-                                <Button Command="{Binding MoveCommand}" CommandParameter="TURN_RIGHT" Content="PHẢI ►" Width="72" Height="38" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để quay phải" FontWeight="Bold" />
+                                <Button CommandParameter="TURN_RIGHT" Content="PHẢI ►" Width="72" Height="38" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để quay phải" FontWeight="Bold" />
                             </StackPanel>
 
-                            <Button Command="{Binding MoveCommand}" CommandParameter="BACKWARD" Content="▼ LÙI" Width="95" Height="38" Margin="0,6,0,0" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để lùi, nhả ra tự dừng" FontWeight="Bold" />
+                            <Button CommandParameter="BACKWARD" Content="▼ LÙI" Width="95" Height="38" Margin="0,6,0,0" Style="{StaticResource CyberButton}" PreviewMouseDown="OnDirectionButtonDown" PreviewMouseUp="OnDirectionButtonUp" MouseLeave="OnDirectionButtonUp" ToolTip="Bấm giữ để lùi, nhả ra tự dừng" FontWeight="Bold" />
                         </StackPanel>
 
                         <!-- Speed Slider -->

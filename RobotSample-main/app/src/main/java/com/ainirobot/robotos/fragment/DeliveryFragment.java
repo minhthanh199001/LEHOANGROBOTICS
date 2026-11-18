@@ -407,10 +407,16 @@ public class DeliveryFragment extends Fragment {
             mBtnRefreshStations.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    checkAndSyncCurrentMap();
-                    loadStationsFromMap();
+                    Toast.makeText(getContext(), mIsEnglish ? "Syncing map & places..." : "Đang đồng bộ bản đồ & điểm trạm...", Toast.LENGTH_SHORT).show();
+                    checkAndSyncCurrentMap(true);
                     updateBatteryStatus();
-                    Toast.makeText(getContext(), "Đang đồng bộ điểm theo bản đồ hiện tại...", Toast.LENGTH_SHORT).show();
+                }
+            });
+            mBtnRefreshStations.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    showMapSelectionDialog();
+                    return true;
                 }
             });
         }
@@ -915,30 +921,92 @@ public class DeliveryFragment extends Fragment {
     }
 
     private void checkAndSyncCurrentMap() {
+        checkAndSyncCurrentMap(false);
+    }
+
+    private void checkAndSyncCurrentMap(final boolean forceReload) {
         try {
             if (RobotApi.getInstance().isApiConnectedService()) {
                 RobotApi.getInstance().getMapName(0, new com.ainirobot.coreservice.client.listener.CommandListener() {
                     @Override
                     public void onResult(int result, String message, String extraData) {
-                        if (!TextUtils.isEmpty(message) && !message.equalsIgnoreCase(mCurrentMap)) {
-                            Log.i(TAG, "CoreService active map changed to: " + message);
-                            mCurrentMap = message;
-                            if (GlobalData.getInstance() != null) {
-                                GlobalData.getInstance().setCurrentMapName(message);
-                            }
-                            if (getActivity() != null) {
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        loadStationsFromMap();
-                                    }
-                                });
+                        if (!TextUtils.isEmpty(message)) {
+                            boolean changed = !message.equalsIgnoreCase(mCurrentMap);
+                            if (changed || forceReload) {
+                                Log.i(TAG, "CoreService active map synced: " + message);
+                                mCurrentMap = message;
+                                if (GlobalData.getInstance() != null) {
+                                    GlobalData.getInstance().setCurrentMapName(message);
+                                }
+                                if (getActivity() != null) {
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            loadStationsFromMap();
+                                            if (getContext() != null && forceReload) {
+                                                Toast.makeText(getContext(), (mIsEnglish ? "Active map: " : "Bản đồ hiện tại: ") + mCurrentMap, Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                    });
+                                }
                             }
                         }
                     }
                 });
+            } else if (forceReload) {
+                loadStationsFromMap();
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+            if (forceReload) loadStationsFromMap();
+        }
+    }
+
+    private void showMapSelectionDialog() {
+        if (getContext() == null) return;
+        final List<String> maps = RobotMapManager.getAvailableMapList();
+        if (maps == null || maps.isEmpty()) {
+            Toast.makeText(getContext(), "Không tìm thấy danh sách bản đồ trong /sdcard/robot/map", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] mapArray = maps.toArray(new String[0]);
+        int selectedIndex = -1;
+        for (int i = 0; i < mapArray.length; i++) {
+            if (mapArray[i].equalsIgnoreCase(mCurrentMap)) {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+        builder.setTitle(mIsEnglish ? "Select Robot Map (Tap to switch)" : "Chọn Bản Đồ Cho Robot (Bấm để đổi)");
+        builder.setSingleChoiceItems(mapArray, selectedIndex, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                final String chosenMap = mapArray[which];
+                dialog.dismiss();
+                Toast.makeText(getContext(), "Đang đổi sang bản đồ: " + chosenMap, Toast.LENGTH_SHORT).show();
+                RobotMapManager.switchMap(chosenMap, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mCurrentMap = chosenMap;
+                                    if (GlobalData.getInstance() != null) {
+                                        GlobalData.getInstance().setCurrentMapName(chosenMap);
+                                    }
+                                    loadStationsFromMap();
+                                    Toast.makeText(getContext(), "Đã chuyển sang bản đồ: " + chosenMap, Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+        builder.setNegativeButton(mIsEnglish ? "Cancel" : "Hủy", null);
+        builder.show();
     }
 
     private void updateBatteryStatus() {

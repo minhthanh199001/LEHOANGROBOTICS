@@ -61,6 +61,9 @@ namespace LeHoangControlCenter.Models
         [JsonPropertyName("destination")]
         public string Destination { get; set; } = string.Empty;
 
+        [JsonPropertyName("mapName")]
+        public string? MapName { get; set; }
+
         [JsonPropertyName("x")]
         public double? X { get; set; }
 
