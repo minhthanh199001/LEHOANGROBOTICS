@@ -2148,10 +2148,6 @@
 
                                         ToolTip="Căn giữa màn hình bản đồ vào vị trí robot" />
 
-                                <Button Command="{Binding ToggleMapRotationCommand}" Content="{Binding MapRotationButtonText}"
-                                        Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="6,3" Margin="4,0,0,0"
-                                        ToolTip="Xoay ngược chiều bản đồ 180° để phù hợp hướng quan sát thực tế" />
-
 
 
                             </StackPanel>
@@ -2270,8 +2266,7 @@
 
 
 
-                                        <RotateTransform Angle="{Binding MapRotationAngle}" CenterX="{Binding MapCenterX}" CenterY="{Binding MapCenterY}" />
-                                        <ScaleTransform x:Name="MapScaleTransform" ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="{Binding MapCenterX}" CenterY="{Binding MapCenterY}" />
+                                        <ScaleTransform x:Name="MapScaleTransform" ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="150" CenterY="220" />
 
 
 
@@ -2551,10 +2546,7 @@
 
 
 
-                                            <Canvas RenderTransformOrigin="0,0">
-                                                <Canvas.RenderTransform>
-                                                    <RotateTransform Angle="{Binding DataContext.StationInverseRotationAngle, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                </Canvas.RenderTransform>
+                                            <Canvas>
 
 
 
@@ -3651,8 +3643,6 @@
 
                             <Button Command="{Binding CenterOnRobotCommand}" Content="🎯 Căn giữa" Style="{StaticResource CyberButton}" Margin="3,0" Padding="8,4" ToolTip="Căn khung nhìn theo vị trí robot" />
 
-                            <Button Command="{Binding ToggleMapRotationCommand}" Content="{Binding MapRotationButtonText}" Style="{StaticResource CyberButton}" Margin="3,0" Padding="8,4" ToolTip="Xoay ngược chiều bản đồ 180°" />
-
 
 
                             <Button Command="{Binding ToggleMapThemeCommand}" Content="{Binding MapThemeButtonText}" Style="{StaticResource CyberButton}" Margin="3,0" Padding="8,4" ToolTip="Đổi nền Sáng / Tối" />
@@ -3763,8 +3753,7 @@
 
 
 
-                                        <RotateTransform Angle="{Binding MapRotationAngle}" CenterX="{Binding MapCenterX}" CenterY="{Binding MapCenterY}" />
-                                        <ScaleTransform ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="{Binding MapCenterX}" CenterY="{Binding MapCenterY}" />
+                                        <ScaleTransform ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="150" CenterY="220" />
 
 
 
@@ -3872,10 +3861,7 @@
 
 
 
-                                            <Canvas RenderTransformOrigin="0,0">
-                                                <Canvas.RenderTransform>
-                                                    <RotateTransform Angle="{Binding DataContext.StationInverseRotationAngle, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                </Canvas.RenderTransform>
+                                            <Canvas>
 
 
 
