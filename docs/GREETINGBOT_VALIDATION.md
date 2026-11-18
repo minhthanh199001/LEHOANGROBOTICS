@@ -1,5 +1,13 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản sửa bù theo chiều quay 1.3.5
+
+- Người vận hành làm rõ: góc dương phải +10°, góc âm phải −10°. Bản 1.3.4 cộng cố định +10° làm giảm độ lớn góc âm: log góc native 302,20° (−57,80°) gửi lệnh 312,20° (−47,80°), thân quay 46,85°. Đây là lỗi công thức; đã sửa theo chiều quay, cùng dữ liệu trên sẽ gửi 292,20° (−67,80°).
+- Chuyển sang góc có dấu trước khi bù độ lớn rồi mã hóa lại cho SDK. Giữ 0°, chặn đổi chiều ở biên 180° và khi cấu hình giảm góc về dưới 0°. Giao diện robot/log hiển thị dấu góc nguồn, số bù thực tế và góc đích. Nhãn cấu hình app/Web làm rõ ý nghĩa; không đổi tên trường JSON/schema.
+- Android **25 test / 0 lỗi**, build/cài 1.3.5 thành công. Kiểm tra hai chiều, góc nhỏ âm 355°, 0°/360°, biên nửa vòng, cấu hình giảm góc và vòng bù số đo không áp offset lần thứ hai. Backend/API giữ nguyên so với bản đã qua 44 kiểm tra Speech/MicroArray và 41 kiểm tra Fleet.
+- Hash APK trên robot khớp `releases/LeHoangGreetingbot_v1.3.5-debug.apk`: `692D60FA08172E0799A35C0AEDAD95014B9B3488B048AAAB41FDAC2BF8F67169`. SDK vẫn kết nối/đã định vị, đọc 5 điểm trên `LH2-1006084342`.
+- Đang chờ xác nhận thử thực tế hai phía với cách bù đã sửa. APK 1.3.4 được rút khỏi gói bàn giao; bản cũ còn trong lịch sử Git.
+
 ## Bản thử offset +10° / bù góc 1.3.4
 
 - Người vận hành xác nhận 1.3.3 xoay tốt hơn, còn cần gọi lại và yêu cầu cộng thêm 10° offset. Đã đặt mặc định +10°, có trường chỉnh tại app và Web, lưu/đồng bộ trong GreetingSettings; native angle +30° vẫn giữ đúng phép đổi tọa độ của firmware.
@@ -8,7 +16,7 @@
 - Giữ trước câu 0,5 giây, khoảng im lặng cuối câu 0,8 giây; chọn góc chỉ đến khung có tiếng nói cuối để giảm ảnh hưởng âm thanh nền cuối bản thu. Ưu tiên góc wake trực tiếp của SDK nếu hợp lệ; làm rõ trạng thái có góc nhưng chưa đúng câu gọi.
 - Android **22 test / 0 lỗi**; backend Speech/MicroArray **44 kiểm tra thành công**; Fleet/Greetingbot integration **41 kiểm tra thành công** trên DB riêng. Bao gồm offset/vòng 360°, chiều bù hai phía, giới hạn/hết hạn bù, không lấy hướng từ tiếng nền cuối câu, giới hạn offset và đồng bộ Web → thiết bị.
 - Đã cài 1.3.4; proxy OpenAI và MicroArray báo streaming. APK `releases/LeHoangGreetingbot_v1.3.4-debug.apk`, SHA-256 `5EB8A337D40834C5991760C855BD5947A103EF2E1AF6797537FA67940079BAA7`.
-- Đang chờ kiểm tra thực tế độ nhạy/+10°/bù góc trên 1.3.4; chưa coi các kiểm thử trên là nghiệm thu hướng âm chính xác.
+- Người vận hành báo xoay chưa đúng và làm rõ phải bù theo dấu; công thức cộng cố định được thay ở 1.3.5. Chưa nghiệm thu hướng âm chính xác trên bản này.
 
 ## Bản thử bắt câu ngắn / trạng thái microphone 1.3.3
 

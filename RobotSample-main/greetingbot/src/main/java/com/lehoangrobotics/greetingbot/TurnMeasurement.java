@@ -1,9 +1,20 @@
 package com.lehoangrobotics.greetingbot;
 
 final class TurnMeasurement {
+    static double signedAngle(double angle) {
+        if (!VoiceDirectionPolicy.validAngle(angle)) return Double.NaN;
+        double normalized = angle % 360;
+        return normalized > 180 ? normalized - 360 : normalized;
+    }
     static double withOffset(double angle, double offset) {
-        return VoiceDirectionPolicy.validAngle(angle) && !Double.isNaN(offset) && !Double.isInfinite(offset)
-            && offset >= -90 && offset <= 90 ? (angle + offset + 360) % 360 : Double.NaN;
+        double signed = signedAngle(angle);
+        if (Double.isNaN(signed) || Double.isNaN(offset) || Double.isInfinite(offset) || offset < -90 || offset > 90)
+            return Double.NaN;
+        if (signed == 0) return 0;
+        // Increase/decrease the turn magnitude while preserving its direction. Stay on the
+        // same side of 180 degrees so wakeUp cannot choose the opposite shortest turn.
+        double magnitude = Math.max(0, Math.min(179.999, Math.abs(signed) + offset));
+        return (Math.copySign(magnitude, signed) + 360) % 360;
     }
     static double residual(double beforeRadians, double afterRadians, double angle) {
         if (Double.isNaN(magnitude(beforeRadians, afterRadians)) || !VoiceDirectionPolicy.validAngle(angle)) return Double.NaN;

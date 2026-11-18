@@ -12,7 +12,7 @@
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
 - Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
 
-## Giọng nói OpenAI / test hướng âm — bản thử 1.3.4
+## Giọng nói OpenAI / test hướng âm — bản thử 1.3.5
 
 1. Mở app từ Home / Application Center của robot. Dừng điều hướng và test ghi/phát âm thanh.
 2. Ngắt dây sạc trước khi kiểm tra chuyển động. Bấm **Test hướng âm**, chờ đo tiếng ồn nền khoảng 0,6 giây và dòng **OpenAI đang nghe**, đứng lệch bên trái/phải rồi nói câu gọi. Chờ robot hoàn tất và nghỉ ít nhất 2 giây trước lần gọi tiếp theo.
@@ -35,7 +35,9 @@ Ngưỡng mở câu là tối thiểu RMS 200 hoặc gấp 2 nền đã đo, v�
 
 Bản 1.3.4 giữ trước câu 0,5 giây và đợi im lặng 0,8 giây để giảm cắt mất từ. Header `X-Voice-End-Ms` chỉ vị trí khung tiếng nói cuối; proxy không dùng tiếng nền sau đó để chọn hướng. Callback wake trực tiếp từ SDK được ưu tiên khi có góc hợp lệ trong cùng câu. Có góc nhưng chưa nhận đúng một trong hai câu gọi thì app báo rõ và tiếp tục nghe.
 
-Theo hiệu chỉnh thực tế của người vận hành, **offset hướng âm mặc định +10°**, được cộng vào góc SDK sau phép đổi native +30°. Công thức lệnh là `(góc SDK + offset + 360) % 360`. Chỉnh tại **Cấu hình → Giọng nói OpenAI → Offset hướng âm** hoặc trường **Offset hướng âm (độ)** trong tab Greetingbot Web; khoảng -90…90°. Web đồng bộ qua `GreetingSettings.voiceAngleOffset`; giá trị Web thay cấu hình cục bộ khi robot ghép nối/đồng bộ với server đã cập nhật.
+Theo hiệu chỉnh của người vận hành, **bù thêm 10° theo chiều quay**, sau phép đổi tọa độ native +30°. Đổi góc SDK 0…360° sang góc có dấu trước khi bù: **+30° → +40°**, **−30° → −40°** (góc SDK 330° → 320°). Không cộng cố định +10° vào cả hai phía. Góc 0° giữ nguyên; độ lớn được giới hạn dưới 180° để không đổi sang chiều ngược lại khi SDK chọn đường quay ngắn nhất.
+
+Chỉnh tại **Cấu hình → Giọng nói OpenAI → Bù theo chiều quay** hoặc trường cùng tên trong tab Greetingbot Web; mặc định 10, khoảng -90…90°. Giá trị dương tăng độ lớn góc ở cả hai chiều; giá trị âm giảm độ lớn, dừng ở 0° thay vì đảo chiều. Web đồng bộ qua `GreetingSettings.voiceAngleOffset`; giá trị Web thay cấu hình cục bộ khi robot ghép nối/đồng bộ với server đã cập nhật. Bù dựa trên số đo thân tiếp theo dùng đích đã hiệu chỉnh, không cộng thêm 10° lần nữa.
 
 Lệnh dùng `wakeUp(reqId, angle, false, listener)` để không phân góc sang chuyển động đầu riêng. App đọc `getPosition().theta` (radian) trước/sau và tính hướng tuyệt đối cần đạt. Khi SDK kết thúc còn sai 5–45°, app được bù **tối đa một lần**, chỉ khi còn quyền điều khiển, test vẫn bật và câu gọi chưa quá hạn 8 giây. Giữ ngừng nhận câu tiếp theo trong cả lúc đo/bù; dừng test hoặc RobotOS tiếp quản hủy phần bù chưa gửi. Sai lệch lớn hơn 45°, thiếu số đo hoặc hết hạn không sinh vòng bù. Giao diện hiển thị độ quay thực/yêu cầu và sai lệch còn lại; số đo thân vẫn không thay cho kiểm chứng đúng hướng người gọi.
 
@@ -65,7 +67,7 @@ Kiểm tra proxy bằng `GET /api/greeting/speech/status` có Bearer token; trư
 
 ## Biên dịch
 
-Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.3.4 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
+Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.3.5 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
 
 ```powershell
 cd RobotSample-main
@@ -84,11 +86,11 @@ Nếu source nằm trên ổ mạng Windows có đường dẫn dài, chuyển r
 
 Khi đó APK nằm tại `C:/greetingbot-build/outputs/apk/debug/greetingbot-debug.apk`. Hai module Android cũ vẫn dùng cấu hình build của chúng.
 
-APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.4-debug.apk`; bản 1.3.3 và 1.3.1 được giữ để khôi phục. Các bản 1.1.0 và 1.3.2 không nằm trong gói bàn giao do chưa đạt thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.5-debug.apk`; bản 1.3.3 và 1.3.1 được giữ để khôi phục. Các bản 1.1.0, 1.3.2 và 1.3.4 đã được rút khỏi gói bàn giao sau thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
 
 ```powershell
 adb connect 192.168.0.23:5555
-adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.4-debug.apk
+adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.5-debug.apk
 ```
 
 Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng `am start` để thay thế bước cấp quyền SDK. Muốn tự khởi động: Developer Settings → Boot Apps → Lê Hoàng Greetingbot. Không cần thay app mặc định trong lần cài đặt thử.

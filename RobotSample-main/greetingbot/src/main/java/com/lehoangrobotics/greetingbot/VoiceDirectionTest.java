@@ -147,7 +147,11 @@ final class VoiceDirectionTest implements AutoCloseable {
             status = "Đã nhận câu gọi; chờ hết khoảng nghỉ 2 giây sau xoay rồi gọi tiếp."; host.changed(); return;
         }
         lastAngle = angle; lastKeyword = keyword; turning = true; input.pause(true);
-        status = String.format(java.util.Locale.US, "Đang xoay theo “%s” · góc %.0f° + offset %+.0f° → %.0f°", keyword, angle, offset, target);
+        double signedSource = TurnMeasurement.signedAngle(angle), signedTarget = TurnMeasurement.signedAngle(target);
+        status = String.format(java.util.Locale.US, "Đang xoay theo “%s” · góc %+.0f° · bù %+.0f° → %+.0f°",
+            keyword, signedSource, signedTarget - signedSource, signedTarget);
+        Log.i("GreetingVoice", "Directional compensation: source=" + signedSource + "; configured=" + offset
+            + "; applied=" + (signedTarget - signedSource) + "; target=" + signedTarget);
         host.changed();
         final int run = generation, turn = ++motionSerial;
         sendTurn(target, target, captureHeading, 0, run, turn, endedAt + CapturedSoundAngle.MAX_RESPONSE_AGE_MS);

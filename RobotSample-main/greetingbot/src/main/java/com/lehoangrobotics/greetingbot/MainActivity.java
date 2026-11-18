@@ -522,7 +522,7 @@ public final class MainActivity extends Activity {
         LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL); fields.setPadding(dp(20), dp(8), dp(20), dp(8));
         EditText url = field(fields, "Server giọng nói OpenAI", preferences.getString("voiceServerUrl", "http://192.168.0.123:5050"), false);
         EditText token = field(fields, "Mã kết nối giọng nói", preferences.getString("voiceToken", ""), true);
-        EditText offset = field(fields, "Offset hướng âm (độ, mặc định +10)", Double.toString(settings.voiceAngleOffset), false);
+        EditText offset = field(fields, "Bù theo chiều quay (độ, mặc định 10: dương +10 / âm -10)", Double.toString(settings.voiceAngleOffset), false);
         offset.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Giọng nói OpenAI").setView(fields)
             .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null).create();
