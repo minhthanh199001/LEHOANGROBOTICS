@@ -1,5 +1,17 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản thử MicroArray 1.3.0
+
+- Người vận hành xác nhận bản 1.2.0 đã nhận đúng câu gọi qua OpenAI, nhưng chưa có góc nên không xoay. SDK/map vẫn hoạt động.
+- Đã xác minh luồng góc thật của MicroArray: AgentService 100.3.168 ghi `SoundInfoTask` khoảng 10 Hz qua log verbose. SHA-256 APK hệ thống trên robot khớp `27a3aa8f6b263cff696b69dee8afcd3218f1989456a3000d9e3f38d334a3c555`. Phép cộng 30° của native getter được áp dụng khi chuyển `audio_angle` sang hệ tọa độ client Orion. Không commit firmware/decompile/log hệ thống.
+- Cầu nối PC/ADB đọc thụ động luồng này; không thay callback VoiceDataCollection đang dùng bởi ứng dụng hệ thống. Đối chiếu boot ID đọc bằng UID của chính app, mốc thời gian thu và độ ổn định; bỏ mẫu `active=0`, góc lỗi, dữ liệu cũ/sai phiên và nguồn không được hỗ trợ.
+- Android: **13 test / 0 lỗi**, build APK thành công. Backend: **37 kiểm tra thành công**, gồm định dạng góc, phép hiệu chỉnh +30°, góc 0°/vòng 360°, số mẫu tối thiểu, mẫu inactive, tiếng từ nhiều hướng, cửa sổ thời gian và các kiểm tra OpenAI trước đó. Fleet integration: **39 kiểm tra thành công** trên DB riêng.
+- Đã cài bản 1.3.0 qua ADB Wi-Fi; SDK kết nối, đã định vị, bản đồ `LH2-1006084342`, 5 điểm. Proxy `127.0.0.1:5053` báo `direction.ready=true`, `state=streaming`.
+- Đã quan sát app nhận góc phần cứng khớp đoạn thu: 30° (3 và 8 mẫu), 27,18° (7 mẫu), 10,69° (20 mẫu). Cả chuỗi native → proxy → Android đã thông. Các đoạn này chưa nhận đúng câu gọi, nên không phát lệnh `wakeUp`. Những đoạn góc không ổn định bị loại.
+- Lần thử 1.3.0 đầu, người vận hành báo **không cử động**; log còn lại không có câu gọi hợp lệ/lệnh xoay. Đã bổ sung chẩn đoán số mẫu, nguyên nhân không ghép được góc và số ký tự nhận dạng; không ghi audio hoặc khóa. **Chưa nghiệm thu xoay vật lý; đang chờ lần thử có đồng thời câu gọi đúng và góc hợp lệ.**
+- APK bàn giao `releases/LeHoangGreetingbot_v1.3.0-debug.apk`, SHA-256 `72C939EDA01ED9C7277A2E35716EFC1278232A966765D57EDE598C9222123ED3`.
+- Bản này vẫn cần PC/proxy/ADB hoạt động. Server vận hành `192.168.0.123:5050` chưa được triển khai lại; không thay DB Fleet hiện tại.
+
 ## Bản thử OpenAI 1.2.0
 
 - `:greetingbot:testDebugUnitTest` và `:greetingbot:assembleDebug`: thành công; **10 test / 0 lỗi**. Bao gồm hai câu gọi, dấu tiếng Việt, góc sai/hết hạn, trùng callback, WAV PCM16 mono tương thích proxy, gắn góc với đúng đoạn thu, loại góc của người nói/câu trước và phản hồi ASR trễ.
@@ -8,7 +20,7 @@
 - Khóa đọc trực tiếp từ file người vận hành chỉ định ở ngoài repo. Kiểm tra OpenAI `/v1/models` trả **200**, model `gpt-transcribe` có sẵn. Một yêu cầu WAV im lặng 0,5 giây qua proxy tới OpenAI trả **200, text rỗng**; không dùng câu trả giả làm kết quả nhận dạng robot.
 - Kiểm thử API thật bổ sung: dùng Windows SAPI tạo âm thanh tổng hợp “Hello robot” (không phát ra loa), gửi qua proxy/OpenAI trả **200, “Hello robot.”**. Đây là kiểm tra nhận dạng API bằng âm thanh tổng hợp, không thay cho thử giọng người tại robot và không kích hoạt chuyển động.
 - Proxy thật trên Windows hiện tại: `127.0.0.1:5053`, token riêng lưu DPAPI, khóa OpenAI không đưa xuống robot. Kiểm tra HTTP thật: không có token trả **401**, WAV sai trả **400** mà không gọi OpenAI. Robot truy cập qua `adb reverse tcp:5053 tcp:5053`; cấu hình giọng nói đã lưu bằng giao diện app, độc lập cấu hình Web cũ.
-- Đã cài 1.2.0, mở từ Home. SDK kết nối, **đã định vị**, bản đồ `LH2-1006084342`, **5 điểm**. Đã quan sát các đoạn thu thực từ robot đi qua proxy/OpenAI và callback về app; các đoạn âm thanh nền nhận text rỗng, không sinh chuyển động. Đang chờ người vận hành nói hai câu gọi để xác nhận nhận dạng thực tế.
+- Đã cài 1.2.0, mở từ Home. SDK kết nối, **đã định vị**, bản đồ `LH2-1006084342`, **5 điểm**. Đã quan sát các đoạn thu thực từ robot đi qua proxy/OpenAI và callback về app. Sau đó người vận hành xác nhận nhận đúng câu gọi, nhưng SDK chưa báo góc xoay.
 - APK trên robot khớp `releases/LeHoangGreetingbot_v1.2.0-debug.apk`, SHA-256 `22EC117EB99F0CCF568C321ECFEA02F729A8B3DA5681D4130CFC0A6213BEB191`.
 - Góc MicroArray: chưa quan sát được sự kiện hợp lệ đi vào app. Interface `getVoiceAngle()` trong ROM hiện tại có implementation trả map rỗng; callback VoiceDataCollection dùng chung đang có app hệ thống kết nối, không thay callback này để chiếm luồng dữ liệu. Chỉ dùng callback wake qua SDK/system khi có góc thật. **OpenAI trả văn bản không thay thế việc lấy góc từ phần cứng. Phần xoay chưa hoàn tất/nghiệm thu.**
 - Bản 1.1.0 dùng SkillApi/AgentOS không đạt: người vận hành báo nghe sai, không xoay, rồi mất SDK/bản đồ. Đã bỏ AgentOS/AppAgent khỏi app và khôi phục `RobotApi.connectServer(Activity, listener)` như 1.0.0. APK 1.1.0 bị rút khỏi thư mục bàn giao; 1.0.0 được giữ để khôi phục.

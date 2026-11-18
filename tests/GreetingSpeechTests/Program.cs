@@ -79,7 +79,29 @@ try {
     File.Delete(invalidKeyFile);
     Check(!new GreetingSpeechService(client, fileConfig).Ready, "Missing specified key file cannot fall back to another environment key");
 } finally { if (File.Exists(invalidKeyFile)) File.Delete(invalidKeyFile); }
-Console.WriteLine($"Greeting speech: {checks} checks passed. No real audio or API key used.");
+var parsed = MicroArrayTelemetry.Parse("1794982607.157  2906  3377 V SoundInfoTask: active:1,audio_angle:330,beam_angle:330");
+Check(parsed is { AtUnixMs: 1794982607157, Active: 1, RawAngle: 330 }, "Parse only the native verbose angle format");
+Check(MicroArrayTelemetry.Parse("1794982607.157 2906 3377 V OtherTag: active:1,audio_angle:330,beam_angle:330") is null,
+    "Unrelated logs cannot provide a direction");
+Check(MicroArrayTelemetry.Parse("bad") is null, "Malformed telemetry ignored");
+MicroArraySample[] Samples(params int[] angles) => angles.Select((angle, i) => new MicroArraySample(10000 + i * 100, 1, angle)).ToArray();
+var zero = MicroArrayTelemetry.Select(Samples(329, 330, 331), 10000, 10500);
+Check(zero is { SampleCount: 3 } && Math.Min(zero.Angle, 360 - zero.Angle) < .01, "Native +30 calibration accepts a real zero angle across wraparound");
+var right = MicroArrayTelemetry.Select(Samples(60, 61, 59, 60), 10000, 10500);
+Check(right is not null && Math.Abs(right.Angle - 90) < .01 && right.Source == MicroArrayTelemetry.DirectionSource,
+    "Return calibrated native direction with provenance");
+Check(right is { CaptureStartUnixMs: 10000, CaptureEndUnixMs: 10500, AtUnixMs: 10300 }, "Echo the exact capture and native sample timestamp");
+Check(MicroArrayTelemetry.Select(Samples(60, 60), 10000, 10500) is null, "Single/transient directions cannot trigger motion");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60).Select(x => x with { Active = 0 }), 10000, 10500) is null,
+    "Inactive DSP retains old angles and must never trigger motion");
+Check(MicroArrayTelemetry.Select(Samples(-1, -1, -1), 10000, 10500) is null, "Reject missing DSP direction");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60), 11000, 12000) is null, "Previous speaker outside the capture window ignored");
+Check(MicroArrayTelemetry.Select(Samples(0, 90, 180), 10000, 10500) is null, "Ambiguous multiple sound directions rejected");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60), 10000, 20000) is null, "Reject unbounded capture windows");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60).Select(x => x with { AtUnixMs = 10000 }), 10000, 10500) is null,
+    "Repeated copies of one sample are insufficient");
+Check(MicroArrayTelemetry.Select(Samples(60, 60, 60), 10500, 10000) is null, "Reject clock reversal");
+Console.WriteLine($"Greeting speech and MicroArray: {checks} checks passed. No real audio or API key used.");
 
 sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
 {

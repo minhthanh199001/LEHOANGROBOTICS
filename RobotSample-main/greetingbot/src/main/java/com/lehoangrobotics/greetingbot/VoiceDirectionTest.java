@@ -64,7 +64,7 @@ final class VoiceDirectionTest implements AutoCloseable {
                 private boolean current() { return enabled && !closed && run == generation; }
                 @Override public void listening() { main.post(() -> {
                     if (!current() || turning) return;
-                    if (heard.isEmpty()) status = "OpenAI đang nghe (60 giây): Hello robot / robot ơi.";
+                    if (captureId.isEmpty()) status = "OpenAI đang nghe (60 giây): Hello robot / robot ơi.";
                     host.changed();
                 }); }
                 @Override public void speechStarted(String id, long startedAt) { main.post(() -> {
@@ -77,9 +77,14 @@ final class VoiceDirectionTest implements AutoCloseable {
                     capture.end(id, endedAt); capture.observe(sourceAngle, sourceAt);
                     status = "OpenAI đang nhận dạng câu vừa nói…"; host.changed();
                 }); }
-                @Override public void result(String id, String text, long endedAt) { main.post(() -> {
+                @Override public void result(String id, String text, long endedAt, MicroArrayReading direction) { main.post(() -> {
                     if (!current() || turning || !captureId.equals(id)) return;
                     heard = clipped(text);
+                    if (direction != null) {
+                        capture.observe(direction.angle, direction.atElapsed);
+                        lastAngle = direction.angle;
+                        Log.i("GreetingVoice", "Native MicroArray via ADB: angle=" + direction.angle + "; samples=" + direction.sampleCount);
+                    }
                     long now = SystemClock.elapsedRealtime();
                     double capturedAngle = capture.forResult(id, now);
                     Log.i("GreetingVoice", "OpenAI transcript keyword=" + VoiceDirectionPolicy.keyword(text)
@@ -115,10 +120,12 @@ final class VoiceDirectionTest implements AutoCloseable {
     private void recognized(String text, double angle, String eventId) {
         if (!enabled || closed || turning) return;
         String keyword = VoiceDirectionPolicy.keyword(text);
-        if (keyword.isEmpty()) { status = "Chưa đúng câu gọi. Nói: Hello robot hoặc robot ơi."; host.changed(); return; }
+        if (keyword.isEmpty()) { status = text == null || text.trim().isEmpty()
+            ? "Chưa nghe rõ câu gọi. Đang nghe tiếp: Hello robot hoặc robot ơi."
+            : "Chưa đúng câu gọi. Đang nghe tiếp: Hello robot hoặc robot ơi."; host.changed(); return; }
         if (!host.canControl()) { stop("RobotOS đã giữ quyền điều khiển; dừng test hướng âm.", null); return; }
         if (!VoiceDirectionPolicy.validAngle(angle)) {
-            status = "Đã nghe đúng “" + keyword + "”. SDK chưa trả góc MicroArray của câu này; robot chưa xoay.";
+            status = "Đã nghe đúng “" + keyword + "”. Chưa có góc MicroArray ổn định khớp câu này. Giữ nguyên vị trí và gọi lại.";
             host.changed(); return;
         }
         double target = policy.select(text, angle, eventId, SystemClock.elapsedRealtime());

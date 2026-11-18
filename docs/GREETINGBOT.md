@@ -12,7 +12,7 @@
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
 - Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
 
-## Giọng nói OpenAI / test hướng âm — bản thử 1.2.0
+## Giọng nói OpenAI / test hướng âm — bản thử 1.3.0
 
 1. Mở app từ Home / Application Center của robot. Dừng điều hướng và test ghi/phát âm thanh.
 2. Ngắt dây sạc trước khi kiểm tra chuyển động. Bấm **Test hướng âm**, đứng lệch bên trái/phải rồi nói câu gọi.
@@ -23,7 +23,11 @@ ROM được kiểm tra là `V11.9.2026052915.MINUUO`. Bản 1.2.0 bỏ phụ th
 
 Audio của test ghi/phát vẫn chỉ ở RAM trên robot. Với test OpenAI, từng đoạn có hoạt động âm thanh được gửi qua server đến OpenAI theo yêu cầu người vận hành; app/server không ghi bản thu xuống file hoặc DB. Test tự tắt sau 60 giây, chỉ có một yêu cầu nhận dạng đang chạy, chặn audio quá dài/sai định dạng. Dừng test sẽ hủy ghi âm và yêu cầu mạng; phản hồi muộn không sinh chuyển động.
 
-OpenAI trả văn bản, không trả góc MicroArray. Nguồn góc vẫn là `REQ_SPEECH_WAKEUP` qua Core SDK hoặc thông báo wake của hệ thống, receiver yêu cầu quyền signature riêng. Chỉ dùng góc ghi nhận trong cùng khoảng thời gian thu câu nói; kết quả OpenAI đến trễ hơn 8 giây bị loại. Chưa nhận được góc thật trên ROM này thì app báo rõ **SDK chưa trả góc MicroArray; robot chưa xoay**. Không suy ra hướng từ nội dung câu nói hay góc của câu trước.
+OpenAI trả văn bản, không trả góc MicroArray. ROM V11.9 hiện không gửi góc vào callback app; `getVoiceAngle()` trả map rỗng. Bản 1.3.0 bổ sung cầu nối chẩn đoán **PC/ADB** đọc thụ động các mẫu `SoundInfoTask` của AgentService. Không thay callback của ứng dụng thu thập dữ liệu hệ thống, không truy cập socket microphone riêng và không yêu cầu root. Callback wake chuẩn vẫn được hỗ trợ nếu ROM phát sự kiện.
+
+Cầu nối chỉ bật với đúng SHA-256 AgentService 100.3.168 đã đối chiếu trên robot. Native `SoundInfoTask` cộng 30° vào `audio_angle` trước khi trả cho client Orion; cầu nối áp dụng cùng phép đổi tọa độ. Chỉ dùng mẫu `active=1`; giá trị khi `active=0` là góc cũ. Yêu cầu ít nhất 3 mẫu khác thời điểm, trải qua ít nhất 100 ms, hướng ổn định (độ tập trung tròn ≥0,92; độ lệch lớn nhất ≤35°). Góc 0° hợp lệ; không lấy `beam_angle` làm góc người nói.
+
+App gửi boot ID của chính robot và mốc bắt đầu/kết thúc đoạn thu theo đồng hồ robot. Proxy chỉ ghép mẫu cùng robot/phiên khởi động và cùng cửa sổ thu; app kiểm tra lại nguồn, mốc thời gian và độ ổn định. Kết quả nhận dạng đến trễ hơn 8 giây bị loại. Không có góc phù hợp thì không xoay. Mất PC/ADB thì test hướng âm không hoạt động; các chức năng SDK/bản đồ vẫn độc lập.
 
 Tình trạng xác minh phần cứng được cập nhật trong `GREETINGBOT_VALIDATION.md`; bản thử chưa được coi là nghiệm thu xoay theo giọng nói cho tới khi thử thành công tại robot.
 
@@ -32,24 +36,24 @@ Tình trạng xác minh phần cứng được cập nhật trong `GREETINGBOT_V
 Khóa OpenAI chỉ được đọc ở server qua `OPENAI_API_KEY_FILE` hoặc `OPENAI_API_KEY`; file được chỉ định có ưu tiên. Không đặt khóa này trong APK, mã JavaScript, DB hay Git. Robot dùng mã kết nối riêng qua header Bearer. Proxy không trả nội dung lỗi thô hoặc khóa từ OpenAI.
 
 ```powershell
-.\scripts\Start-GreetingSpeech.ps1 -ApiKeyFile 'C:\DUONG_DAN_RIENG\OPEN AI API KEY.txt' -ShowPairingCode
+.\scripts\Start-GreetingSpeech.ps1 -ApiKeyFile 'C:\DUONG_DAN_RIENG\OPEN AI API KEY.txt' -RobotSerial '192.168.0.23:5555' -AdbPath 'C:\DUONG_DAN_ADB\adb.exe' -ShowPairingCode
 ```
 
-Script tạo mã kết nối lưu bằng DPAPI trên máy/tài khoản hiện tại, publish server riêng và mở tiến trình nền ẩn, mặc định chỉ nghe `127.0.0.1:5053`. Nó dùng DB riêng cho proxy thử, không thay DB/server Fleet đang chạy. Nếu dùng robot qua ADB Wi-Fi trong quá trình thử:
+Script tạo mã kết nối lưu bằng DPAPI trên máy/tài khoản hiện tại, publish server riêng và mở tiến trình nền ẩn, mặc định chỉ nghe `127.0.0.1:5053`. Nó dùng DB riêng cho proxy thử, không thay DB/server Fleet đang chạy. Có `-RobotSerial` thì script tự tạo ADB reverse và chờ cả OpenAI lẫn luồng MicroArray sẵn sàng. Cầu nối hướng âm chỉ cho phép listen loopback. Có thể khôi phục reverse sau khi robot/ADB khởi động lại:
 
 ```powershell
 adb -s 192.168.0.23:5555 reverse tcp:5053 tcp:5053
 ```
 
-Trên robot: **Cấu hình → Giọng nói OpenAI**, server `http://127.0.0.1:5053`, nhập mã kết nối script tạo. Đường này cần máy Windows/proxy và kết nối ADB hoạt động. Không coi đây là triển khai trên server vận hành `192.168.0.123:5050`.
+Trên robot: **Cấu hình → Giọng nói OpenAI**, server `http://127.0.0.1:5053`, nhập mã kết nối script tạo. Đường này cần máy Windows/proxy và kết nối ADB hoạt động. Không coi đây là triển khai trên server vận hành `192.168.0.123:5050`. Cầu nối bật mức log `SoundInfoTask=V` trong thời gian chạy; khi tắt server bình thường sẽ khôi phục mức cũ. Nếu buộc dừng tiến trình/mất kết nối, có thể xóa mức log tạm bằng `adb -s 192.168.0.23:5555 shell "setprop log.tag.SoundInfoTask ''"` sau khi dừng cầu nối.
 
 Để chạy trên server LAN hiện có, cập nhật server bằng script giữ nguyên DB ở phần dưới, thiết lập `OPENAI_API_KEY_FILE` và `GREETING_SPEECH_TOKEN` cho tiến trình server; đổi URL giọng nói trên robot sang URL server LAN. Tham số `-OpenAiKeyFile` và `-SpeechTokenFile` của `Update-GreetingServer.ps1` hỗ trợ nạp file khóa và mã DPAPI được tạo **trên chính máy/tài khoản server**. File DPAPI không giải mã được khi sao chép sang máy/tài khoản khác.
 
-Kiểm tra proxy bằng `GET /api/greeting/speech/status` có Bearer token. `POST /api/greeting/speech/transcribe` nhận body WAV PCM16 mono 16 kHz, tối đa 8 giây. Token sai trả 401; chưa cấu hình trả 503; audio sai trả 400; đang bận trả 429. Không có endpoint đọc khóa OpenAI.
+Kiểm tra proxy bằng `GET /api/greeting/speech/status` có Bearer token; trường `direction.ready` xác nhận luồng phần cứng. `POST /api/greeting/speech/transcribe` nhận body WAV PCM16 mono 16 kHz, tối đa 8 giây; các header `X-Robot-Boot-Id`, `X-Audio-Start-Ms`, `X-Audio-End-Ms` dùng ghép góc. `captureStatus` chỉ chứa chẩn đoán số lượng mẫu/trạng thái/thời gian, không chứa bản thu. Token sai trả 401; chưa cấu hình trả 503; audio sai trả 400; đang bận trả 429. Không có endpoint đọc khóa OpenAI.
 
 ## Biên dịch
 
-Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.2.0 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
+Yêu cầu JDK 17 (hoặc JDK tương thích Gradle 7.4), Android SDK platform 29/build-tools 30.0.3 và .NET 8 SDK. Greetingbot 1.3.0 hỗ trợ Android API 23 trở lên, không cần thư viện AgentOS.
 
 ```powershell
 cd RobotSample-main
@@ -68,11 +72,11 @@ Nếu source nằm trên ổ mạng Windows có đường dẫn dài, chuyển r
 
 Khi đó APK nằm tại `C:/greetingbot-build/outputs/apk/debug/greetingbot-debug.apk`. Hai module Android cũ vẫn dùng cấu hình build của chúng.
 
-APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử OpenAI có trong `releases/LeHoangGreetingbot_v1.2.0-debug.apk`; APK `1.0.0` vẫn được giữ để khôi phục. Bản 1.1.0 đã dừng sử dụng sau khi người vận hành báo lỗi SDK. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.0-debug.apk`; APK `1.0.0` và `1.2.0` vẫn được giữ để khôi phục. Bản 1.1.0 đã dừng sử dụng sau khi người vận hành báo lỗi SDK. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
 
 ```powershell
 adb connect 192.168.0.23:5555
-adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.2.0-debug.apk
+adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.0-debug.apk
 ```
 
 Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng `am start` để thay thế bước cấp quyền SDK. Muốn tự khởi động: Developer Settings → Boot Apps → Lê Hoàng Greetingbot. Không cần thay app mặc định trong lần cài đặt thử.
@@ -149,6 +153,7 @@ Nút **Dừng điều hướng** chỉ dừng tác vụ `startNavigation` của 
 - [APK / vòng đời cấp quyền](https://doc.orionstar.com/en/knowledge-base/sdk-access/)
 - [Bản đồ và điểm](https://doc.orionstar.com/en/knowledge-base/map-and-position/)
 - [Điều hướng](https://doc.orionstar.com/en/knowledge-base/navigation/)
+- [Wake-up: xoay theo góc nguồn âm](https://doc.orionstar.com/en/knowledge-base/basic-sence/)
 - [Thông số mảng microphone và phát âm thanh](https://doc.orionstar.com/en/knowledge-base/speech-ability/)
 - [OpenAI: file transcription và gợi ý ngôn ngữ/từ khóa](https://developers.openai.com/api/docs/guides/speech-to-text)
 
