@@ -2022,6 +2022,15 @@ namespace LeHoangControlCenter.ViewModels
             TargetDestination = dest;
             AddLog($"[ĐIỀU HƯỚNG] Gửi lệnh di chuyển tới: '{dest}'" + (x.HasValue ? $" (X={x:F2}m, Y={y:F2}m)" : ""));
 
+            if (IsCharging && !dest.ToLowerInvariant().Contains("sạc") && !dest.ToLowerInvariant().Contains("charge"))
+            {
+                AddLog($"⚡ [TRẠM SẠC] Robot đang ở trạm sạc. Gửi lệnh tách khỏi dock sạc để di chuyển tới '{dest}'...");
+                await ChargeAsync("STOP_CHARGE");
+                await Task.Delay(400);
+                await ChargeAsync("LEAVE_PILE");
+                await Task.Delay(1800);
+            }
+
             var cmd = new NavigateCommand
             {
                 Destination = dest,
@@ -2119,6 +2128,7 @@ namespace LeHoangControlCenter.ViewModels
             var textToSpeak = !string.IsNullOrEmpty(phrase) ? phrase : SpeechText;
             if (string.IsNullOrWhiteSpace(textToSpeak)) return;
 
+            AddLog($"🔊 [PHÁT GIỌNG NÓI] {textToSpeak}");
             var cmd = new SpeakCommand { Text = textToSpeak };
             await _robotService.SendCommandAsync(cmd);
         }

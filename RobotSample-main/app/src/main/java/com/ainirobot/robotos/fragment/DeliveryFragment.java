@@ -2080,11 +2080,66 @@ public class DeliveryFragment extends Fragment {
         refreshTrayShelvesUi();
     }
 
+    private boolean isCurrentlyCharging() {
+        boolean isCharging = false;
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                isCharging = RobotApi.getInstance().getChargeStatus();
+            }
+        } catch (Throwable ignored) {}
+        if (!isCharging && getContext() != null) {
+            try {
+                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent bStatus = getContext().registerReceiver(null, ifilter);
+                if (bStatus != null) {
+                    int status = bStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                    isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING);
+                }
+            } catch (Throwable ignored) {}
+        }
+        return isCharging;
+    }
+
     private void navigateRobotTo(final String dest) {
         if (TextUtils.isEmpty(dest))
             return;
         Log.i(TAG, "Navigating to: " + dest + ", speed: " + mCurrentSpeed + ", returningHome=" + mIsReturningHome);
 
+        // If robot is currently in charging pile and target is not charge dock, auto-leave pile first
+        boolean isCharging = isCurrentlyCharging();
+
+        String lower = dest.toLowerCase();
+        boolean isChargeDockTarget = lower.contains("charge") || lower.contains("sạc");
+
+        if (isCharging && !isChargeDockTarget) {
+            Log.i(TAG, "Robot is docked at charging pile. Leaving pile before navigating to: " + dest);
+            try {
+                RobotApi.getInstance().stopAutoChargeAction(0, true);
+            } catch (Throwable ignored) {}
+
+            try {
+                RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        Log.i(TAG, "leaveChargingPile onResult: " + result + ", msg=" + message);
+                        mHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                navigateRobotToInternal(dest);
+                            }
+                        }, 500);
+                    }
+                });
+                return;
+            } catch (Throwable t) {
+                Log.w(TAG, "leaveChargingPile failed: " + t.getMessage());
+            }
+        }
+
+        navigateRobotToInternal(dest);
+    }
+
+    private void navigateRobotToInternal(final String dest) {
         try {
             if (RobotApi.getInstance().isApiConnectedService()) {
                 // Apply speed to RobotApi

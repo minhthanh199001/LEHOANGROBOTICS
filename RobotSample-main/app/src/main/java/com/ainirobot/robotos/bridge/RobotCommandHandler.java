@@ -1,5 +1,9 @@
 package com.ainirobot.robotos.bridge;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
@@ -11,6 +15,7 @@ import com.ainirobot.coreservice.client.RobotApi;
 import com.ainirobot.coreservice.client.actionbean.Pose;
 import com.ainirobot.coreservice.client.listener.ActionListener;
 import com.ainirobot.coreservice.client.listener.CommandListener;
+import com.ainirobot.robotos.application.RobotOSApplication;
 import com.ainirobot.robotos.maputils.GlobalData;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -19,6 +24,7 @@ import org.java_websocket.WebSocket;
 
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RobotCommandHandler {
     private static final String TAG = "RobotCommandHandler";
@@ -135,6 +141,21 @@ public class RobotCommandHandler {
         int reqId = sMoveReqId++;
         switch (action) {
             case "FORWARD":
+                // If robot is in charging pile and user wants to move forward, auto-undock
+                boolean isChargingNow = false;
+                try {
+                    if (RobotApi.getInstance().isApiConnectedService()) {
+                        isChargingNow = RobotApi.getInstance().getChargeStatus();
+                    }
+                } catch (Throwable ignored) {}
+                if (isChargingNow) {
+                    Log.i(TAG, "User sent FORWARD while docked. Auto-leaving charging pile...");
+                    try {
+                        RobotApi.getInstance().stopAutoChargeAction(0, true);
+                    } catch (Throwable ignored) {}
+                    RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, listener);
+                    return;
+                }
                 armSafetyWatchdog();
                 RobotApi.getInstance().goForward(reqId, linearSpeed, listener);
                 break;
@@ -183,6 +204,93 @@ public class RobotCommandHandler {
         });
     }
 
+    private void ensureLeftChargingPileIfNeeded(final Runnable onReady) {
+        boolean isCharging = false;
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                isCharging = RobotApi.getInstance().getChargeStatus();
+            }
+        } catch (Throwable ignored) {}
+
+        if (!isCharging) {
+            try {
+                Context ctx = RobotOSApplication.getInstance();
+                if (ctx != null) {
+                    IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                    Intent bStatus = ctx.registerReceiver(null, ifilter);
+                    if (bStatus != null) {
+                        int status = bStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                        isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING);
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        if (!isCharging) {
+            try {
+                RobotApi.getInstance().stopNavigation(0);
+            } catch (Throwable ignored) {}
+            onReady.run();
+            return;
+        }
+
+        Log.i(TAG, "⚡ Robot is currently in charging pile / charging state! Initiating auto-undock...");
+        try {
+            RobotApi.getInstance().stopAutoChargeAction(0, true);
+        } catch (Throwable t) {
+            Log.w(TAG, "stopAutoChargeAction error: " + t.getMessage());
+        }
+
+        final AtomicBoolean executed = new AtomicBoolean(false);
+        final Handler handler = new Handler(Looper.getMainLooper());
+
+        final Runnable timeoutRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (executed.compareAndSet(false, true)) {
+                    Log.i(TAG, "leaveChargingPile completed or timed out. Proceeding to navigation target.");
+                    try {
+                        RobotApi.getInstance().stopNavigation(0);
+                    } catch (Throwable ignored) {}
+                    onReady.run();
+                }
+            }
+        };
+
+        // Safety fallback: if leaveChargingPile doesn't return in 2.2s, proceed anyway
+        handler.postDelayed(timeoutRunnable, 2200);
+
+        try {
+            RobotApi.getInstance().leaveChargingPile(0, 0.6f, 0.5f, new CommandListener() {
+                @Override
+                public void onResult(int result, String message) {
+                    Log.i(TAG, "leaveChargingPile onResult: " + result + ", msg=" + message);
+                    handler.removeCallbacks(timeoutRunnable);
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (executed.compareAndSet(false, true)) {
+                                try {
+                                    RobotApi.getInstance().stopNavigation(0);
+                                } catch (Throwable ignored) {}
+                                onReady.run();
+                            }
+                        }
+                    }, 500);
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "leaveChargingPile exception: " + t.getMessage());
+            handler.removeCallbacks(timeoutRunnable);
+            if (executed.compareAndSet(false, true)) {
+                try {
+                    RobotApi.getInstance().stopNavigation(0);
+                } catch (Throwable ignored) {}
+                onReady.run();
+            }
+        }
+    }
+
     private void handleNavigate(final WebSocket client, final String msgId, JsonObject json) {
         final String destination = json.has("destination") ? json.get("destination").getAsString() : "";
         final double maxDistance = json.has("maxDistance") ? json.get("maxDistance").getAsDouble() : 1.5;
@@ -213,15 +321,13 @@ public class RobotCommandHandler {
         Log.i(TAG, "Executing NAVIGATE to: " + destination + (x != null ? " (" + x + ", " + y + ")" : ""));
         disarmSafetyWatchdog();
 
-        // Ensure any previous running navigation or move is stopped first to avoid ACTION_RESPONSE_ALREADY_RUN
-        try {
-            RobotApi.getInstance().stopNavigation(0);
-        } catch (Throwable ignored) {}
-
         // 1. Check if target is Charging Dock
         String lower = destination != null ? destination.toLowerCase() : "";
         if (lower.contains("charge") || lower.contains("sạc") || lower.contains("charging")) {
             Log.i(TAG, "Navigating to Auto Charge Station...");
+            try {
+                RobotApi.getInstance().stopNavigation(0);
+            } catch (Throwable ignored) {}
             RobotApi.getInstance().startNaviToAutoChargeAction(0, timeoutMs, new ActionListener() {
                 @Override
                 public void onResult(int status, String responseString) throws RemoteException {
@@ -239,6 +345,16 @@ public class RobotCommandHandler {
             return;
         }
 
+        // 2. If target is a table/station/coordinate, make sure robot leaves charging pile first if docked!
+        ensureLeftChargingPileIfNeeded(new Runnable() {
+            @Override
+            public void run() {
+                executeNavigationInternal(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
+            }
+        });
+    }
+
+    private void executeNavigationInternal(final WebSocket client, final String msgId, final String destination, final Float x, final Float y, final Float theta, final double maxDistance, final long timeoutMs) {
         // 2. If destination is a Named Station on the Map, use native place navigation!
         boolean isCustomCoord = TextUtils.isEmpty(destination) 
                 || destination.startsWith("Điểm (") 
