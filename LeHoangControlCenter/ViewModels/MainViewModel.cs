@@ -251,6 +251,7 @@ namespace LeHoangControlCenter.ViewModels
         private string _stationTextHaloColor = "#FFFFFF";
 
         private BitmapSource? _rawMapSource;
+        private string? _lastRenderedMapName;
 
         // Map Viewport Zoom & Pan
         [ObservableProperty]
@@ -883,7 +884,7 @@ namespace LeHoangControlCenter.ViewModels
                 int bmpW = 52;
                 int bmpH = 76;
 
-                bool needReloadImage = _rawMapSource == null || !string.Equals(data.CurrentMap, CurrentMap, StringComparison.OrdinalIgnoreCase);
+                bool needReloadImage = _rawMapSource == null || !string.Equals(data.CurrentMap, _lastRenderedMapName, StringComparison.OrdinalIgnoreCase);
                 if (!string.IsNullOrEmpty(data.ImageBase64) && needReloadImage)
                 {
                     try
@@ -898,6 +899,7 @@ namespace LeHoangControlCenter.ViewModels
                         bmp.Freeze();
 
                         _rawMapSource = bmp;
+                        _lastRenderedMapName = data.CurrentMap;
                         bmpW = bmp.PixelWidth;
                         bmpH = bmp.PixelHeight;
 
@@ -3105,12 +3107,37 @@ namespace LeHoangControlCenter.ViewModels
                 MapMinY = originY.Value;
                 MapMaxY = MapMinY + (h * resolution);
             }
-            else
+            else if (!string.IsNullOrEmpty(mapName) && (mapName.Contains("1110154527") || mapName.Contains("tăng 2") || mapName.Contains("tang 2")))
             {
                 // Exact calibrated bounds for default OrionStar building floor (260x380, res=0.05, origin=(-5.0, -6.0)):
                 // map.pgm: origin_x = -5.0, origin_y = -6.0, res = 0.05, 260x380
                 // X range: [-5.0, +8.0] (span = 13.0m)
                 // Y range: [-6.0, +13.0] (span = 19.0m)
+                MapMinX = -5.0;
+                MapMaxX = 8.0;
+                MapMinY = -6.0;
+                MapMaxY = 13.0;
+            }
+            else if (places != null && places.Count > 0)
+            {
+                double minX = places.Min(p => p.X);
+                double maxX = places.Max(p => p.X);
+                double minY = places.Min(p => p.Y);
+                double maxY = places.Max(p => p.Y);
+
+                double centerX = (minX + maxX) / 2.0;
+                double centerY = (minY + maxY) / 2.0;
+                double spanY = Math.Max(12.0, (maxY - minY) * 1.55);
+                double aspect = (imgW.HasValue && imgH.HasValue && imgW.Value > 0 && imgH.Value > 0) ? ((double)imgW.Value / imgH.Value) : (52.0 / 76.0);
+                double spanX = spanY * aspect;
+
+                MapMinX = Math.Round(centerX - spanX / 2.0, 2);
+                MapMaxX = Math.Round(centerX + spanX / 2.0, 2);
+                MapMinY = Math.Round(centerY - spanY / 2.0, 2);
+                MapMaxY = Math.Round(centerY + spanY / 2.0, 2);
+            }
+            else
+            {
                 MapMinX = -5.0;
                 MapMaxX = 8.0;
                 MapMinY = -6.0;
