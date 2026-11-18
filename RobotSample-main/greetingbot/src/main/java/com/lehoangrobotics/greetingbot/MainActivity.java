@@ -86,6 +86,7 @@ public final class MainActivity extends Activity {
                 if (voiceDirection == null) voiceDirection = new VoiceDirectionTest(MainActivity.this, new VoiceDirectionTest.Host() {
                     @Override public boolean canControl() { return ready() && navigation.equals("idle") && !audio.busy(); }
                     @Override public int nextId() { return MainActivity.this.nextId(); }
+                    @Override public double angleOffset() { return settings.voiceAngleOffset; }
                     @Override public void changed() { render(); }
                 });
                 android.util.Log.i("Greetingbot", "SDK connected; ACL=" + com.ainirobot.coreservice.utils.SettingDataHelper.getInstance().getRobotInt("current_pkg_acl") + "; RobotOS=" + robot.getVersion());
@@ -424,7 +425,7 @@ public final class MainActivity extends Activity {
             if (audio.busy()) audio.cancel(); else microphoneTest("");
         });
         voiceButton = button("◎  Test hướng âm: Hello robot / robot ơi", root, v -> toggleVoiceDirection());
-        voiceText = label("Bấm test rồi gọi robot từ một hướng. Test tự tắt sau 60 giây.", 15); voiceText.setMaxLines(3); root.addView(voiceText);
+        voiceText = label("Bấm test rồi gọi robot từ một hướng. Test tự tắt sau 60 giây.", 15); voiceText.setMaxLines(5); root.addView(voiceText);
         TextView heading = label("CHỌN ĐIỂM ĐẾN", 18); heading.setTypeface(null, Typeface.BOLD); root.addView(heading);
         emptyText = label("Chưa có điểm. Tạo bản đồ và điểm trong Map Tool của robot, sau đó bấm Đọc lại điểm.", 18); root.addView(emptyText);
         ScrollView pointsScroll = new ScrollView(this); root.addView(pointsScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -521,6 +522,8 @@ public final class MainActivity extends Activity {
         LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL); fields.setPadding(dp(20), dp(8), dp(20), dp(8));
         EditText url = field(fields, "Server giọng nói OpenAI", preferences.getString("voiceServerUrl", "http://192.168.0.123:5050"), false);
         EditText token = field(fields, "Mã kết nối giọng nói", preferences.getString("voiceToken", ""), true);
+        EditText offset = field(fields, "Offset hướng âm (độ, mặc định +10)", Double.toString(settings.voiceAngleOffset), false);
+        offset.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Giọng nói OpenAI").setView(fields)
             .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -531,7 +534,14 @@ public final class MainActivity extends Activity {
                     throw new IllegalArgumentException("Nhập địa chỉ gốc của server giọng nói.");
                 String credential = token.getText().toString().trim();
                 if (!credential.matches("[A-Za-z0-9_-]{32,128}")) { token.setError("Mã kết nối phải có 32–128 ký tự."); return; }
-                preferences.edit().putString("voiceServerUrl", server).putString("voiceToken", credential).apply();
+                double angleOffset = Double.parseDouble(offset.getText().toString().trim());
+                if (Double.isNaN(angleOffset) || Double.isInfinite(angleOffset) || angleOffset < -90 || angleOffset > 90) {
+                    offset.setError("Offset từ -90 đến 90 độ."); return;
+                }
+                JSONObject savedSettings = new JSONObject(preferences.getString("motionSettings", "{}"));
+                savedSettings.put("voiceAngleOffset", angleOffset); settings.update(savedSettings);
+                preferences.edit().putString("voiceServerUrl", server).putString("voiceToken", credential)
+                    .putString("motionSettings", savedSettings.toString()).apply();
                 message = "Đã lưu kết nối giọng nói OpenAI. Bấm Test hướng âm để thử."; render(); dialog.dismiss();
             } catch (Exception error) { url.setError(error.getMessage()); }
         }));

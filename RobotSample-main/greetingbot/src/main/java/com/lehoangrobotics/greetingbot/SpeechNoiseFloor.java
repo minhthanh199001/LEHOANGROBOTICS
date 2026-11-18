@@ -14,7 +14,8 @@ final class SpeechNoiseFloor {
             noise = bounded((initial[9] + initial[10]) / 2);
         }
     }
-    boolean loud(double rms) { return ready() && rms > Math.max(280, noise * 2.8); }
+    double threshold() { return Math.max(200, noise * 2.0); }
+    boolean loud(double rms) { return ready() && rms > threshold(); }
     void quiet(double rms) { noise = bounded(noise * .98 + rms * .02); }
     private double bounded(double value) { return Math.max(40, Math.min(6000, value)); }
 }

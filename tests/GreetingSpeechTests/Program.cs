@@ -110,6 +110,14 @@ Check(MicroArrayTelemetry.Select(Samples(60, 60, 60, 240, 240), 10000, 11000) is
 var noisyWrap = MicroArrayTelemetry.Select(Samples(328, 330, 332, 330, 180, 330, 180), 10000, 11000);
 Check(noisyWrap is { SampleCount: 5 } && Math.Min(noisyWrap.Angle, 360 - noisyWrap.Angle) < 1,
     "Dominant direction works across 360-degree wraparound");
+var voiceAndTail = Samples(60, 60, 60, 60, 60, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+var voiceOnly = MicroArrayTelemetry.SelectSpeechWindow(voiceAndTail, 10000, 12000, 10300);
+Check(voiceOnly is not null && Math.Abs(voiceOnly.Angle - 90) < 1 && voiceOnly.CaptureEndUnixMs == 12000,
+    "Do not let sounds after the spoken phrase determine its angle; preserve recording identity");
+Check(MicroArrayTelemetry.SelectSpeechWindow(voiceAndTail, 10000, 12000, 13000) is null,
+    "Reject voice activity outside the recording");
+Check(MicroArrayTelemetry.SelectSpeechWindow(voiceAndTail, 10000, 12000, 9000) is null,
+    "Reject reversed voice timestamps");
 Console.WriteLine($"Greeting speech and MicroArray: {checks} checks passed. No real audio or API key used.");
 
 sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler

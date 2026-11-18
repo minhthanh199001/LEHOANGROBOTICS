@@ -34,8 +34,9 @@ public sealed class GreetingSpeechController(GreetingSpeechService speech, Micro
         object? captureStatus = null;
         if (result.Status == 200 && long.TryParse(Request.Headers["X-Audio-Start-Ms"], out long start)
             && long.TryParse(Request.Headers["X-Audio-End-Ms"], out long end)) {
-            direction = microArray.ForCapture(Request.Headers["X-Robot-Boot-Id"].ToString(), start, end);
-            captureStatus = microArray.CaptureStatus(Request.Headers["X-Robot-Boot-Id"].ToString(), start, end);
+            long? voiceEnd = long.TryParse(Request.Headers["X-Voice-End-Ms"], out long voiceEndValue) ? voiceEndValue : null;
+            direction = microArray.ForCapture(Request.Headers["X-Robot-Boot-Id"].ToString(), start, end, voiceEnd);
+            captureStatus = microArray.CaptureStatus(Request.Headers["X-Robot-Boot-Id"].ToString(), start, end, voiceEnd);
         }
         if (result.Status == 429) Response.Headers.RetryAfter = "2";
         return StatusCode(result.Status, new { text = result.Text, error = result.Error, upstreamStatus = result.UpstreamStatus,

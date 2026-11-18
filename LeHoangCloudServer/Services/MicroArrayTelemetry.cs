@@ -26,23 +26,23 @@ public sealed class MicroArrayTelemetry(IConfiguration configuration) : Backgrou
 
     public object Status { get { lock (_sync) return new { enabled = _serial.Length > 0, ready = Fresh(), state = _state }; } }
     private bool Fresh() => _verified && _lastArrival > 0 && Environment.TickCount64 - _lastArrival < 2000;
-    public MicroArrayDirection? ForCapture(string bootId, long start, long end)
+    public MicroArrayDirection? ForCapture(string bootId, long start, long end, long? voiceEnd = null)
     {
         lock (_sync)
         {
             if (!Fresh() || bootId.Length == 0 || !string.Equals(bootId, _bootId, StringComparison.OrdinalIgnoreCase)) return null;
-            return Select(_samples, start, end);
+            return SelectSpeechWindow(_samples, start, end, voiceEnd);
         }
     }
-    public object CaptureStatus(string bootId, long start, long end)
+    public object CaptureStatus(string bootId, long start, long end, long? voiceEnd = null)
     {
         lock (_sync)
         {
-            var window = _samples.Where(x => x.AtUnixMs >= start - 250 && x.AtUnixMs <= end + 200).ToArray();
+            var window = _samples.Where(x => x.AtUnixMs >= start - 250 && x.AtUnixMs <= (voiceEnd ?? end) + 200).ToArray();
             int active = window.Count(x => x.Active == 1 && x.RawAngle is >= 0 and <= 360);
             return new { state = !Fresh() ? "stream_unavailable" : bootId != _bootId ? "wrong_robot" :
                 window.Length == 0 ? "no_matching_timestamps" : active < 3 ? "insufficient_active_samples" :
-                Select(window, start, end) is null ? "unstable_direction" : "matched",
+                SelectSpeechWindow(window, start, end, voiceEnd) is null ? "unstable_direction" : "matched",
                 samples = window.Length, activeSamples = active,
                 latestDeltaMs = _samples.Count == 0 ? (long?)null : _samples[^1].AtUnixMs - end };
         }
@@ -74,6 +74,12 @@ public sealed class MicroArrayTelemetry(IConfiguration configuration) : Backgrou
         double spread = angles.Max(x => Math.Abs((x - mean + 540) % 360 - 180));
         if (spread > 35) return null;
         return new(DirectionSource, mean, inliers[^1].AtUnixMs, inliers.Length, spread, start, end);
+    }
+    public static MicroArrayDirection? SelectSpeechWindow(IEnumerable<MicroArraySample> samples, long start, long end, long? voiceEnd)
+    {
+        if (voiceEnd is null) return Select(samples, start, end);
+        if (voiceEnd < start || voiceEnd > end) return null;
+        return Select(samples.Where(x => x.AtUnixMs <= voiceEnd.Value + 200), start, end);
     }
     protected override async Task ExecuteAsync(CancellationToken stop)
     {

@@ -8,10 +8,11 @@ import android.util.Log;
 import com.ainirobot.coreservice.client.Definition;
 import com.ainirobot.coreservice.client.RobotApi;
 import com.ainirobot.coreservice.client.listener.ActionListener;
+import com.ainirobot.coreservice.client.listener.CommandListener;
 
 /** OpenAI recognizes the phrase; only real Orion MicroArray data can supply a turn angle. */
 final class VoiceDirectionTest implements AutoCloseable {
-    interface Host { boolean canControl(); int nextId(); void changed(); }
+    interface Host { boolean canControl(); int nextId(); double angleOffset(); void changed(); }
     interface StopResult { void complete(boolean success, String message); }
     private final Handler main = new Handler(Looper.getMainLooper());
     private final RobotApi robot = RobotApi.getInstance();
@@ -21,11 +22,12 @@ final class VoiceDirectionTest implements AutoCloseable {
     private final Context context;
     private final Host host;
     private volatile boolean enabled;
-    private boolean closed, turning;
+    private boolean closed, turning, sdkActionRunning;
     private int generation, motionSerial;
-    private String status = "Chưa bật test hướng âm OpenAI.", heard = "", lastKeyword = "", captureId = "";
+    private String status = "Chưa bật test hướng âm OpenAI.", heard = "", lastKeyword = "", captureId = "", micStatus = "";
     private double lastAngle = Double.NaN, sourceAngle = Double.NaN;
     private long sourceAt;
+    private double captureHeading = Double.NaN;
     private StopResult stopResult;
     private final android.content.BroadcastReceiver wakeReceiver = new android.content.BroadcastReceiver() {
         @Override public void onReceive(Context ignored, android.content.Intent intent) {
@@ -44,7 +46,7 @@ final class VoiceDirectionTest implements AutoCloseable {
     }
     boolean active() { return enabled || turning; }
     String display() {
-        return status + (heard.isEmpty() ? "" : "\nNghe được: “" + heard + "”")
+        return status + (enabled && !micStatus.isEmpty() ? "\n" + (turning ? "Micro: chờ xoay xong để nhận câu tiếp theo." : micStatus) : "") + (heard.isEmpty() ? "" : "\nNghe được: “" + heard + "”")
             + (VoiceDirectionPolicy.validAngle(lastAngle) ? String.format(java.util.Locale.US, " · MicroArray %.0f°", lastAngle) : "");
     }
     void start() {
@@ -55,13 +57,18 @@ final class VoiceDirectionTest implements AutoCloseable {
         if (url.isEmpty() || token.length() < 32) {
             status = "Mở Cấu hình → Giọng nói OpenAI, nhập server và mã kết nối."; host.changed(); return;
         }
-        enabled = true; generation++; heard = ""; lastKeyword = ""; captureId = "";
+        enabled = true; generation++; heard = ""; lastKeyword = ""; captureId = ""; micStatus = "";
         lastAngle = Double.NaN; sourceAngle = Double.NaN; policy.start();
         status = "Đang kiểm tra kết nối server giọng nói OpenAI…"; host.changed();
         final int run = generation;
         try {
             input.start(url, token, new OpenAISpeechInput.Listener() {
                 private boolean current() { return enabled && !closed && run == generation; }
+                @Override public void meter(boolean signal) { main.post(() -> {
+                    if (!current()) return;
+                    micStatus = signal ? "Micro: đang thu, có tín hiệu âm thanh." : "Micro: đang nghe, chưa có giọng đủ rõ.";
+                    host.changed();
+                }); }
                 @Override public void calibrating() { main.post(() -> {
                     if (!current()) return;
                     status = "Đang đo tiếng ồn nền… Chờ dòng ‘OpenAI đang nghe’ rồi nói."; host.changed();
@@ -74,6 +81,8 @@ final class VoiceDirectionTest implements AutoCloseable {
                 @Override public void speechStarted(String id, long startedAt) { main.post(() -> {
                     if (!current() || turning) return;
                     captureId = id; capture.begin(id, startedAt); capture.observe(sourceAngle, sourceAt); lastAngle = Double.NaN;
+                    captureHeading = Double.NaN;
+                    heading(value -> { if (current() && !turning && captureId.equals(id)) captureHeading = value; });
                     policy.speechStarted(startedAt); status = "Đang thu câu gọi…"; host.changed();
                 }); }
                 @Override public void sending(String id, long startedAt, long endedAt) { main.post(() -> {
@@ -84,19 +93,19 @@ final class VoiceDirectionTest implements AutoCloseable {
                 @Override public void result(String id, String text, long endedAt, MicroArrayReading direction) { main.post(() -> {
                     if (!current() || turning || !captureId.equals(id)) return;
                     heard = clipped(text);
-                    if (direction != null) {
+                    long now = SystemClock.elapsedRealtime();
+                    if (direction != null && !VoiceDirectionPolicy.validAngle(capture.forResult(id, now))) {
                         capture.observe(direction.angle, direction.atElapsed);
                         lastAngle = direction.angle;
                         Log.i("GreetingVoice", "Native MicroArray via ADB: angle=" + direction.angle + "; samples=" + direction.sampleCount);
                     }
-                    long now = SystemClock.elapsedRealtime();
                     double capturedAngle = capture.forResult(id, now);
                     Log.i("GreetingVoice", "OpenAI transcript keyword=" + VoiceDirectionPolicy.keyword(text)
                         + "; captured direction=" + capturedAngle);
                     if (now < endedAt || now - endedAt > CapturedSoundAngle.MAX_RESPONSE_AGE_MS) {
                         status = "Kết quả nhận dạng đến quá chậm; hãy gọi lại để lấy hướng mới."; host.changed(); return;
                     }
-                    recognized(text, capturedAngle, id);
+                    recognized(text, capturedAngle, id, endedAt);
                 }); }
                 @Override public void error(String message) { main.post(() -> { if (current()) stop(message, null); }); }
             });
@@ -121,51 +130,103 @@ final class VoiceDirectionTest implements AutoCloseable {
         });
         return true;
     }
-    private void recognized(String text, double angle, String eventId) {
+    private void recognized(String text, double angle, String eventId, long endedAt) {
         if (!enabled || closed || turning) return;
         String keyword = VoiceDirectionPolicy.keyword(text);
         if (keyword.isEmpty()) { status = text == null || text.trim().isEmpty()
-            ? "Chưa nghe rõ câu gọi. Đang nghe tiếp: Hello robot hoặc robot ơi."
+            ? "Chưa nhận được câu gọi. Góc âm thanh riêng chưa đủ để xoay; đang nghe tiếp."
             : "Chưa đúng câu gọi. Đang nghe tiếp: Hello robot hoặc robot ơi."; host.changed(); return; }
         if (!host.canControl()) { stop("RobotOS đã giữ quyền điều khiển; dừng test hướng âm.", null); return; }
         if (!VoiceDirectionPolicy.validAngle(angle)) {
             status = "Đã nghe đúng “" + keyword + "”. Chưa có góc MicroArray ổn định khớp câu này. Giữ nguyên vị trí và gọi lại.";
             host.changed(); return;
         }
-        double target = policy.select(text, angle, eventId, SystemClock.elapsedRealtime());
-        if (!VoiceDirectionPolicy.validAngle(target)) return;
-        lastAngle = target; lastKeyword = keyword; turning = true; input.pause(true);
-        status = String.format(java.util.Locale.US, "Đang xoay theo “%s” · MicroArray %.0f°", keyword, target);
+        double offset = host.angleOffset();
+        double target = policy.select(text, TurnMeasurement.withOffset(angle, offset), eventId, SystemClock.elapsedRealtime());
+        if (!VoiceDirectionPolicy.validAngle(target)) {
+            status = "Đã nhận câu gọi; chờ hết khoảng nghỉ 2 giây sau xoay rồi gọi tiếp."; host.changed(); return;
+        }
+        lastAngle = angle; lastKeyword = keyword; turning = true; input.pause(true);
+        status = String.format(java.util.Locale.US, "Đang xoay theo “%s” · góc %.0f° + offset %+.0f° → %.0f°", keyword, angle, offset, target);
         host.changed();
         final int run = generation, turn = ++motionSerial;
+        sendTurn(target, target, captureHeading, 0, run, turn, endedAt + CapturedSoundAngle.MAX_RESPONSE_AGE_MS);
+        main.postDelayed(() -> { if (!closed && run == generation && turn == motionSerial && turning) stop("Chưa có kết quả xoay; đang yêu cầu dừng.", null); }, 12000);
+    }
+    private void sendTurn(double angle, double originalTarget, double before, int corrections, int run, int turn, long deadline) {
+        if (closed || !enabled || !turning || run != generation || turn != motionSerial) return;
+        if (corrections > 0 && SystemClock.elapsedRealtime() > deadline) { finish(false, "Đã hết thời gian bù góc của câu gọi này."); return; }
+        if (!host.canControl()) { controlLost("RobotOS đã giữ quyền điều khiển; dừng xoay."); return; }
         try {
-            int accepted = robot.wakeUp(host.nextId(), (float) target, new ActionListener() {
+            sdkActionRunning = true;
+            int accepted = robot.wakeUp(host.nextId(), (float) angle, false, new ActionListener() {
+                private boolean terminal;
                 private void result(int code, String data) { main.post(() -> {
-                    if (closed || run != generation || turn != motionSerial || !turning) return;
+                    if (terminal || closed || run != generation || turn != motionSerial || !turning) return;
+                    terminal = true; sdkActionRunning = false;
                     if (code == Definition.ACTION_RESPONSE_STOP_SUCCESS) finish(true, "SDK đã xác nhận dừng xoay.");
-                    else if (code == Definition.RESULT_OK) finish(true, "Đã xoay về hướng người gọi “" + lastKeyword + "”.");
+                    else if (code == Definition.RESULT_OK) {
+                        if (!enabled) { finish(true, "Đã dừng test hướng âm."); return; }
+                        status = "SDK kết thúc lượt xoay; đang kiểm tra góc thân…"; host.changed();
+                        main.postDelayed(() -> heading(after -> {
+                            if (closed || !enabled || run != generation || turn != motionSerial || !turning) return;
+                            double actual = TurnMeasurement.magnitude(before, after), requested = Math.min(originalTarget, 360 - originalTarget);
+                            double residual = TurnMeasurement.residual(before, after, originalTarget);
+                            Log.i("GreetingVoice", "Turn measurement head=false; target=" + originalTarget + "; before=" + before
+                                + "; after=" + after + "; requested=" + requested + "; chassis=" + actual + "; residual=" + residual + "; corrections=" + corrections);
+                            if (TurnMeasurement.canCorrect(residual, corrections, deadline - SystemClock.elapsedRealtime())) {
+                                status = String.format(java.util.Locale.US, "Đang bù %.0f° còn lại…", Math.abs(residual)); host.changed();
+                                sendTurn((residual + 360) % 360, originalTarget, before, corrections + 1, run, turn, deadline);
+                            } else if (Double.isNaN(actual)) finish(true, "SDK đã kết thúc xoay; chưa đọc được góc thân.");
+                            else {
+                                finish(Math.abs(residual) <= 5, String.format(java.util.Locale.US,
+                                    "Thân đã xoay %.0f° / yêu cầu %.0f° · còn lệch %.0f°.", actual, requested, Math.abs(residual)));
+                            }
+                        }), 300);
+                    }
                     else finish(false, "SDK xoay trả về " + code + ": " + clipped(data));
                 }); }
                 @Override public void onResult(int code, String data) { result(code, data); }
                 @Override public void onResult(int code, String data, String extra) { result(code, data); }
                 @Override public void onError(int code, String error) { main.post(() -> {
-                    if (!closed && run == generation && turn == motionSerial && turning) finish(false, "Lỗi xoay " + code + ": " + clipped(error));
+                    if (!terminal && !closed && run == generation && turn == motionSerial && turning) {
+                        terminal = true; sdkActionRunning = false; finish(false, "Lỗi xoay " + code + ": " + clipped(error));
+                    }
                 }); }
                 @Override public void onError(int code, String error, String extra) { onError(code, error); }
             });
             if (accepted < 0) finish(false, "SDK từ chối xoay: " + accepted);
         } catch (Exception error) { finish(false, "Không gửi được lệnh xoay: " + error.getMessage()); }
-        main.postDelayed(() -> { if (!closed && run == generation && turn == motionSerial && turning) stop("Chưa có kết quả xoay; đang yêu cầu dừng.", null); }, 12000);
+    }
+    private interface HeadingResult { void complete(double radians); }
+    private void heading(HeadingResult callback) {
+        final boolean[] delivered = {false};
+        main.postDelayed(() -> { if (!delivered[0]) { delivered[0] = true; callback.complete(Double.NaN); } }, 1500);
+        try {
+            robot.getPosition(host.nextId(), new CommandListener() {
+                private void received(int code, String data) { main.post(() -> {
+                    if (delivered[0]) return; delivered[0] = true;
+                    double theta = Double.NaN;
+                    if (code == Definition.RESULT_OK) try {
+                        theta = new org.json.JSONObject(data).getDouble(Definition.JSON_NAVI_POSITION_THETA);
+                        if (Double.isNaN(theta) || Double.isInfinite(theta)) theta = Double.NaN;
+                    } catch (Exception ignored) {}
+                    callback.complete(theta);
+                }); }
+                @Override public void onResult(int code, String data) { received(code, data); }
+                @Override public void onResult(int code, String data, String extra) { received(code, data); }
+            });
+        } catch (Exception ignored) { if (!delivered[0]) { delivered[0] = true; callback.complete(Double.NaN); } }
     }
     private void finish(boolean ok, String message) {
-        turning = false; motionSerial++; input.pause(false); policy.finished(SystemClock.elapsedRealtime()); status = message;
+        turning = false; sdkActionRunning = false; motionSerial++; input.pause(false); policy.finished(SystemClock.elapsedRealtime()); status = message;
         Log.i("GreetingVoice", (ok ? "Completed: " : "Failed: ") + message);
         StopResult completion = stopResult; stopResult = null;
         if (completion != null) completion.complete(ok, message); host.changed();
     }
     void stop(String message, StopResult completion) {
         enabled = false; policy.stop(); input.stop(); status = message;
-        if (!turning) { generation++; if (completion != null) completion.complete(true, message); host.changed(); return; }
+        if (!turning || !sdkActionRunning) { turning = false; motionSerial++; generation++; if (completion != null) completion.complete(true, message); host.changed(); return; }
         if (stopResult != null) stopResult.complete(false, "Đã thay thế bằng yêu cầu dừng mới.");
         stopResult = completion;
         try {
@@ -182,7 +243,7 @@ final class VoiceDirectionTest implements AutoCloseable {
         if (completion != null) completion.complete(false, message); host.changed();
     }
     void controlLost(String message) {
-        enabled = false; turning = false; generation++; motionSerial++; policy.stop(); input.stop(); status = message;
+        enabled = false; turning = false; sdkActionRunning = false; generation++; motionSerial++; policy.stop(); input.stop(); status = message;
         StopResult completion = stopResult; stopResult = null;
         if (completion != null) completion.complete(false, message); host.changed();
     }

@@ -4,6 +4,7 @@ import org.json.JSONObject;
 
 final class GreetingSettings {
     double linearSpeed = 0.3, angularSpeed = 0.7, arrivalTolerance = 0.2;
+    double voiceAngleOffset = 10;
     int obstacleTimeoutMs = 30000, microphoneSeconds = 5, playbackVolume = 60;
 
     void update(JSONObject json) {
@@ -13,6 +14,7 @@ final class GreetingSettings {
         obstacleTimeoutMs = (int) bounded(json.optDouble("obstacleTimeoutMs", obstacleTimeoutMs), 5000, 120000, obstacleTimeoutMs);
         microphoneSeconds = (int) bounded(json.optDouble("microphoneSeconds", microphoneSeconds), 2, 15, microphoneSeconds);
         playbackVolume = (int) bounded(json.optDouble("playbackVolume", playbackVolume), 0, 100, playbackVolume);
+        voiceAngleOffset = bounded(json.optDouble("voiceAngleOffset", voiceAngleOffset), -90, 90, voiceAngleOffset);
     }
 
     private static double bounded(double n, double min, double max, double fallback) {

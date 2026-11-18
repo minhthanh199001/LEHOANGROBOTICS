@@ -106,10 +106,12 @@ try {
   check(stopDelivery.data.command.type==='stop_navigation', 'Stop takes priority and cancels queued navigation');
   check((await call(robotPath)).data.commands.find(c=>c.id===pending.data.id).status==='failed', 'Queued motion cancelled by stop');
   await sync(snapshot,[{id:stopRequest.data.id,status:'completed',message:'Stopped'}]);
-  const settings={linearSpeed:0.25,angularSpeed:0.6,arrivalTolerance:0.15,obstacleTimeoutMs:20000,microphoneSeconds:3,playbackVolume:40};
+  const settings={linearSpeed:0.25,angularSpeed:0.6,arrivalTolerance:0.15,obstacleTimeoutMs:20000,microphoneSeconds:3,playbackVolume:40,voiceAngleOffset:10};
   check((await call(robotPath+'/settings','PUT',{...settings,linearSpeed:5})).status===400, 'Invalid movement speed rejected');
+  check((await call(robotPath+'/settings','PUT',{...settings,voiceAngleOffset:91})).status===400, 'Invalid sound angle calibration rejected');
   check((await call(robotPath+'/settings','PUT',settings)).status===200, 'Settings persisted');
   check((await sync()).data.settings.microphoneSeconds===3, 'Settings delivered to device');
+  check((await sync()).data.settings.voiceAngleOffset===10, 'Sound angle offset delivered to device');
   const mic=await call(robotPath+'/commands','POST',command('microphone_test'));
   check(mic.status===202 && (await sync()).data.command.type==='microphone_test', 'Microphone test delivered');
   await sync({...snapshot,microphoneState:'recording'},[{id:mic.data.id,status:'running',message:'Recording'}]);

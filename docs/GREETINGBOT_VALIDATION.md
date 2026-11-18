@@ -1,5 +1,30 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Bản thử offset +10° / bù góc 1.3.4
+
+- Người vận hành xác nhận 1.3.3 xoay tốt hơn, còn cần gọi lại và yêu cầu cộng thêm 10° offset. Đã đặt mặc định +10°, có trường chỉnh tại app và Web, lưu/đồng bộ trong GreetingSettings; native angle +30° vẫn giữ đúng phép đổi tọa độ của firmware.
+- Đã đo thân trên 1.3.3: lệnh 31,02° → thân 31,45°; 32,78° → 33,35°; 42,33° → 38,77°; 179,99° → 164,50°; 134,27° → 124,77°. Vì vậy callback hoàn tất vẫn có trường hợp sai 9–15° so với chính lệnh gửi.
+- Thêm một lượt bù có giới hạn, dựa trên heading trước/sau và quy ước chiều quay đã quan sát. Chỉ bù sai 5–45°, tối đa một lần và trong hạn 8 giây; kiểm tra quyền/test/generation trước khi gửi, giữ ngừng nhận câu mới trong giai đoạn đo/bù. Dừng giữa hai lượt hủy lượt chưa gửi; vẫn có watchdog 12 giây.
+- Giữ trước câu 0,5 giây, khoảng im lặng cuối câu 0,8 giây; chọn góc chỉ đến khung có tiếng nói cuối để giảm ảnh hưởng âm thanh nền cuối bản thu. Ưu tiên góc wake trực tiếp của SDK nếu hợp lệ; làm rõ trạng thái có góc nhưng chưa đúng câu gọi.
+- Android **22 test / 0 lỗi**; backend Speech/MicroArray **44 kiểm tra thành công**; Fleet/Greetingbot integration **41 kiểm tra thành công** trên DB riêng. Bao gồm offset/vòng 360°, chiều bù hai phía, giới hạn/hết hạn bù, không lấy hướng từ tiếng nền cuối câu, giới hạn offset và đồng bộ Web → thiết bị.
+- Đã cài 1.3.4; proxy OpenAI và MicroArray báo streaming. APK `releases/LeHoangGreetingbot_v1.3.4-debug.apk`, SHA-256 `5EB8A337D40834C5991760C855BD5947A103EF2E1AF6797537FA67940079BAA7`.
+- Đang chờ kiểm tra thực tế độ nhạy/+10°/bù góc trên 1.3.4; chưa coi các kiểm thử trên là nghiệm thu hướng âm chính xác.
+
+## Bản thử bắt câu ngắn / trạng thái microphone 1.3.3
+
+- Sửa điều kiện ngắt đoạn thu của luồng PCM liên tục: dùng thế hệ bộ đệm khi tràn/đổi sang xoay, không coi khoảng cách giữa hai lần read hơn 200 ms là mất mẫu. Hạ ngưỡng mở câu và số khung lớn tối thiểu; bổ sung chỉ báo microphone và số đo RMS/khung (không lưu audio).
+- Android **18 test / 0 lỗi**, build/cài thành công. Đã quan sát nhiều đoạn PCM thật tiếp tục gửi tới proxy/OpenAI trong một phiên; âm thanh nền trả văn bản rỗng, không phát lệnh xoay. Độ trễ giữa một số lần read lên đến 213–230 ms, chứng minh điều kiện cũ có thể ngắt đoạn dù Android vẫn trả đủ dữ liệu.
+- APK hiện tại: `releases/LeHoangGreetingbot_v1.3.3-debug.apk`, SHA-256 `ACCE51D43D89773EB0C1C3ED871893BB95EB16F4BAF55FE8AF08B93636DCE986`.
+- Đang chờ câu gọi thật và số đo trước/sau để xác minh nhận dạng và độ quay; chưa nghiệm thu lỗi xoay thiếu góc. Backend giữ bản đã qua 41 kiểm tra.
+
+## Bản thử thu liên tục / đo góc thân 1.3.2
+
+- Người vận hành xác nhận 1.3.1 nhận câu gọi và xoay, nhưng phải gọi nhiều lần và đôi khi xoay thiếu góc. Đây là lỗi còn mở, không coi callback hoàn tất là đã đối diện đúng hướng.
+- Đã thay việc dừng AudioRecord trong lúc gọi OpenAI bằng luồng đọc PCM riêng, bộ đệm RAM giới hạn và timestamp lúc thu. Bộ đệm bị xóa khi xoay; khung quá cũ/đứt quãng không được ghép thành câu mới.
+- Dùng overload `wakeUp(..., needMoveHead=false, ...)` đã kiểm tra trong RobotService jar. Bổ sung đọc hướng thân trước/sau qua `getPosition`; quy đổi radian và xử lý vòng ±π để đo độ xoay thực, chưa áp dụng hệ số bù góc suy đoán.
+- Android **18 test / 0 lỗi**, build/cài APK thành công; SDK kết nối, đã định vị, 5 điểm vẫn được đọc. Hash APK trên robot khớp `releases/LeHoangGreetingbot_v1.3.2-debug.apk`: `FF0BBB378E868AACD4CAABEBB0CE4BDC6DCF7AA4F0D99281D79A1C829A46D7F6`.
+- Người vận hành báo bản này không ghi nhận câu gọi/thực hiện lệnh; log chỉ có một đoạn nền nhận văn bản rỗng. Đã thay bằng 1.3.3 và rút APK 1.3.2 khỏi gói bàn giao. Chưa có số đo góc thân ở lần này. Backend dùng bản đã qua 41 kiểm tra của 1.3.1.
+
 ## Bản thử ổn định hướng âm 1.3.1
 
 - Lần thử 1.3.0 tiếp theo, log đã ghi nhận **“robot ơi” → góc 330,45° → SDK hoàn tất wakeUp**; người vận hành xác nhận **robot xoay 1 lần, các lần sau không xoay**. Các lần bị chặn vẫn nhận đúng câu gọi, nhưng bộ lọc toàn đoạn báo `unstable_direction`.
@@ -8,7 +33,7 @@
 - Android **16 test / 0 lỗi**, build thành công. Backend **41 kiểm tra thành công**, bổ sung trường hợp góc chủ đạo có nhiễu, vòng 360°, hai nguồn ngang nhau và đa số yếu phải bị loại. Kiểm tra VAD xác nhận nền quạt đều không mở đoạn nói, vẫn nhận mức giọng cao hơn nền và không bị một tiếng click làm lệch hiệu chỉnh.
 - Đã cài APK 1.3.1; hash trên robot khớp file bàn giao `releases/LeHoangGreetingbot_v1.3.1-debug.apk`: `CAC0BAE244566CA441D355193F81404070D1A8D1CB80D31B1C5032A09DB21936`. SDK kết nối/đã định vị, 5 điểm vẫn được đọc.
 - Trong lần thử tiếp theo trên 1.3.1, log ghi nhận **5 câu gọi có góc hợp lệ và 5 callback `wakeUp` hoàn tất**: “robot ơi” tại 30° (6 mẫu được giữ trong 8 mẫu active), 317,43° (35/37), 340,45° (11/11), 320,53° (15/21), và “Hello robot” tại 336,11° (9/9). Trước đó có một câu bị loại do không có cụm góc đủ rõ; câu không nhận dạng được không sinh chuyển động.
-- **Đang chờ người vận hành xác nhận chuyển động thực tế/đúng hướng trong lần thử 1.3.1.** Callback SDK chưa thay cho quan sát vật lý ở hai phía.
+- Người vận hành sau đó xác nhận có xoay, nhưng cần gọi nhiều lần và có lúc xoay chưa tới; phần ổn định/độ chính xác chưa được nghiệm thu. Xem bản 1.3.2 ở trên.
 
 ## Bản thử MicroArray 1.3.0
 
