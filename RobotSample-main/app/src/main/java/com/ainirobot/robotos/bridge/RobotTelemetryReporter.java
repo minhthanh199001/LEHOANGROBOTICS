@@ -252,11 +252,6 @@ public class RobotTelemetryReporter {
             Log.e(TAG, "broadcastMapData error: " + t.getMessage());
         }
     }
-            }
-        } catch (Throwable t) {
-            Log.e(TAG, "broadcastMapData error: " + t.getMessage());
-        }
-    }
 
     public void setRobotState(String state) {
         this.mRobotState = state;
