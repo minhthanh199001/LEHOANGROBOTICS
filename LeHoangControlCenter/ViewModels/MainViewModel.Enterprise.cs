@@ -47,6 +47,8 @@ namespace LeHoangControlCenter.ViewModels
         [ObservableProperty]
         private string _selectedSiteFilter = "Tất cả site";
 
+        private bool _isApplyingScopeFilter = false;
+
         // Current Active User (Profile)
         [ObservableProperty]
         private UserAccountItem? _currentUser;
@@ -205,19 +207,34 @@ namespace LeHoangControlCenter.ViewModels
                 OrganizationFilterOptions.Add("Tất cả tổ chức");
                 foreach (var org in orgs)
                 {
-                    Organizations.Add(org);
-                    OrganizationFilterOptions.Add(org.Name);
+                    if (!Organizations.Any(o => string.Equals(o.Id, org.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Organizations.Add(org);
+                    }
+                    if (!string.IsNullOrWhiteSpace(org.Name) && !OrganizationFilterOptions.Contains(org.Name))
+                    {
+                        OrganizationFilterOptions.Add(org.Name);
+                    }
                 }
 
                 // 2. Tải Sites
                 var sites = await db.GetSitesAsync();
                 Sites.Clear();
                 SiteFilterOptions.Clear();
-                SiteFilterOptions.Add("Tất cả site");
+                if (CurrentUser == null || string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || string.Equals(CurrentUser.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase))
+                {
+                    SiteFilterOptions.Add("Tất cả site");
+                }
                 foreach (var site in sites)
                 {
-                    Sites.Add(site);
-                    SiteFilterOptions.Add(site.Name);
+                    if (!Sites.Any(s => string.Equals(s.Id, site.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Sites.Add(site);
+                    }
+                    if (!string.IsNullOrWhiteSpace(site.Name) && !SiteFilterOptions.Contains(site.Name))
+                    {
+                        SiteFilterOptions.Add(site.Name);
+                    }
                 }
 
                 // 3. Tải Enterprise Robots
@@ -388,14 +405,10 @@ namespace LeHoangControlCenter.ViewModels
             if (CurrentUser == null || string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
             {
                 OrganizationFilterOptions.Add("Tất cả tổ chức");
-                foreach (var org in FilteredOrganizations)
-                {
-                    OrganizationFilterOptions.Add(org.Name);
-                }
             }
-            else
+            foreach (var org in FilteredOrganizations)
             {
-                foreach (var org in FilteredOrganizations)
+                if (!string.IsNullOrWhiteSpace(org.Name) && !OrganizationFilterOptions.Contains(org.Name))
                 {
                     OrganizationFilterOptions.Add(org.Name);
                 }
@@ -403,7 +416,10 @@ namespace LeHoangControlCenter.ViewModels
 
             if (FilteredOrganizations.Count > 0)
             {
-                SelectedOrgFilter = FilteredOrganizations[0].Name;
+                if (string.IsNullOrEmpty(SelectedOrgFilter) || !FilteredOrganizations.Any(o => o.Name == SelectedOrgFilter))
+                {
+                    SelectedOrgFilter = FilteredOrganizations[0].Name;
+                }
             }
             else
             {
@@ -449,7 +465,10 @@ namespace LeHoangControlCenter.ViewModels
 
             foreach (var site in matching)
             {
-                FilteredSites.Add(site);
+                if (!FilteredSites.Any(s => string.Equals(s.Id, site.Id, StringComparison.OrdinalIgnoreCase) || string.Equals(s.Name, site.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    FilteredSites.Add(site);
+                }
             }
             HasNoFilteredSites = FilteredSites.Count == 0;
 
@@ -458,14 +477,10 @@ namespace LeHoangControlCenter.ViewModels
             if (CurrentUser == null || string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || string.Equals(CurrentUser.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase))
             {
                 SiteFilterOptions.Add("Tất cả site");
-                foreach (var site in FilteredSites)
-                {
-                    SiteFilterOptions.Add(site.Name);
-                }
             }
-            else
+            foreach (var site in FilteredSites)
             {
-                foreach (var site in FilteredSites)
+                if (!string.IsNullOrWhiteSpace(site.Name) && !SiteFilterOptions.Contains(site.Name))
                 {
                     SiteFilterOptions.Add(site.Name);
                 }
@@ -473,7 +488,10 @@ namespace LeHoangControlCenter.ViewModels
 
             if (FilteredSites.Count > 0)
             {
-                SelectedSiteFilter = FilteredSites[0].Name;
+                if (string.IsNullOrEmpty(SelectedSiteFilter) || !FilteredSites.Any(s => s.Name == SelectedSiteFilter))
+                {
+                    SelectedSiteFilter = FilteredSites[0].Name;
+                }
             }
             else
             {
@@ -533,16 +551,48 @@ namespace LeHoangControlCenter.ViewModels
         // =========================================================
         partial void OnSelectedOrgFilterChanged(string value)
         {
+            if (_isApplyingScopeFilter) return;
+
+            if (!string.IsNullOrEmpty(value) && value != "Tất cả tổ chức")
+            {
+                var org = Organizations.FirstOrDefault(o => o.Name == value);
+                if (org != null && SelectedOrganization?.Id != org.Id)
+                {
+                    SelectedOrganization = org;
+                }
+            }
+            else
+            {
+                SelectedOrganization = null;
+            }
+
             ApplyScopeFilter();
         }
 
         partial void OnSelectedSiteFilterChanged(string value)
         {
+            if (_isApplyingScopeFilter) return;
+
+            if (!string.IsNullOrEmpty(value) && value != "Tất cả site")
+            {
+                var site = FilteredSites.FirstOrDefault(s => s.Name == value) ?? Sites.FirstOrDefault(s => s.Name == value);
+                if (site != null && SelectedSite?.Id != site.Id)
+                {
+                    SelectedSite = site;
+                }
+            }
+            else
+            {
+                SelectedSite = null;
+            }
+
             ApplyScopeFilter();
         }
 
         private async void ApplyScopeFilter()
         {
+            if (_isApplyingScopeFilter) return;
+            _isApplyingScopeFilter = true;
             try
             {
                 var db = DatabaseService.Instance;
@@ -574,36 +624,6 @@ namespace LeHoangControlCenter.ViewModels
                     }
                 }
 
-                // Cập nhật danh sách Site trong filter theo Org đã chọn
-                if (orgId != null)
-                {
-                    var sitesInOrg = await db.GetSitesAsync(orgId);
-                    if (CurrentUser != null && !string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(CurrentUser.SiteId))
-                    {
-                        sitesInOrg = sitesInOrg.Where(s => s.Id == CurrentUser.SiteId).ToList();
-                    }
-
-                    SiteFilterOptions.Clear();
-                    if (CurrentUser == null || string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || string.Equals(CurrentUser.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase))
-                    {
-                        SiteFilterOptions.Add("Tất cả site");
-                    }
-                    foreach (var s in sitesInOrg)
-                    {
-                        SiteFilterOptions.Add(s.Name);
-                    }
-                }
-                else
-                {
-                    var allSites = await db.GetSitesAsync();
-                    SiteFilterOptions.Clear();
-                    SiteFilterOptions.Add("Tất cả site");
-                    foreach (var s in allSites)
-                    {
-                        SiteFilterOptions.Add(s.Name);
-                    }
-                }
-
                 // Cập nhật danh sách Robot hiển thị
                 var robots = await db.GetRobotsAsync(siteId, orgId);
                 EnterpriseRobots.Clear();
@@ -628,6 +648,10 @@ namespace LeHoangControlCenter.ViewModels
             catch (Exception ex)
             {
                 AddLog($"[LỖI LỌC] {ex.Message}");
+            }
+            finally
+            {
+                _isApplyingScopeFilter = false;
             }
         }
 
@@ -669,10 +693,22 @@ namespace LeHoangControlCenter.ViewModels
                 });
 
                 Organizations.Clear();
-                foreach (var o in orgs) Organizations.Add(o);
+                foreach (var o in orgs)
+                {
+                    if (!Organizations.Any(existing => string.Equals(existing.Id, o.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Organizations.Add(o);
+                    }
+                }
 
                 Sites.Clear();
-                foreach (var s in sites) Sites.Add(s);
+                foreach (var s in sites)
+                {
+                    if (!Sites.Any(existing => string.Equals(existing.Id, s.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Sites.Add(s);
+                    }
+                }
 
                 UpdateFilteredOrganizations();
 

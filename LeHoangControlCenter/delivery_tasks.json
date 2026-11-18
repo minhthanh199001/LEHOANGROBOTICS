@@ -1,1 +1,96 @@
-[]
+[
+  {
+    "ActiveTrayCount": 2,
+    "TrayRouteOverview": "K1: [T\u1EA7ng 1] ph\u00F2ng h\u1ECDp \u2794 K2: [T\u1EA7ng 2] test",
+    "Id": "TASK-114818",
+    "TaskName": "Giao b\u00E0n 11:48",
+    "AssignedRobot": "Robot 01",
+    "ReturnStation": "[T\u1EA7ng 2] Stand-by Point",
+    "WaitTimeSeconds": 30,
+    "GreetingSpeech": "K\u00EDnh ch\u00E0o qu\u00FD kh\u00E1ch! M\u00F3n \u0103n \u0111\u00E3 s\u1EB5n s\u00E0ng tr\u00EAn khay c\u1EE7a robot, ch\u00FAc qu\u00FD kh\u00E1ch ngon mi\u1EC7ng!",
+    "Status": "Ch\u1EDD th\u1EF1c hi\u1EC7n",
+    "StatusColor": "#F59E0B",
+    "CreatedAt": "2026-11-18T11:48:32.0136915+07:00",
+    "CurrentActiveTray": 0,
+    "Tray1": {
+      "DisplaySummary": "[T\u1EA7ng 1] ph\u00F2ng h\u1ECDp: C\u01A1m s\u01B0\u1EDDn n\u01B0\u1EDBng \u0111\u1EB7c bi\u1EC7t",
+      "TrayNumber": 1,
+      "TrayLabel": "Khay 1 (Tr\u00EAn)",
+      "Destination": "[T\u1EA7ng 1] ph\u00F2ng h\u1ECDp",
+      "DishName": "C\u01A1m s\u01B0\u1EDDn n\u01B0\u1EDBng \u0111\u1EB7c bi\u1EC7t",
+      "Note": "\u00CDt \u1EDBt",
+      "HasDish": true,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    },
+    "Tray2": {
+      "DisplaySummary": "[T\u1EA7ng 2] test: C\u00E0 ph\u00EA s\u1EEFa \u0111\u00E1 \u0026 N\u01B0\u1EDBc cam",
+      "TrayNumber": 2,
+      "TrayLabel": "Khay 2 (Gi\u1EEFa)",
+      "Destination": "[T\u1EA7ng 2] test",
+      "DishName": "C\u00E0 ph\u00EA s\u1EEFa \u0111\u00E1 \u0026 N\u01B0\u1EDBc cam",
+      "Note": "\u00CDt \u0111\u01B0\u1EDDng",
+      "HasDish": true,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    },
+    "Tray3": {
+      "DisplaySummary": "Khay tr\u1ED1ng",
+      "TrayNumber": 3,
+      "TrayLabel": "Khay 3 (D\u01B0\u1EDBi)",
+      "Destination": "[T\u1EA7ng 1] 4",
+      "DishName": "Set Tr\u00E0 \u0110\u00E0o Cam S\u1EA3",
+      "Note": "",
+      "HasDish": false,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    }
+  },
+  {
+    "ActiveTrayCount": 2,
+    "TrayRouteOverview": "K1: ph\u00F2ng h\u1ECDp \u2794 K2: cafe",
+    "Id": "TASK-001",
+    "TaskName": "Giao Combo B\u1EEFa Tr\u01B0a 2 B\u00E0n",
+    "AssignedRobot": "Robot 01",
+    "ReturnStation": "Stand-by Point",
+    "WaitTimeSeconds": 30,
+    "GreetingSpeech": "K\u00EDnh ch\u00E0o qu\u00FD kh\u00E1ch! M\u00F3n \u0103n \u0111\u00E3 s\u1EB5n s\u00E0ng tr\u00EAn khay c\u1EE7a robot, ch\u00FAc qu\u00FD kh\u00E1ch ngon mi\u1EC7ng!",
+    "Status": "Ch\u1EDD th\u1EF1c hi\u1EC7n",
+    "StatusColor": "#F59E0B",
+    "CreatedAt": "2026-11-18T11:47:49.9953783+07:00",
+    "CurrentActiveTray": 0,
+    "Tray1": {
+      "DisplaySummary": "ph\u00F2ng h\u1ECDp: C\u01A1m s\u01B0\u1EDDn n\u01B0\u1EDBng m\u1EADt ong x2",
+      "TrayNumber": 1,
+      "TrayLabel": "Khay 1 (Tr\u00EAn)",
+      "Destination": "ph\u00F2ng h\u1ECDp",
+      "DishName": "C\u01A1m s\u01B0\u1EDDn n\u01B0\u1EDBng m\u1EADt ong x2",
+      "Note": "Th\u00EAm canh",
+      "HasDish": true,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    },
+    "Tray2": {
+      "DisplaySummary": "cafe: C\u00E0 ph\u00EA s\u1EEFa \u0111\u00E1 \u0026 N\u01B0\u1EDBc cam",
+      "TrayNumber": 2,
+      "TrayLabel": "Khay 2 (Gi\u1EEFa)",
+      "Destination": "cafe",
+      "DishName": "C\u00E0 ph\u00EA s\u1EEFa \u0111\u00E1 \u0026 N\u01B0\u1EDBc cam",
+      "Note": "\u00CDt \u0111\u01B0\u1EDDng",
+      "HasDish": true,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    },
+    "Tray3": {
+      "DisplaySummary": "Khay tr\u1ED1ng",
+      "TrayNumber": 3,
+      "TrayLabel": "Khay 3 (D\u01B0\u1EDBi)",
+      "Destination": "",
+      "DishName": "",
+      "Note": "",
+      "HasDish": false,
+      "Status": "Ch\u1EDD giao",
+      "StatusColor": "#F59E0B"
+    }
+  }
+]
