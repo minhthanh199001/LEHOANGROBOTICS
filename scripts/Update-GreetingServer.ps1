@@ -3,6 +3,8 @@ param(
     [string]$DatabasePath,
     [ValidateRange(1024, 65535)][int]$Port = 5050,
     [switch]$ShowAdminKey,
+    [string]$OpenAiKeyFile,
+    [string]$SpeechTokenFile,
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'LeHoangRobotics\Greetingbot')
 )
 $ErrorActionPreference = 'Stop'
@@ -22,6 +24,15 @@ if ($ShowAdminKey) {
 }
 if ([string]::IsNullOrWhiteSpace($DatabasePath) -or !(Test-Path -LiteralPath $DatabasePath -PathType Leaf)) {
     throw 'Truyen -DatabasePath duong dan day du toi cloud_fleet.db HIEN DANG DUNG. Script khong tao DB thay the.'
+}
+if ($OpenAiKeyFile -and !(Test-Path -LiteralPath $OpenAiKeyFile -PathType Leaf)) { throw 'Khong tim thay file khoa OpenAI.' }
+if ($SpeechTokenFile -and !(Test-Path -LiteralPath $SpeechTokenFile -PathType Leaf)) { throw 'Khong tim thay file DPAPI ma ket noi giong noi.' }
+$preparedSpeechToken = $null
+if ($SpeechTokenFile) {
+    # Decrypt and validate before publishing/stopping the current server.
+    $speechSecure = (Get-Content -LiteralPath $SpeechTokenFile -Raw).Trim() | ConvertTo-SecureString
+    $preparedSpeechToken = [Net.NetworkCredential]::new('', $speechSecure).Password
+    if ($preparedSpeechToken -notmatch '^[A-Za-z0-9_-]{32,128}$') { throw 'Ma ket noi giong noi khong hop le.' }
 }
 $dbFile = (Resolve-Path -LiteralPath $DatabasePath).Path
 $repository = Split-Path -Parent $PSScriptRoot
@@ -63,10 +74,22 @@ $env:GREETING_ADMIN_KEY = Read-AdminKey
 $env:DATABASE_PATH = $dbFile
 $env:ASPNETCORE_URLS = "http://0.0.0.0:$Port"
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
+$previousOpenAiFile = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY_FILE', 'Process')
+$previousSpeechToken = [Environment]::GetEnvironmentVariable('GREETING_SPEECH_TOKEN', 'Process')
+if ($OpenAiKeyFile) { $env:OPENAI_API_KEY_FILE = (Resolve-Path -LiteralPath $OpenAiKeyFile).Path }
+if ($SpeechTokenFile) {
+    $env:GREETING_SPEECH_TOKEN = $preparedSpeechToken
+}
 Write-Host "DB giu nguyen: $dbFile"
 Write-Host "Ban sao luu: $backup"
 Write-Host "Web: http://localhost:$Port -> tab GREETINGBOT"
 Write-Host 'Xem ma quan tri trong cua so PowerShell khac: .\scripts\Update-GreetingServer.ps1 -ShowAdminKey'
 Push-Location $releaseDirectory
 try { & dotnet (Join-Path $releaseDirectory 'LeHoangCloudServer.dll') }
-finally { Pop-Location; Remove-Item Env:GREETING_ADMIN_KEY -ErrorAction SilentlyContinue }
+finally {
+    Pop-Location
+    Remove-Item Env:GREETING_ADMIN_KEY -ErrorAction SilentlyContinue
+    if ($OpenAiKeyFile) { [Environment]::SetEnvironmentVariable('OPENAI_API_KEY_FILE', $previousOpenAiFile, 'Process') }
+    if ($SpeechTokenFile) { [Environment]::SetEnvironmentVariable('GREETING_SPEECH_TOKEN', $previousSpeechToken, 'Process') }
+    $preparedSpeechToken = $null; $speechSecure = $null
+}

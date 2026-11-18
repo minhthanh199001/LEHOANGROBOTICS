@@ -79,7 +79,7 @@ public final class MainActivity extends Activity {
             @Override public void connection(String status) { webMessage = status; render(); }
         });
         configureCloud();
-        robot.connectServer(getApplicationContext(), new ApiListener() {
+        robot.connectServer(this, new ApiListener() {
             @Override public void handleApiConnected() { main.post(() -> {
                 if (destroyed) return;
                 connected = true; suspended = false;
@@ -417,7 +417,7 @@ public final class MainActivity extends Activity {
         LinearLayout tools = new LinearLayout(this); tools.setOrientation(LinearLayout.HORIZONTAL); root.addView(tools);
         refreshButton = button("↻  Đọc lại điểm", tools, v -> { message = "Đang đọc bản đồ…"; refresh(null); });
         button("Mở ứng dụng bản đồ", tools, v -> openMapTool());
-        button("Kết nối Web", tools, v -> showConfiguration());
+        button("Cấu hình", tools, v -> showConfiguration());
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL); root.addView(actions);
         stopButton = button("■  DỪNG CHUYỂN ĐỘNG", actions, v -> stopNavigation("")); stopButton.setTextColor(Color.rgb(183, 28, 28));
         micButton = button("●  Test microphone → phát lại qua loa", actions, v -> {
@@ -485,6 +485,7 @@ public final class MainActivity extends Activity {
     }
     private void showConfiguration() {
         LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL); fields.setPadding(dp(20), dp(8), dp(20), dp(8));
+        Button speech = button("Giọng nói OpenAI", fields, v -> {});
         EditText url = field(fields, "Địa chỉ Web/server (không thêm /fleetHub)", preferences.getString("serverUrl", "http://192.168.0.123:5050"), false);
         EditText id = field(fields, "ID robot", preferences.getString("robotId", "GREETING-01"), false);
         EditText token = field(fields, "Mã ghép nối từ Web quản lý", preferences.getString("deviceToken", ""), true);
@@ -496,6 +497,7 @@ public final class MainActivity extends Activity {
                 preferences.edit().remove("deviceToken").remove("serverUrl").apply();
                 configureCloud(); webMessage = "Chưa ghép nối Web quản lý"; render();
             }).create();
+        speech.setOnClickListener(v -> { dialog.dismiss(); showVoiceConfiguration(); });
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String server = url.getText().toString().trim().replaceAll("/+$", "");
             try {
@@ -511,6 +513,27 @@ public final class MainActivity extends Activity {
                     .putString("deviceToken", token.getText().toString().trim()).putString("mapToolPackage", mapPackage.getText().toString().trim()).apply();
                 configureCloud(); webMessage = server.isEmpty() ? "Chưa cấu hình Web quản lý" : "Đang kết nối Web…"; render(); dialog.dismiss();
             } catch (Exception e) { url.setError(e.getMessage()); }
+        }));
+        dialog.show();
+    }
+    private void showVoiceConfiguration() {
+        if (voiceDirection != null && voiceDirection.active()) voiceDirection.stop("Đã dừng test để thay cấu hình giọng nói.", null);
+        LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL); fields.setPadding(dp(20), dp(8), dp(20), dp(8));
+        EditText url = field(fields, "Server giọng nói OpenAI", preferences.getString("voiceServerUrl", "http://192.168.0.123:5050"), false);
+        EditText token = field(fields, "Mã kết nối giọng nói", preferences.getString("voiceToken", ""), true);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Giọng nói OpenAI").setView(fields)
+            .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            try {
+                String server = url.getText().toString().trim().replaceAll("/+$", ""); URI uri = new URI(server);
+                if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) || uri.getHost() == null ||
+                    uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null || !uri.getPath().isEmpty())
+                    throw new IllegalArgumentException("Nhập địa chỉ gốc của server giọng nói.");
+                String credential = token.getText().toString().trim();
+                if (!credential.matches("[A-Za-z0-9_-]{32,128}")) { token.setError("Mã kết nối phải có 32–128 ký tự."); return; }
+                preferences.edit().putString("voiceServerUrl", server).putString("voiceToken", credential).apply();
+                message = "Đã lưu kết nối giọng nói OpenAI. Bấm Test hướng âm để thử."; render(); dialog.dismiss();
+            } catch (Exception error) { url.setError(error.getMessage()); }
         }));
         dialog.show();
     }

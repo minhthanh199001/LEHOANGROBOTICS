@@ -1,15 +1,18 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
-## Bản thử hướng âm 1.1.0 — đang chờ xác minh chuyển động
+## Bản thử OpenAI 1.2.0
 
-- `:greetingbot:testDebugUnitTest` và `:greetingbot:assembleDebug`: thành công; **6 test / 0 lỗi**, kiểm tra hai câu gọi và dấu tiếng Việt, góc không hợp lệ, phân biệt góc âm thanh với tham số lệnh, hạn dùng góc, trùng callback và dừng phiên.
-- `:app:assembleDebug` / `:cloudmobile:assembleDebug`: thành công sau khi tích hợp AgentOS vào riêng module Greetingbot.
-- Bản cài đầu tiên dùng `SkillApi` cũ: người vận hành báo robot không chuyển động và nhận sai câu gọi. Chẩn đoán xác nhận robot chạy **AgentOS**, các hàm SDK cũ bật nghe/get trạng thái không thực hiện nhận dạng trong dịch vụ này. Không coi bản cài đầu là thành công.
-- Đã chuyển sang AgentOS SDK **0.4.5**, callback `OnTranscribeListener`, tắt lập kế hoạch AI và bỏ bộ lọc hướng nhìn trong thời gian test. Không dùng SDK 0.3.5 vì bản đó nối tới gói SpeechService cũ trên ROM này. Đã bổ sung các dependency AndroidX/coroutines cần cho service của SDK.
-- Đã xác minh binding thực tới `com.ainirobot.agentservice/com.ainirobot.agent.service.OpenAgentService`, app mở từ Home, SDK phần cứng kết nối và đọc bản đồ/5 điểm. Bắt đầu test làm biểu tượng microphone hệ thống chuyển sang bật. Bản sửa cuối không có crash khởi động mới; lỗi thiếu `NotificationCompat` trong một bản trung gian đã sửa trước khi đóng gói.
-- Receiver wake yêu cầu quyền signature riêng. CoreService, SpeechService và AgentService trên robot kiểm tra đều có UID hệ thống **1000**. Không phát broadcast hoặc câu ASR giả để tạo kết quả xoay.
-- Đã cài APK qua `192.168.0.23:5555`. SHA-256 của APK kéo lại từ máy khớp bản `releases/LeHoangGreetingbot_v1.1.0-debug.apk`: `BE440332A92E71EE1EFA3376DF5FB610F7F8FEFA149A07DD0CCA97788807B44A`.
-- **Chưa nghiệm thu**: cần người tại robot xác nhận ASR cuối nhận đúng hai câu gọi, SDK trả góc thật, robot xoay đúng hướng và dừng đúng. Callback AgentOS có thể không kèm góc; app sẽ báo chờ góc và không xoay nếu chưa có sự kiện MicroArray hợp lệ. Không dùng việc build thành công, bật microphone hoặc pass unit test làm bằng chứng robot đã xoay.
+- `:greetingbot:testDebugUnitTest` và `:greetingbot:assembleDebug`: thành công; **10 test / 0 lỗi**. Bao gồm hai câu gọi, dấu tiếng Việt, góc sai/hết hạn, trùng callback, WAV PCM16 mono tương thích proxy, gắn góc với đúng đoạn thu, loại góc của người nói/câu trước và phản hồi ASR trễ.
+- `dotnet run --project tests/GreetingSpeechTests -c Release`: **23 kiểm tra thành công** bằng HttpMessageHandler giả, không dùng audio/khóa thật. Kiểm tra auth, giới hạn WAV, endpoint/model/ngôn ngữ/từ khóa gửi OpenAI, giữ nguyên audio, chặn yêu cầu đồng thời, ưu tiên file khóa được chỉ định và không lộ khóa qua lỗi upstream.
+- Chạy lại `scripts/test-greeting-integration.mjs`: **39 kiểm tra thành công** trên DB riêng, không chuyển động thật. Server build 0 cảnh báo / 0 lỗi.
+- Khóa đọc trực tiếp từ file người vận hành chỉ định ở ngoài repo. Kiểm tra OpenAI `/v1/models` trả **200**, model `gpt-transcribe` có sẵn. Một yêu cầu WAV im lặng 0,5 giây qua proxy tới OpenAI trả **200, text rỗng**; không dùng câu trả giả làm kết quả nhận dạng robot.
+- Kiểm thử API thật bổ sung: dùng Windows SAPI tạo âm thanh tổng hợp “Hello robot” (không phát ra loa), gửi qua proxy/OpenAI trả **200, “Hello robot.”**. Đây là kiểm tra nhận dạng API bằng âm thanh tổng hợp, không thay cho thử giọng người tại robot và không kích hoạt chuyển động.
+- Proxy thật trên Windows hiện tại: `127.0.0.1:5053`, token riêng lưu DPAPI, khóa OpenAI không đưa xuống robot. Kiểm tra HTTP thật: không có token trả **401**, WAV sai trả **400** mà không gọi OpenAI. Robot truy cập qua `adb reverse tcp:5053 tcp:5053`; cấu hình giọng nói đã lưu bằng giao diện app, độc lập cấu hình Web cũ.
+- Đã cài 1.2.0, mở từ Home. SDK kết nối, **đã định vị**, bản đồ `LH2-1006084342`, **5 điểm**. Đã quan sát các đoạn thu thực từ robot đi qua proxy/OpenAI và callback về app; các đoạn âm thanh nền nhận text rỗng, không sinh chuyển động. Đang chờ người vận hành nói hai câu gọi để xác nhận nhận dạng thực tế.
+- APK trên robot khớp `releases/LeHoangGreetingbot_v1.2.0-debug.apk`, SHA-256 `22EC117EB99F0CCF568C321ECFEA02F729A8B3DA5681D4130CFC0A6213BEB191`.
+- Góc MicroArray: chưa quan sát được sự kiện hợp lệ đi vào app. Interface `getVoiceAngle()` trong ROM hiện tại có implementation trả map rỗng; callback VoiceDataCollection dùng chung đang có app hệ thống kết nối, không thay callback này để chiếm luồng dữ liệu. Chỉ dùng callback wake qua SDK/system khi có góc thật. **OpenAI trả văn bản không thay thế việc lấy góc từ phần cứng. Phần xoay chưa hoàn tất/nghiệm thu.**
+- Bản 1.1.0 dùng SkillApi/AgentOS không đạt: người vận hành báo nghe sai, không xoay, rồi mất SDK/bản đồ. Đã bỏ AgentOS/AppAgent khỏi app và khôi phục `RobotApi.connectServer(Activity, listener)` như 1.0.0. APK 1.1.0 bị rút khỏi thư mục bàn giao; 1.0.0 được giữ để khôi phục.
+- Server vận hành `192.168.0.123:5050` chưa cập nhật; cấu hình Web hiện tại trên robot trả HTTP **405**. Proxy OpenAI thử nghiệm chạy riêng, không thay đổi DB/server vận hành này.
 
 ## Đã xác minh
 

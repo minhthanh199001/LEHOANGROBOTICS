@@ -8,10 +8,10 @@ android {
     buildToolsVersion '30.0.3'
     defaultConfig {
         applicationId 'com.lehoangrobotics.greetingbot'
-        minSdkVersion 26
+        minSdkVersion 23
         targetSdkVersion 29
-        versionCode 2
-        versionName '1.1.0'
+        versionCode 3
+        versionName '1.2.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -19,29 +19,9 @@ android {
     }
 }
 
-repositories {
-    exclusiveContent {
-        forRepository {
-            maven {
-                url 'https://npm.ainirobot.com/repository/maven-public/'
-                // Public repository credentials published in Orion's AgentOS SDK documentation.
-                credentials { username 'agentMaven'; password 'agentMaven' }
-            }
-        }
-        filter { includeGroup 'com.orionstar.agent'; includeGroup 'com.agent'; includeGroup 'com.orionstar.robot' }
-    }
-}
-
 dependencies {
     implementation files('../app/libs/robotservice.jar')
     // RobotService uses Gson internally, including its authorization handshake.
     implementation 'com.google.code.gson:gson:2.7'
-    implementation('com.orionstar.agent:sdk:0.4.5-SNAPSHOT') {
-        // robotservice.jar already contains these RobotCore classes, including AgentOS detection.
-        exclude group: 'com.orionstar.robot', module: 'core'
-    }
-    implementation 'androidx.core:core:1.3.2'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     testImplementation 'junit:junit:4.13.2'
 }

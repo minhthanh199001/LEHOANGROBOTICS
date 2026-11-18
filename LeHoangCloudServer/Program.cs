@@ -11,6 +11,9 @@ builder.WebHost.UseUrls(defaultUrl);
 // 1. Core Services
 builder.Services.AddSingleton<CloudDatabaseService>();
 builder.Services.AddSingleton<GreetingService>();
+// Reuse one transcription worker per server to bound uploads and API usage.
+builder.Services.AddSingleton<GreetingSpeechService>();
+builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(15) });
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
