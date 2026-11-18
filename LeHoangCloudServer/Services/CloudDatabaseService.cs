@@ -364,9 +364,61 @@ public class CloudDatabaseService
             }
         }
 
+        // Dọn dẹp key trùng tên hoặc trùng IP trong live cache
+        var duplicateKeys = _robotLiveCache.Where(kv => 
+            !string.Equals(kv.Key, robot.Id, StringComparison.OrdinalIgnoreCase) && 
+            (string.Equals(kv.Value.Name, robot.Name, StringComparison.OrdinalIgnoreCase) || 
+             (!string.IsNullOrEmpty(robot.Ip) && string.Equals(kv.Value.Ip, robot.Ip, StringComparison.OrdinalIgnoreCase)))
+        ).Select(kv => kv.Key).ToList();
+
+        foreach (var k in duplicateKeys)
+        {
+            _robotLiveCache.TryRemove(k, out _);
+        }
+
         robot.LastSeen = DateTime.UtcNow;
         _robotLiveCache[robot.Id] = robot;
-        UpdateRobotInDb(robot);
+
+        // Lưu / cập nhật trực tiếp vào cơ sở dữ liệu SQLite Robots
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            string sql = @"
+                INSERT INTO Robots (Id, SiteId, Name, Model, Ip, Port, Status, Battery, IsCharging, AssignedMap, PoseX, PoseY, PoseAngle, LastSeen)
+                VALUES (@Id, @SiteId, @Name, @Model, @Ip, @Port, @Status, @Battery, @IsCharging, @AssignedMap, @PoseX, @PoseY, @PoseAngle, datetime('now'))
+                ON CONFLICT(Id) DO UPDATE SET
+                    SiteId = @SiteId,
+                    Name = @Name,
+                    Model = @Model,
+                    Ip = @Ip,
+                    Port = @Port,
+                    Status = @Status,
+                    Battery = @Battery,
+                    IsCharging = @IsCharging,
+                    AssignedMap = @AssignedMap,
+                    LastSeen = datetime('now');
+            ";
+            using var cmd = new SqliteCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@Id", robot.Id);
+            cmd.Parameters.AddWithValue("@SiteId", robot.SiteId ?? "");
+            cmd.Parameters.AddWithValue("@Name", robot.Name);
+            cmd.Parameters.AddWithValue("@Model", robot.Model ?? "OrionStar Lucki");
+            cmd.Parameters.AddWithValue("@Ip", robot.Ip ?? "192.168.0.32");
+            cmd.Parameters.AddWithValue("@Port", robot.Port > 0 ? robot.Port : 8899);
+            cmd.Parameters.AddWithValue("@Status", robot.Status ?? "Online");
+            cmd.Parameters.AddWithValue("@Battery", robot.Battery);
+            cmd.Parameters.AddWithValue("@IsCharging", robot.IsCharging ? 1 : 0);
+            cmd.Parameters.AddWithValue("@AssignedMap", robot.AssignedMap ?? "");
+            cmd.Parameters.AddWithValue("@PoseX", robot.PoseX);
+            cmd.Parameters.AddWithValue("@PoseY", robot.PoseY);
+            cmd.Parameters.AddWithValue("@PoseAngle", robot.PoseAngle);
+            cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SaveRobot] Error saving to DB: {ex.Message}");
+        }
     }
 
     public void DeleteRobot(string id)
@@ -431,7 +483,12 @@ public class CloudDatabaseService
 
     public List<CloudRobotItem> GetAllRobots(string? orgId = null, string? siteId = null)
     {
-        var list = _robotLiveCache.Values.ToList();
+        // Chống lặp thẻ: Nhóm theo Name hoặc Id chuẩn để đảm bảo chỉ có duy nhất 1 bản ghi cho mỗi Robot
+        var list = _robotLiveCache.Values
+            .GroupBy(r => !string.IsNullOrEmpty(r.Name) ? r.Name.Trim().ToUpperInvariant() : r.Id)
+            .Select(g => g.OrderByDescending(r => !string.IsNullOrEmpty(r.Ip)).First())
+            .ToList();
+
         if (!string.IsNullOrEmpty(siteId))
         {
             list = list.Where(r => r.SiteId == siteId).ToList();
@@ -445,8 +502,14 @@ public class CloudDatabaseService
 
     public CloudRobotItem? GetRobotById(string robotId)
     {
-        _robotLiveCache.TryGetValue(robotId, out var item);
-        return item;
+        if (string.IsNullOrWhiteSpace(robotId)) return null;
+        if (_robotLiveCache.TryGetValue(robotId, out var item)) return item;
+
+        // Tìm theo Name hoặc IP nếu robotId gửi lên là Tên hoặc IP
+        return _robotLiveCache.Values.FirstOrDefault(r => 
+            string.Equals(r.Id, robotId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(r.Name, robotId, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(r.Ip) && string.Equals(r.Ip, robotId, StringComparison.OrdinalIgnoreCase)));
     }
 
     public void UpdateRobotTelemetry(RobotTelemetryPacket packet)
@@ -454,15 +517,18 @@ public class CloudDatabaseService
         if (string.IsNullOrEmpty(packet.RobotId)) return;
 
         // Chỉ cập nhật nếu Robot thực sự tồn tại trong hệ thống (KHÔNG tự động sinh mới robot từ telemetry)
-        if (!_robotLiveCache.TryGetValue(packet.RobotId, out var existing))
+        var existing = GetRobotById(packet.RobotId);
+        if (existing == null)
         {
-            existing = GetRobotById(packet.RobotId);
-            if (existing == null)
-            {
-                // Robot không tồn tại hoặc đã bị xóa -> bỏ qua, không tự động sinh robot mới
-                return;
-            }
-            _robotLiveCache[packet.RobotId] = existing;
+            // Robot không tồn tại hoặc đã bị xóa -> bỏ qua, không tự động sinh robot ma
+            return;
+        }
+
+        // Đảm bảo chỉ lưu 1 key chuẩn canonical Id trong LiveCache
+        _robotLiveCache[existing.Id] = existing;
+        if (!string.Equals(packet.RobotId, existing.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            _robotLiveCache.TryRemove(packet.RobotId, out _);
         }
 
         existing.Battery = Math.Clamp(packet.Battery, 0, 100);
@@ -571,8 +637,8 @@ public class CloudDatabaseService
             SELECT r.Id, r.Name, r.Model, r.SiteId, s.Name, s.OrganizationId, o.Name,
                    r.Ip, r.Port, r.Status, r.Battery, r.IsCharging, r.AssignedMap, r.PoseX, r.PoseY, r.PoseAngle
             FROM Robots r
-            JOIN Sites s ON r.SiteId = s.Id
-            JOIN Organizations o ON s.OrganizationId = o.Id;
+            LEFT JOIN Sites s ON r.SiteId = s.Id
+            LEFT JOIN Organizations o ON s.OrganizationId = o.Id;
         ";
 
         using var cmd = new SqliteCommand(sql, conn);
@@ -581,18 +647,18 @@ public class CloudDatabaseService
         {
             int bat = reader.GetInt32(10);
             bool isChg = reader.GetInt32(11) == 1;
-            string status = reader.GetString(9);
+            string status = reader.IsDBNull(9) ? "Online" : reader.GetString(9);
 
             list.Add(new CloudRobotItem
             {
                 Id = reader.GetString(0),
                 Name = reader.GetString(1),
-                Model = reader.GetString(2),
-                SiteId = reader.GetString(3),
-                SiteName = reader.GetString(4),
-                OrgId = reader.GetString(5),
-                OrgName = reader.GetString(6),
-                Ip = reader.GetString(7),
+                Model = reader.IsDBNull(2) ? "OrionStar Lucki" : reader.GetString(2),
+                SiteId = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                SiteName = reader.IsDBNull(4) ? "Chi nhánh" : reader.GetString(4),
+                OrgId = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                OrgName = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                Ip = reader.IsDBNull(7) ? "192.168.0.32" : reader.GetString(7),
                 Port = reader.GetInt32(8),
                 Status = status,
                 StatusColor = status == "Online" ? "#10B981" : status == "Charging" ? "#F59E0B" : "#64748B",
@@ -600,7 +666,7 @@ public class CloudDatabaseService
                 IsCharging = isChg,
                 BatteryText = (isChg ? "⚡ " : "🔋 ") + bat + "%",
                 BatteryColor = bat > 50 ? "#10B981" : bat > 20 ? "#F59E0B" : "#EF4444",
-                AssignedMap = reader.GetString(12),
+                AssignedMap = reader.IsDBNull(12) ? "tang 2-1110154527" : reader.GetString(12),
                 PoseX = reader.GetDouble(13),
                 PoseY = reader.GetDouble(14),
                 PoseAngle = reader.GetDouble(15),

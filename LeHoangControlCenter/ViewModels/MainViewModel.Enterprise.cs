@@ -494,18 +494,28 @@ namespace LeHoangControlCenter.ViewModels
         public void UpdateFilteredRobots()
         {
             FilteredRobots.Clear();
-            if (SelectedSite == null)
+
+            // Lọc theo Site đang chọn và phân quyền tài khoản (RBAC Multi-tenant)
+            IEnumerable<EnterpriseRobotItem> source = EnterpriseRobots;
+
+            if (CurrentUser != null && !string.Equals(CurrentUser.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var robot in EnterpriseRobots)
+                if (!string.IsNullOrEmpty(CurrentUser.SiteId) && !string.Equals(CurrentUser.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase))
                 {
-                    FilteredRobots.Add(robot);
+                    source = source.Where(r => string.Equals(r.SiteId, CurrentUser.SiteId, StringComparison.OrdinalIgnoreCase));
                 }
-                SelectedEnterpriseRobot = FilteredRobots.FirstOrDefault();
-                HasNoFilteredRobots = FilteredRobots.Count == 0;
-                return;
+                else if (!string.IsNullOrEmpty(CurrentUser.OrganizationId))
+                {
+                    source = source.Where(r => string.Equals(r.OrganizationId, CurrentUser.OrganizationId, StringComparison.OrdinalIgnoreCase));
+                }
             }
 
-            var matching = EnterpriseRobots.Where(r => r.SiteId == SelectedSite.Id).ToList();
+            if (SelectedSite != null)
+            {
+                source = source.Where(r => string.Equals(r.SiteId, SelectedSite.Id, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var matching = source.ToList();
             foreach (var robot in matching)
             {
                 FilteredRobots.Add(robot);
@@ -626,12 +636,32 @@ namespace LeHoangControlCenter.ViewModels
             if (orgs == null || sites == null) return;
             try
             {
-                // Lưu vào local SQLite để offline vẫn có dữ liệu
+                // Lưu vào local SQLite để offline vẫn có dữ liệu và dọn dẹp các tổ chức/chi nhánh cũ không còn trên Cloud
                 _ = Task.Run(async () =>
                 {
                     try
                     {
                         var db = DatabaseService.Instance;
+                        var localOrgs = await db.GetOrganizationsAsync();
+                        var cloudOrgIds = new System.Collections.Generic.HashSet<string>(orgs.Select(o => o.Id), StringComparer.OrdinalIgnoreCase);
+                        foreach (var lo in localOrgs)
+                        {
+                            if (!cloudOrgIds.Contains(lo.Id))
+                            {
+                                await db.DeleteOrganizationAsync(lo.Id);
+                            }
+                        }
+
+                        var localSites = await db.GetSitesAsync();
+                        var cloudSiteIds = new System.Collections.Generic.HashSet<string>(sites.Select(s => s.Id), StringComparer.OrdinalIgnoreCase);
+                        foreach (var ls in localSites)
+                        {
+                            if (!cloudSiteIds.Contains(ls.Id))
+                            {
+                                await db.DeleteSiteAsync(ls.Id);
+                            }
+                        }
+
                         foreach (var o in orgs) await db.SaveOrganizationAsync(o);
                         foreach (var s in sites) await db.SaveSiteAsync(s);
                     }

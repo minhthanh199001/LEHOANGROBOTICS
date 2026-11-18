@@ -2490,7 +2490,7 @@
       });
 
       hubConn.on("OnTelemetryUpdated", (packet) => {
-        let bot = fleetData.robots.find(r => r.id === packet.robotId);
+        let bot = fleetData.robots.find(r => r.id === packet.robotId || r.name === packet.robotId || (packet.ip && r.ip === packet.ip));
         if (bot) {
           bot.battery = packet.battery;
           bot.isCharging = packet.isCharging;
@@ -2499,22 +2499,15 @@
           bot.poseY = packet.poseY;
           bot.poseAngle = packet.poseAngle;
           bot.lastSeen = new Date();
+          if (packet.mapName) bot.assignedMap = packet.mapName;
+          if (packet.activeMode) bot.activeMode = packet.activeMode;
         } else {
-          bot = {
-            id: packet.robotId,
-            name: packet.robotId,
-            battery: packet.battery,
-            isCharging: packet.isCharging,
-            status: packet.status,
-            poseX: packet.poseX,
-            poseY: packet.poseY,
-            poseAngle: packet.poseAngle,
-            lastSeen: new Date()
-          };
-          fleetData.robots.push(bot);
+          // Không tự tạo robot ma với thuộc tính undefined; tải lại danh sách chuẩn từ server nếu có robot mới
+          fetchMetadata();
+          return;
         }
 
-        addTrailPoint(packet.robotId, packet.poseX, packet.poseY);
+        addTrailPoint(bot.id, packet.poseX, packet.poseY);
         updateHud(packet);
         renderKPIs();
         renderRobots();
@@ -2546,7 +2539,7 @@
       });
 
       hubConn.on("OnRobotUpserted", (robot) => {
-        const idx = fleetData.robots.findIndex(r => r.id === robot.id);
+        const idx = fleetData.robots.findIndex(r => r.id === robot.id || r.name === robot.name || (robot.ip && r.ip === robot.ip));
         if (idx >= 0) {
           fleetData.robots[idx] = robot;
         } else {
