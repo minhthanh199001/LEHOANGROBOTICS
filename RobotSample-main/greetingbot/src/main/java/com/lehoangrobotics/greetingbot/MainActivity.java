@@ -393,7 +393,14 @@ public final class MainActivity extends Activity {
     }
 
     private void configureCloud() {
-        cloud.configure(preferences.getString("serverUrl", "http://192.168.0.123:5050"), preferences.getString("robotId", "GREETING-01"), preferences.getString("deviceToken", ""));
+        String server = preferences.getString("serverUrl", "http://192.168.0.123:5050");
+        if (preferences.getBoolean("automaticWeb", true)) {
+            CloudIdentity identity = CloudIdentity.restore(preferences.getString("autoRobotId", ""), preferences.getString("autoDeviceToken", ""));
+            if (!preferences.edit().putString("autoRobotId", identity.id).putString("autoDeviceToken", identity.token).commit()) {
+                cloud.configure("", "", "", false); webMessage = "Không lưu được mã tự kết nối Web."; return;
+            }
+            cloud.configure(server, identity.id, identity.token, true);
+        } else cloud.configure(server, preferences.getString("robotId", "GREETING-01"), preferences.getString("deviceToken", ""), false);
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView label(String text, int size) {
@@ -488,34 +495,49 @@ public final class MainActivity extends Activity {
         LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL); fields.setPadding(dp(20), dp(8), dp(20), dp(8));
         Button speech = button("Giọng nói OpenAI", fields, v -> {});
         EditText url = field(fields, "Địa chỉ Web/server (không thêm /fleetHub)", preferences.getString("serverUrl", "http://192.168.0.123:5050"), false);
+        Button automatic = button("Tự kết nối Web trong LAN", fields, v -> {});
+        fields.addView(label("Ghép nối thủ công (tùy chọn)", 16));
         EditText id = field(fields, "ID robot", preferences.getString("robotId", "GREETING-01"), false);
         EditText token = field(fields, "Mã ghép nối từ Web quản lý", preferences.getString("deviceToken", ""), true);
         EditText mapPackage = field(fields, "Tên gói ứng dụng Map Tool (tùy chọn)", preferences.getString("mapToolPackage", "com.ainirobot.maptool"), false);
         ScrollView scroll = new ScrollView(this); scroll.addView(fields);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Kết nối Web quản lý").setView(scroll)
-            .setPositiveButton("Lưu", null).setNegativeButton("Đóng", null)
+            .setPositiveButton("Lưu thủ công", null).setNegativeButton("Đóng", null)
             .setNeutralButton("Ngắt kết nối", (d, which) -> {
-                preferences.edit().remove("deviceToken").remove("serverUrl").apply();
+                preferences.edit().putBoolean("automaticWeb", false).remove("deviceToken").remove("serverUrl").apply();
                 configureCloud(); webMessage = "Chưa ghép nối Web quản lý"; render();
             }).create();
         speech.setOnClickListener(v -> { dialog.dismiss(); showVoiceConfiguration(); });
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String server = url.getText().toString().trim().replaceAll("/+$", "");
+        automatic.setOnClickListener(v -> {
             try {
+                String server = webServer(url);
+                if (server.isEmpty()) throw new IllegalArgumentException("Nhập địa chỉ server trong LAN.");
+                preferences.edit().putString("serverUrl", server).putBoolean("automaticWeb", true).apply();
+                configureCloud(); webMessage = "Đang tự kết nối Web…"; render(); dialog.dismiss();
+            } catch (Exception e) { url.setError(e.getMessage()); }
+        });
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            try {
+                String server = webServer(url);
                 if (!server.isEmpty()) {
-                    URI uri = new URI(server);
-                    if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) || uri.getHost() == null ||
-                        uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null || !uri.getPath().isEmpty())
-                        throw new IllegalArgumentException("Nhập URL gốc, ví dụ http://192.168.0.179:5050");
                     if (!id.getText().toString().matches("[A-Za-z0-9_-]{1,64}") || token.getText().toString().trim().isEmpty())
                         throw new IllegalArgumentException("Cần ID robot và mã ghép nối từ Web.");
                 }
-                preferences.edit().putString("serverUrl", server).putString("robotId", id.getText().toString().trim())
+                preferences.edit().putBoolean("automaticWeb", false).putString("serverUrl", server).putString("robotId", id.getText().toString().trim())
                     .putString("deviceToken", token.getText().toString().trim()).putString("mapToolPackage", mapPackage.getText().toString().trim()).apply();
                 configureCloud(); webMessage = server.isEmpty() ? "Chưa cấu hình Web quản lý" : "Đang kết nối Web…"; render(); dialog.dismiss();
             } catch (Exception e) { url.setError(e.getMessage()); }
         }));
         dialog.show();
+    }
+    private String webServer(EditText field) throws Exception {
+        String server = field.getText().toString().trim().replaceAll("/+$", "");
+        if (server.isEmpty()) return server;
+        URI uri = new URI(server);
+        if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) || uri.getHost() == null ||
+            uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null || !uri.getPath().isEmpty())
+            throw new IllegalArgumentException("Nhập URL gốc, ví dụ http://192.168.0.123:5050");
+        return server;
     }
     private void showVoiceConfiguration() {
         if (voiceDirection != null && voiceDirection.active()) voiceDirection.stop("Đã dừng test để thay cấu hình giọng nói.", null);

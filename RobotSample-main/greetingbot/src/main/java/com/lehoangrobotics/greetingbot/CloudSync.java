@@ -28,14 +28,16 @@ final class CloudSync implements AutoCloseable {
     private final Map<String, JSONObject> results = new ConcurrentHashMap<>();
     private final Listener listener;
     private volatile String snapshot = "{}";
-    private volatile String[] credentials = {"", "", ""};
+    private volatile String[] credentials = {"", "", "", ""};
+    private long nextEnrollment;
+    private String[] attemptedEnrollment;
     private volatile boolean closed;
 
     CloudSync(Listener listener) {
         this.listener = listener;
         executor.scheduleWithFixedDelay(this::sync, 0, 2, TimeUnit.SECONDS);
     }
-    void configure(String url, String id, String token) { credentials = new String[]{url, id, token}; }
+    void configure(String url, String id, String token, boolean automatic) { credentials = new String[]{url, id, token, automatic ? "auto" : ""}; }
     void snapshot(JSONObject json) { snapshot = json.toString(); }
     void result(String id, String status, String message) {
         if (id == null || id.isEmpty()) return;
@@ -60,6 +62,14 @@ final class CloudSync implements AutoCloseable {
             connection.setFixedLengthStreamingMode(payload.length);
             try (java.io.OutputStream stream = connection.getOutputStream()) { stream.write(payload); }
             int code = connection.getResponseCode();
+            if (code == 401 && config[3].equals("auto") && !closed && config == credentials &&
+                (attemptedEnrollment != config || SystemClock.elapsedRealtime() >= nextEnrollment)) {
+                attemptedEnrollment = config; nextEnrollment = SystemClock.elapsedRealtime() + 30000;
+                connection.disconnect(); connection = null;
+                enroll(config);
+                main.post(() -> { if (!closed && config == credentials) listener.connection("Đã tự đăng ký Web; đang đồng bộ…"); });
+                return;
+            }
             if (code != 200) throw new IllegalStateException(code == 401 ? "Sai ID hoặc mã ghép nối" : "Server HTTP " + code);
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             try (InputStream input = connection.getInputStream()) {
@@ -92,6 +102,23 @@ final class CloudSync implements AutoCloseable {
             String message = "Web: " + e.getMessage();
             main.post(() -> { if (!closed && config == credentials) listener.connection(message); });
         } finally { if (connection != null) connection.disconnect(); }
+    }
+    private void enroll(String[] config) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(config[0] + "/api/greeting/device/enroll").openConnection();
+        try {
+            connection.setConnectTimeout(4000); connection.setReadTimeout(4000);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestMethod("POST"); connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            connection.setRequestProperty("X-Greeting-Device-Token", config[2]);
+            byte[] payload = new JSONObject().put("id", config[1]).put("name", "Greetingbot · " + config[1].substring(config[1].length() - 6)).toString().getBytes("UTF-8");
+            connection.setFixedLengthStreamingMode(payload.length);
+            try (java.io.OutputStream output = connection.getOutputStream()) { output.write(payload); }
+            int code = connection.getResponseCode();
+            if (code != 200) throw new IllegalStateException(code == 403 ? "Server chưa bật tự kết nối LAN" : code == 409 ? "ID thuộc robot khác; giữ nguyên mã hiện có" : "Tự kết nối HTTP " + code);
+            try (InputStream input = connection.getInputStream()) { /* No credential is returned. */ }
+            nextEnrollment = 0;
+        } finally { connection.disconnect(); }
     }
     @Override public void close() { closed = true; executor.shutdownNow(); }
 }

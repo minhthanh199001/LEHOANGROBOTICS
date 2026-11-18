@@ -7,6 +7,7 @@ param(
     [string]$SpeechTokenFile,
     [string]$PublishedDirectory,
     [string]$ExpectedHostIp,
+    [switch]$EnableLanAutoPairing,
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'LeHoangRobotics\Greetingbot')
 )
 $ErrorActionPreference = 'Stop'
@@ -104,6 +105,8 @@ $env:GREETING_ADMIN_KEY = $preparedAdminKey
 $env:DATABASE_PATH = $dbFile
 $env:ASPNETCORE_URLS = "http://0.0.0.0:$Port"
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
+$previousLanMode = [Environment]::GetEnvironmentVariable('GREETING_LAN_AUTO_PAIRING', 'Process')
+if ($EnableLanAutoPairing) { $env:GREETING_LAN_AUTO_PAIRING = 'true' }
 $previousOpenAiFile = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY_FILE', 'Process')
 $previousSpeechToken = [Environment]::GetEnvironmentVariable('GREETING_SPEECH_TOKEN', 'Process')
 if ($OpenAiKeyFile) { $env:OPENAI_API_KEY_FILE = (Resolve-Path -LiteralPath $OpenAiKeyFile).ProviderPath }
@@ -119,6 +122,7 @@ try { & dotnet (Join-Path $releaseDirectory 'LeHoangCloudServer.dll') }
 finally {
     Pop-Location
     Remove-Item Env:GREETING_ADMIN_KEY -ErrorAction SilentlyContinue
+    if ($EnableLanAutoPairing) { [Environment]::SetEnvironmentVariable('GREETING_LAN_AUTO_PAIRING', $previousLanMode, 'Process') }
     if ($OpenAiKeyFile) { [Environment]::SetEnvironmentVariable('OPENAI_API_KEY_FILE', $previousOpenAiFile, 'Process') }
     if ($SpeechTokenFile) { [Environment]::SetEnvironmentVariable('GREETING_SPEECH_TOKEN', $previousSpeechToken, 'Process') }
     $preparedSpeechToken = $null; $speechSecure = $null

@@ -4,6 +4,7 @@
   const $ = id => document.getElementById(id);
   let adminKey = '', selectedId = '', current = null, loading = false, settingsDirty = false;
   let actionPending = false, selectionVersion = 0;
+  let lanMode = false, accessChecked = false, connecting = false, listing = false;
   const labels = {queued:'Chờ robot nhận', delivered:'Đã gửi, chờ xác nhận', unconfirmed:'Chưa nhận xác nhận', running:'Đang thực hiện', completed:'Hoàn tất', failed:'Thất bại', expired:'Đã hết hạn', idle:'Sẵn sàng', moving:'Đang di chuyển', checking:'Đang kiểm tra', stopping:'Đang chờ dừng', recording:'Đang ghi âm', playing:'Đang phát lại'};
   const types = {navigate:'Đi tới điểm', stop_navigation:'Dừng điều hướng', refresh_places:'Đọc lại điểm', microphone_test:'Test microphone và loa'};
   function notice(message, error = false) { $('greetingNotice').textContent = message; $('greetingNotice').classList.toggle('error', error); }
@@ -18,7 +19,7 @@
     const state = current?.snapshot;
     $('greetingOnline').textContent = current?.online ? 'Robot trực tuyến' : 'Robot ngoại tuyến';
     $('greetingOnline').classList.toggle('online', !!current?.online);
-    $('greetingRobotName').textContent = current ? current.name + ' · ' + current.id : 'Điểm đến trên robot';
+    $('greetingRobotName').textContent = current ? current.name + (lanMode ? '' : ' · ' + current.id) : 'Điểm đến trên robot';
     $('greetingMap').textContent = state?.mapName || 'Chưa đọc được';
     $('greetingSdk').textContent = !state ? '—' : !state.sdkConnected ? 'SDK chưa kết nối' : !state.authorized ? 'Cần mở app từ Home RobotOS' : state.suspended ? 'RobotOS đang tiếp quản' : !state.foreground ? 'App đang ở nền' : state.localized ? 'Đã định vị · Sẵn sàng' : 'Chưa định vị';
     $('greetingNavigation').textContent = state ? (labels[state.navigationState] || state.navigationState) + (state.target ? ' · ' + state.target : '') : '—';
@@ -47,7 +48,7 @@
     if (!history.children.length) { const item = document.createElement('li'); item.textContent = 'Chưa có lệnh.'; history.append(item); }
   }
   async function loadDetail() {
-    if (!selectedId || loading || !adminKey) return;
+    if (!selectedId || loading || (!adminKey && !lanMode)) return;
     loading = true;
     const id = selectedId, version = selectionVersion;
     try {
@@ -62,13 +63,31 @@
     finally { loading = false; }
   }
   async function loadRobots(preferredId) {
+    if (listing) return;
+    listing = true;
+    try {
     const robots = await api('/robots');
     const select = $('greetingRobotSelect'); select.replaceChildren();
-    for (const robot of robots) { const option = document.createElement('option'); option.value = robot.id; option.textContent = robot.name + ' · ' + robot.id; select.append(option); }
-    selectedId = robots.some(r => r.id === preferredId) ? preferredId : robots[0]?.id || '';
-    select.value = selectedId; selectionVersion++; current = null; settingsDirty = false; render();
+    for (const robot of robots) { const option = document.createElement('option'); option.value = robot.id; option.textContent = robot.name + (lanMode ? '' : ' · ' + robot.id); select.append(option); }
+    const nextId = robots.some(r => r.id === preferredId) ? preferredId : robots[0]?.id || '';
+    if (selectedId !== nextId) { selectedId = nextId; selectionVersion++; current = null; settingsDirty = false; render(); }
+    select.value = selectedId;
     if (selectedId) await loadDetail();
-    else notice('Chưa có Greetingbot. Tạo mã ghép nối ở bên dưới.');
+    else notice(lanMode ? 'Chờ robot tự kết nối. Mở app Greetingbot khi robot cùng mạng LAN với server.' : 'Chưa có Greetingbot. Tạo mã ghép nối ở bên dưới.');
+    } finally { listing = false; }
+  }
+  async function connectAutomatically() {
+    if (connecting) return;
+    connecting = true;
+    try {
+      const access = await api('/access');
+      lanMode = access.managementMode === 'lan'; accessChecked = true;
+      $('greetingAdminField').hidden = lanMode; $('greetingAccessButton').hidden = lanMode;
+      $('greetingAdminKey').required = !lanMode; $('greetingRegisterCard').hidden = lanMode;
+      if (lanMode) { await loadRobots(selectedId); if (selectedId) notice('Đã tự kết nối trong LAN. Chọn robot để điều khiển hoặc chỉnh cấu hình.'); }
+      else notice('Nhập mã quản trị để tải danh sách Greetingbot.');
+    } catch (error) { notice(error.message, true); }
+    finally { connecting = false; }
   }
   async function send(type, placeName = '', mapName = '') {
     if (!ready()) return;
@@ -107,7 +126,15 @@
   });
   $('greetingClosePairing').addEventListener('click', () => { $('greetingPairing').close(); $('greetingPairToken').value = ''; });
   $('greetingPairing').addEventListener('close', () => { $('greetingPairToken').value = ''; });
-  window.GreetingPanel = {open() { if (adminKey) loadDetail(); }};
-  setInterval(() => { if ($('viewGreeting').style.display !== 'none') loadDetail(); }, 2000);
+  async function refreshPanel() {
+    try {
+      if (!accessChecked) await connectAutomatically();
+      else if (lanMode) await loadRobots(selectedId);
+      else if (adminKey) await loadDetail();
+    } catch (error) { current = null; render(); notice(error.message, true); }
+  }
+  window.GreetingPanel = {open:refreshPanel};
+  setInterval(() => { if ($('viewGreeting').style.display !== 'none') refreshPanel(); }, 2000);
   render();
+  connectAutomatically();
 })();

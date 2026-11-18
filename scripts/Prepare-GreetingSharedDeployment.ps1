@@ -4,6 +4,8 @@ param(
     [Parameter(Mandatory=$true)][string]$ShareRoot,
     [Parameter(Mandatory=$true)][string]$TargetIp,
     [string]$DatabaseRelativePath = 'bin\Debug\net8.0\cloud_fleet.db',
+    [switch]$EnableLanAutoPairing,
+    [ValidatePattern('^(_[A-Z0-9]+)*$')][string]$LauncherSuffix = '',
     [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')][string]$VersionName = ('greeting-web-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 )
 $ErrorActionPreference = 'Stop'
@@ -23,7 +25,10 @@ if (Get-ChildItem -LiteralPath $published -Recurse -File | Where-Object { $_.Nam
 $versionRelative = 'bin\' + $VersionName
 $version = [IO.Path]::GetFullPath((Join-Path $root $versionRelative))
 if (-not $version.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $version)) { throw 'Version directory must be new and inside the shared project.' }
-foreach ($name in @('CAP_NHAT_GREETING_WEB.cmd','XEM_MA_GREETING.cmd','HUONG_DAN_GREETING_WEB.txt')) {
+$applyName = 'CAP_NHAT_GREETING_WEB' + $LauncherSuffix + '.cmd'
+$showName = 'XEM_MA_GREETING' + $LauncherSuffix + '.cmd'
+$guideName = 'HUONG_DAN_GREETING_WEB' + $LauncherSuffix + '.txt'
+foreach ($name in @($applyName,$showName,$guideName)) {
     if (Test-Path -LiteralPath (Join-Path $root $name)) { throw "Launcher already exists; refusing to overwrite it: $name" }
 }
 $runtime = Join-Path $version 'runtime'
@@ -39,7 +44,7 @@ foreach ($file in Get-ChildItem -LiteralPath $published -Recurse -File) {
     if ($sourceHash -ne $targetHash) { throw "Copied package verification failed: $relative" }
     $manifest += @{ path=$relative; sha256=$sourceHash }
 }
-@{ targetIp=$TargetIp; databaseRelativePath=$DatabaseRelativePath; files=$manifest } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $version 'package-manifest.json') -Encoding utf8
+@{ targetIp=$TargetIp; databaseRelativePath=$DatabaseRelativePath; lanAutoPairing=[bool]$EnableLanAutoPairing; files=$manifest } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $version 'package-manifest.json') -Encoding utf8
 $apply = @'
 @echo off
 setlocal
@@ -48,7 +53,7 @@ set "PSModulePath=%SystemRoot%\System32\WindowsPowerShell\v1.0\Modules;%ProgramF
 echo Run this file ON SERVER {IP}, from its LOCAL DISK folder.
 echo The existing database will be kept and backed up.
 echo Keep the server console open after it starts.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0{VERSION}\scripts\Update-GreetingServer.ps1" -PublishedDirectory "%~dp0{VERSION}\runtime" -DatabasePath "%~dp0{DB}" -ExpectedHostIp {IP}
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0{VERSION}\scripts\Update-GreetingServer.ps1" -PublishedDirectory "%~dp0{VERSION}\runtime" -DatabasePath "%~dp0{DB}" -ExpectedHostIp {IP}{MODE}
 pause
 '@
 $show = @'
@@ -60,17 +65,21 @@ echo Run on server {IP}, with the same Windows account used to start the server.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0{VERSION}\scripts\Update-GreetingServer.ps1" -ExpectedHostIp {IP} -ShowAdminKey
 pause
 '@
-$apply.Replace('{IP}',$TargetIp).Replace('{VERSION}',$versionRelative).Replace('{DB}',$DatabaseRelativePath) | Set-Content -LiteralPath (Join-Path $root 'CAP_NHAT_GREETING_WEB.cmd') -Encoding ascii
-$show.Replace('{IP}',$TargetIp).Replace('{VERSION}',$versionRelative) | Set-Content -LiteralPath (Join-Path $root 'XEM_MA_GREETING.cmd') -Encoding ascii
+$mode = if ($EnableLanAutoPairing) { ' -EnableLanAutoPairing' } else { '' }
+$apply.Replace('{IP}',$TargetIp).Replace('{VERSION}',$versionRelative).Replace('{DB}',$DatabaseRelativePath).Replace('{MODE}',$mode) | Set-Content -LiteralPath (Join-Path $root $applyName) -Encoding ascii
+$show.Replace('{IP}',$TargetIp).Replace('{VERSION}',$versionRelative) | Set-Content -LiteralPath (Join-Path $root $showName) -Encoding ascii
+$pairingGuide = if ($EnableLanAutoPairing) {
+    '5. Mo tab GREETINGBOT qua IP server. Robot tu tao ID/ma noi bo va xuat hien tren Web khi cung LAN; khong can nhap ma quan tri/ghep noi.'
+} else { '5. Trong Web, chon GREETINGBOT, nhap ma quan tri, tao ma ghep noi va nhap vao cau hinh ket noi Web tren robot.' }
 $guide = @"
 CAP NHAT WEB GREETINGBOT
 
 1. Tren may server $TargetIp, mo thu muc LOCAL cua LeHoangCloudServer.
-2. Chay CAP_NHAT_GREETING_WEB.cmd. Khong chay tu may khac qua duong dan mang.
+2. Chay $applyName. Khong chay tu may khac qua duong dan mang.
 3. Script chuan bi ban chay moi, kiem tra ma quan tri ma hoa, dung dung tien trinh LeHoangCloudServer,
    sao luu database hien tai, roi mo Web moi tai http://${TargetIp}:5050.
-4. Giu cua so server dang mo. Dung XEM_MA_GREETING.cmd (cung tai khoan Windows) de xem ma quan tri.
-5. Trong Web, chon GREETINGBOT, nhap ma quan tri, tao ma ghep noi va nhap vao cau hinh ket noi Web tren robot.
+4. Giu cua so server dang mo. Dung $showName (cung tai khoan Windows) neu can xem ma quan tri thu cong.
+$pairingGuide
 6. Chinh Bu theo chieu quay; mac dinh 25 do. Gia tri duoc luu trong database va gui xuong robot khi dong bo.
 
 DATABASE GIU NGUYEN: $DatabaseRelativePath
@@ -80,6 +89,6 @@ Ma nguon va file Debug/Release cu khong bi ghi de. Neu can quay lai: dung cua so
 mo PowerShell tai thu muc LeHoangCloudServer va chay .\bin\Debug\net8.0\LeHoangCloudServer.exe.
 Khong thay URL giong noi OpenAI tren robot: cau noi PC/ADB hien tai van duoc giu nguyen.
 "@
-$guide | Set-Content -LiteralPath (Join-Path $root 'HUONG_DAN_GREETING_WEB.txt') -Encoding utf8
+$guide | Set-Content -LiteralPath (Join-Path $root $guideName) -Encoding utf8
 Write-Output ("Prepared and verified $($manifest.Count) runtime files: $version")
-Write-Output ("Run CAP_NHAT_GREETING_WEB.cmd locally on server $TargetIp. The running server and database have not been changed.")
+Write-Output ("Run $applyName locally on server $TargetIp. The running server and database have not been changed.")

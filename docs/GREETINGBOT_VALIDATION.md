@@ -1,5 +1,14 @@
 # Kiểm thử Greetingbot — 18/11/2026
 
+## Tự kết nối Web — 1.4.0
+
+- Theo yêu cầu vận hành, app tự tạo/lưu ID và mã riêng trước khi đăng ký. Web trong LAN tự tải robot, ẩn bước nhập mã quản trị/tạo mã ghép nối; tự nhận robot mới khi đang mở tab. Có luồng thủ công dự phòng.
+- **37 test Android / 0 lỗi**, gồm 3 kiểm tra mới về giữ danh tính qua lần gửi lại/khởi động lại, tách danh tính từng bản cài và đổi danh tính khi thông tin lưu bị hỏng. Thuật toán giọng nói/MicroArray không thay so với tag đã nghiệm thu.
+- **26 kiểm tra API tự kết nối**, gồm chế độ tắt/bật, đăng ký lặp không tạo trùng, chống chiếm ID, bảo toàn cấu hình sau đăng ký lại/khởi động lại, sync cần mã thiết bị, không lưu mã thô và từ chối Origin/Host sai. **14 kiểm tra giới hạn truy cập LAN**; Speech/MicroArray giữ đủ **50 kiểm tra thành công**.
+- Fleet integration **44 kiểm tra thành công** trên bản sao DB cũ. Gói publish đã qua **9 kiểm tra updater Windows PowerShell 5**, gồm bật LAN mode, lưu góc bù qua khởi động lại và sao lưu DB.
+- APK 1.4.0 đã cài Wi-Fi ADB; SDK kết nối, đã định vị, đọc bản đồ `LH2-1006084342`. SHA-256 `releases/LeHoangGreetingbot_v1.4.0-debug.apk`: `46CF5413A996790B70154121FEE00CEA4D69F62257D03AAD7338A7D9BF63B3B8`.
+- Đã chuẩn bị và đối chiếu 39 file runtime tại `bin\greeting-web-20261118-v1.4.0-auto`, launcher `CAP_NHAT_GREETING_WEB_TU_DONG.cmd` trên server. Chờ khởi động bản Web này để kiểm tra tự kết nối và đồng bộ cấu hình với robot thật; bản Web đang chạy trước đó chưa có endpoint đăng ký tự động.
+
 ## Chuẩn bị cập nhật Web vận hành qua SMB
 
 - Đã truy cập `\\192.168.0.123\LeHoangCloudServer`; source server khớp bản gốc của repo, database hiện có tại `bin\Debug\net8.0\cloud_fleet.db`. Chỉ chép gói mới vào thư mục phiên bản riêng, không ghi đè source, runtime cũ hoặc database đang chạy.

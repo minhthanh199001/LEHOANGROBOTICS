@@ -27,3 +27,4 @@
 .greeting-pairing::backdrop{background:#020617bb}.greeting-pairing label{margin:16px 0}.greeting-pairing p{line-height:1.6}.greeting-pairing input{font-family:monospace}.greeting-pairing button{width:100%}
 @media(max-width:850px){.greeting-grid{grid-template-columns:1fr}.greeting-panel{padding:16px}.greeting-heading h1{font-size:24px}.main-nav-tabs{flex-wrap:wrap}.top-header{flex-wrap:wrap;height:auto;gap:12px}}
 @media(max-width:450px){.greeting-settings,.greeting-status{grid-template-columns:1fr}.greeting-access>*{width:100%}.greeting-actions{flex-direction:column;align-items:stretch}.greeting-card{padding:16px}}
+[id="viewGreeting"] [hidden] { display: none !important; }

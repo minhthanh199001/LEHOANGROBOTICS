@@ -1815,11 +1815,11 @@
       <h1>Điều khiển Greetingbot</h1><p>Điểm từ bản đồ robot · Điều hướng · Kiểm tra microphone và loa</p></div>
       <span id="greetingOnline" class="greeting-badge">Chưa kết nối</span></div>
     <form id="greetingAccess" class="greeting-access">
-      <label>Mã quản trị Greetingbot<input id="greetingAdminKey" type="password" autocomplete="off" required placeholder="Mã đã cấu hình trên server"></label>
-      <button type="submit">Kết nối quản lý</button>
+      <label id="greetingAdminField">Mã quản trị Greetingbot<input id="greetingAdminKey" type="password" autocomplete="off" required placeholder="Mã đã cấu hình trên server"></label>
+      <button id="greetingAccessButton" type="submit">Kết nối quản lý</button>
       <label>Robot<select id="greetingRobotSelect" aria-label="Chọn Greetingbot"><option value="">Chưa tải danh sách</option></select></label>
     </form>
-    <p id="greetingNotice" role="status" aria-live="polite">Nhập mã quản trị để tải danh sách Greetingbot.</p>
+    <p id="greetingNotice" role="status" aria-live="polite">Đang kết nối Web quản lý…</p>
     <div class="greeting-grid">
       <div class="greeting-card">
         <div class="greeting-card-heading"><h2 id="greetingRobotName">Điểm đến trên robot</h2><button id="greetingRefresh" type="button" disabled>Đọc lại điểm</button></div>
@@ -1847,7 +1847,7 @@
         </form>
         <p class="greeting-hint">Cấu hình áp dụng cho thao tác tiếp theo. Âm lượng phát lại còn phụ thuộc mức âm lượng media trên robot.</p>
       </div>
-      <div class="greeting-card">
+      <div class="greeting-card" id="greetingRegisterCard">
         <h2>Ghép nối robot mới</h2>
         <form id="greetingRegister" class="greeting-settings">
           <label>ID robot<input name="id" value="GREETING-01" pattern="[A-Za-z0-9_-]{1,64}" maxlength="64" required></label>

@@ -12,6 +12,22 @@
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
 - Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
 
+## Tự kết nối Web trong LAN — 1.4.0
+
+App mặc định dùng server `http://192.168.0.123:5050`. Sau khi mở app từ Home của robot, robot tự tạo ID/mã kết nối trong bộ nhớ riêng và đăng ký với Web. Mở tab **GREETINGBOT**, robot tự xuất hiện; chọn robot để chỉnh **Bù theo chiều quay** rồi lưu. Không cần tạo robot, nhập mã quản trị hay sao chép mã ghép nối trong LAN đã bật chế độ này.
+
+Thông tin kết nối được lưu trước khi gửi đăng ký, giữ qua khởi động lại/cài đè APK. Gửi lại cùng ID/mã không tạo bản ghi trùng hoặc đặt lại cấu hình. ID đã thuộc mã khác bị từ chối; mỗi bản cài có ID riêng. Nếu đổi server: **Cấu hình → địa chỉ Web/server → Tự kết nối Web trong LAN**. Ghép nối thủ công vẫn có trong cùng hộp cấu hình.
+
+Server bật chế độ này bằng `GREETING_LAN_AUTO_PAIRING=true` hoặc tham số `-EnableLanAutoPairing` của updater. Chế độ mặc định trên môi trường khác vẫn dùng mã quản trị. Truy cập tự động chỉ nhận địa chỉ IPv4 riêng cùng subnet của giao diện server đang phục vụ; không tin `X-Forwarded-For`, không nhận Origin/Referer khác Web và yêu cầu Host bằng IP thật của server. App đăng ký không có Origin của trình duyệt; các lượt sync tiếp theo luôn cần mã riêng từng thiết bị, server chỉ lưu SHA-256 của mã đó.
+
+Gói triển khai tự động đã chuẩn bị tại `bin\greeting-web-20261118-v1.4.0-auto` trong share server. Chạy **một lần trên chính máy server** bằng đường dẫn local:
+
+```text
+F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer\CAP_NHAT_GREETING_WEB_TU_DONG.cmd
+```
+
+Giữ cửa sổ server mở. Các lần mở app/Web sau tự kết nối; không dùng `XEM_MA_GREETING.cmd` cho luồng LAN này. Database hiện có và cấu hình OpenAI/PC/ADB được giữ nguyên. Xem `GREETINGBOT_VALIDATION.md` để biết tình trạng triển khai thực tế.
+
 ## Giọng nói OpenAI / test hướng âm — bản thử 1.3.6
 
 1. Mở app từ Home / Application Center của robot. Dừng điều hướng và test ghi/phát âm thanh.
@@ -88,13 +104,13 @@ Nếu source nằm trên ổ mạng Windows có đường dẫn dài, chuyển r
 
 Khi đó APK nằm tại `C:/greetingbot-build/outputs/apk/debug/greetingbot-debug.apk`. Hai module Android cũ vẫn dùng cấu hình build của chúng.
 
-APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản thử MicroArray có trong `releases/LeHoangGreetingbot_v1.3.6-debug.apk`; bản 1.3.5 và các bản trước còn được giữ để khôi phục. Các bản 1.1.0, 1.3.2 và 1.3.4 đã được rút khỏi gói bàn giao sau thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
+APK: `RobotSample-main/greetingbot/build/outputs/apk/debug/greetingbot-debug.apk`. Bản hiện tại `releases/LeHoangGreetingbot_v1.4.0-debug.apk` thêm tự kết nối Web; thuật toán MicroArray/giọng nói giữ nguyên bản 1.3.6 đã nghiệm thu. APK 1.3.6 và một số bản trước còn được giữ để khôi phục. Các bản 1.1.0, 1.3.2 và 1.3.4 đã được rút khỏi gói bàn giao sau thử nghiệm tại robot. Đây là bản debug để triển khai LAN; khi phân phối chính thức cần ký bằng khóa release của đơn vị vận hành.
 
 Thuật toán nhận dạng/hướng âm đã được người vận hành xác nhận nhạy và chính xác, được giữ tại tag `greetingbot-v1.3.6-voice-stable`. Xem [mốc thuật toán đã xác nhận](GREETINGBOT_VOICE_STABLE.md) trước khi chỉnh sửa phần này. Thay mức bù trong cấu hình không cần sửa thuật toán thu/nhận dạng/lọc góc.
 
 ```powershell
 adb connect 192.168.0.23:5555
-adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.3.6-debug.apk
+adb -s 192.168.0.23:5555 install -r .\releases\LeHoangGreetingbot_v1.4.0-debug.apk
 ```
 
 Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng `am start` để thay thế bước cấp quyền SDK. Muốn tự khởi động: Developer Settings → Boot Apps → Lê Hoàng Greetingbot. Không cần thay app mặc định trong lần cài đặt thử.
@@ -167,7 +183,7 @@ Mã quản trị được tạo ngẫu nhiên và lưu mã hóa bằng Windows D
 
 Nếu triển khai theo cách hiện có (dịch vụ, Docker...), cấu hình biến môi trường `GREETING_ADMIN_KEY` ngẫu nhiên, tối thiểu 24 ký tự, và giữ `DATABASE_PATH` hiện có. Docker Compose hỗ trợ biến này qua môi trường máy chủ. Không đưa mã vào Git. Tab Greetingbot từ chối quản lý khi chưa có mã; các màn hình Luckibot hiện tại không phụ thuộc mã này.
 
-## Ghép nối
+## Ghép nối thủ công (dự phòng / ngoài chế độ LAN)
 
 1. Mở `http://192.168.0.123:5050`, chọn **GREETINGBOT**.
 2. Nhập mã quản trị → Kết nối quản lý → Tạo mã ghép nối với ID `GREETING-01`.
@@ -177,7 +193,7 @@ Nếu triển khai theo cách hiện có (dịch vụ, Docker...), cấu hình b
 
 Nút **Ngắt kết nối** trong cấu hình app xóa mã thiết bị đã lưu và đưa URL về mặc định `http://192.168.0.123:5050`. Chức năng SDK trên robot vẫn dùng được khi chưa ghép nối Web.
 
-Server chỉ lưu SHA-256 của mã thiết bị. Mã quản trị Web chỉ nằm trong bộ nhớ trang, không ghi localStorage. Nếu mất mã ghép nối, tạo ID thiết bị mới và ghép lại; bản này chưa có chức năng xoay mã/xóa Greetingbot.
+Server chỉ lưu SHA-256 của mã thiết bị. Mã quản trị Web chỉ nằm trong bộ nhớ trang, không ghi localStorage. Nếu mất mã ghép nối thủ công, tạo ID thiết bị mới và ghép lại; bản này chưa có chức năng xoay mã/xóa Greetingbot. Luồng tự động không cần người vận hành xem/lưu mã.
 
 ## Luồng đồng bộ và giới hạn
 

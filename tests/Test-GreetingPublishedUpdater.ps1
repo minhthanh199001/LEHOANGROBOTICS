@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$SnapshotDatabase,
-    [Parameter(Mandatory=$true)][string]$PublishedDirectory
+    [Parameter(Mandatory=$true)][string]$PublishedDirectory,
+    [switch]$EnableLanAutoPairing
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
@@ -26,6 +27,7 @@ function Start-TestServer {
     $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $updater + '"'),
         '-DatabasePath', ('"' + $database + '"'), '-PublishedDirectory', ('"' + $published + '"'),
         '-StateDirectory', ('"' + $state + '"'), '-ExpectedHostIp', '127.0.0.1', '-Port', $port)
+    if ($EnableLanAutoPairing) { $args += '-EnableLanAutoPairing' }
     $oldModulePath = $env:PSModulePath
     try {
         $env:PSModulePath = (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
@@ -55,6 +57,8 @@ try {
     $page = Invoke-WebRequest "$url/" -UseBasicParsing
     Check ($page.Content.Contains('voiceAngleOffset')) 'Published Web lacks the compensation field.'
     Check ($page.Content.Contains('greetingSettings')) 'Published Web lacks the Greetingbot tab.'
+    $access = Invoke-RestMethod "$url/api/greeting/access"
+    Check (($access.managementMode -eq 'lan') -eq [bool]$EnableLanAutoPairing) 'Updater LAN access mode was not applied.'
     Check (-not (Test-Path -LiteralPath (Join-Path $testRoot 'LeHoangCloudServer\LeHoangCloudServer.csproj'))) 'Test must not contain source/SDK build prerequisites.'
     $keyFile = Join-Path $state 'admin-key.dpapi'
     Check (Test-Path -LiteralPath $keyFile) 'Admin key was not protected with DPAPI.'

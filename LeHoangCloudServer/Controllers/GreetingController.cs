@@ -13,17 +13,35 @@ public sealed class GreetingController : ControllerBase
 {
     private readonly GreetingService _service;
     private readonly IConfiguration _configuration;
-    public GreetingController(GreetingService service, IConfiguration configuration)
-    { _service = service; _configuration = configuration; }
+    private readonly GreetingLanAccess _lan;
+    public GreetingController(GreetingService service, IConfiguration configuration, GreetingLanAccess lan)
+    { _service = service; _configuration = configuration; _lan = lan; }
 
     private IActionResult? CheckAdmin()
     {
+        if (_lan.Allows(HttpContext)) return null;
         var key = Environment.GetEnvironmentVariable("GREETING_ADMIN_KEY") ?? _configuration["Greeting:AdminKey"];
         if (string.IsNullOrWhiteSpace(key) || key.Length < 24)
             return StatusCode(503, new { message = "Cấu hình GREETING_ADMIN_KEY (ít nhất 24 ký tự) trên server để bật quản lý Greetingbot." });
         var supplied = Request.Headers["X-Greeting-Admin-Key"].ToString();
         return CryptographicOperations.FixedTimeEquals(SHA256.HashData(Encoding.UTF8.GetBytes(key)),
             SHA256.HashData(Encoding.UTF8.GetBytes(supplied))) ? null : Unauthorized(new { message = "Mã quản trị Greetingbot không đúng." });
+    }
+
+    [HttpGet("access")]
+    public IActionResult Access() => Ok(new { managementMode = _lan.Allows(HttpContext) ? "lan" : "key", automaticEnrollment = _lan.Enabled });
+
+    [HttpPost("device/enroll")]
+    [RequestSizeLimit(4096)]
+    public IActionResult Enroll(GreetingRegistration registration)
+    {
+        if (!_lan.Allows(HttpContext) || Request.Headers.ContainsKey("Origin"))
+            return StatusCode(403, new { message = "Tự kết nối chỉ dùng cho app robot trong LAN đã cấu hình." });
+        var token = Request.Headers["X-Greeting-Device-Token"].ToString();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(token, "^[a-f0-9]{48}$"))
+            return BadRequest(new { message = "Mã thiết bị tự tạo không hợp lệ." });
+        var robot = _service.Enroll(registration, token);
+        return robot == null ? Conflict(new { message = "ID này đã thuộc thiết bị khác; không thay mã kết nối hiện có." }) : Ok(robot);
     }
 
     [HttpGet("robots")]

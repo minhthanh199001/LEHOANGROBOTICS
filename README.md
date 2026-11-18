@@ -2,7 +2,7 @@
 
 Hệ sinh thái điều khiển, quản lý đội robot tự hành và giao diện điều hướng Kiosk giao hàng thông minh cho Robot phục vụ OrionStar.
 
-**Greetingbot:** module Android riêng `RobotSample-main/greetingbot` và tab **GREETINGBOT** trong Web hiện có. [Hướng dẫn xây dựng, cập nhật server Windows và ghép nối](docs/GREETINGBOT.md).
+**Greetingbot:** module Android riêng `RobotSample-main/greetingbot` và tab **GREETINGBOT** trong Web hiện có. Bản 1.4.0 tự kết nối trong LAN, không cần chép mã ghép nối; cấu hình góc bù trên Web. [Hướng dẫn xây dựng và cập nhật server Windows](docs/GREETINGBOT.md).
 
 ![Lê Hoàng Robotics](LEHOANG.png)
 

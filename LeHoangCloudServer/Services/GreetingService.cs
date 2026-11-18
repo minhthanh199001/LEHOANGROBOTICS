@@ -50,9 +50,26 @@ public sealed class GreetingService
     {
         lock (_gate)
         {
+            var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
+            return (Insert(registration, token), token);
+        }
+    }
+
+    public GreetingRobot? Enroll(GreetingRegistration registration, string token)
+    {
+        lock (_gate)
+        {
+            var existing = Get(registration.Id);
+            // Idempotent after a lost response/restart; never rotate another robot's credential.
+            if (existing != null) return Authenticate(registration.Id, token) ? existing : null;
+            return Insert(registration, token);
+        }
+    }
+
+    private GreetingRobot Insert(GreetingRegistration registration, string token)
+    {
             using var db = Open();
             using var cmd = db.CreateCommand();
-            var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
             cmd.CommandText = "INSERT INTO GreetingRobots VALUES ($id,$name,$hash,$settings,$snapshot,NULL)";
             cmd.Parameters.AddWithValue("$id", registration.Id);
             cmd.Parameters.AddWithValue("$name", registration.Name);
@@ -60,8 +77,7 @@ public sealed class GreetingService
             cmd.Parameters.AddWithValue("$settings", Serialize(new GreetingSettings()));
             cmd.Parameters.AddWithValue("$snapshot", Serialize(new GreetingSnapshot()));
             cmd.ExecuteNonQuery();
-            return (new GreetingRobot { Id = registration.Id, Name = registration.Name }, token);
-        }
+            return new GreetingRobot { Id = registration.Id, Name = registration.Name };
     }
 
     public List<GreetingRobot> List()
