@@ -587,7 +587,7 @@ public class DeliveryFragment extends Fragment {
             mBtnLanguage.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.GONE);
+                    hideAllContentPanels();
                     if (mPanelLanguageSelect != null) mPanelLanguageSelect.setVisibility(View.VISIBLE);
                 }
             });
@@ -597,8 +597,7 @@ public class DeliveryFragment extends Fragment {
             mBtnLangBack.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (mPanelLanguageSelect != null) mPanelLanguageSelect.setVisibility(View.GONE);
-                    if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                    restoreCurrentActiveModePanel();
                 }
             });
         }
@@ -742,8 +741,10 @@ public class DeliveryFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 closeLeftDrawer();
-                mPanelDeliveryConfig.setVisibility(View.GONE);
-                mPanelModeSwitch.setVisibility(View.VISIBLE);
+                hideAllContentPanels();
+                if (mPanelModeSwitch != null) {
+                    mPanelModeSwitch.setVisibility(View.VISIBLE);
+                }
             }
         });
 
@@ -751,8 +752,10 @@ public class DeliveryFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 closeLeftDrawer();
-                mPanelDeliveryConfig.setVisibility(View.GONE);
-                mPanelSettings.setVisibility(View.VISIBLE);
+                hideAllContentPanels();
+                if (mPanelSettings != null) {
+                    mPanelSettings.setVisibility(View.VISIBLE);
+                }
             }
         });
 
@@ -782,8 +785,7 @@ public class DeliveryFragment extends Fragment {
         mBtnModeBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mPanelModeSwitch.setVisibility(View.GONE);
-                mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                restoreCurrentActiveModePanel();
             }
         });
 
@@ -819,8 +821,7 @@ public class DeliveryFragment extends Fragment {
         mBtnSettingsBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mPanelSettings.setVisibility(View.GONE);
-                mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                restoreCurrentActiveModePanel();
             }
         });
 
@@ -1207,7 +1208,10 @@ public class DeliveryFragment extends Fragment {
 
     // Drawer Management
     private void openLeftDrawer() {
-        mPanelLeftDrawer.setVisibility(View.VISIBLE);
+        if (mPanelLeftDrawer != null) {
+            mPanelLeftDrawer.bringToFront();
+            mPanelLeftDrawer.setVisibility(View.VISIBLE);
+        }
         if (mDrawerTimer != null)
             mDrawerTimer.cancel();
         mDrawerTimer = new CountDownTimer(30000, 1000) {
@@ -2110,21 +2114,43 @@ public class DeliveryFragment extends Fragment {
     }
 
     // =========================================================
+    // PANEL VISIBILITY & NAVIGATION CONTROLLER
+    // =========================================================
+
+    private void hideAllContentPanels() {
+        if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.GONE);
+        if (mPanelModeSwitch != null) mPanelModeSwitch.setVisibility(View.GONE);
+        if (mPanelSettings != null) mPanelSettings.setVisibility(View.GONE);
+        if (mPanelCruiseConfig != null) mPanelCruiseConfig.setVisibility(View.GONE);
+        if (mPanelCruiseArrival != null) mPanelCruiseArrival.setVisibility(View.GONE);
+        if (mPanelLanguageSelect != null) mPanelLanguageSelect.setVisibility(View.GONE);
+        if (mPanelCollectionMode != null) mPanelCollectionMode.setVisibility(View.GONE);
+    }
+
+    private void restoreCurrentActiveModePanel() {
+        hideAllContentPanels();
+        switch (mCurrentActiveMode) {
+            case MODE_COLLECTION:
+                if (mPanelCollectionMode != null) mPanelCollectionMode.setVisibility(View.VISIBLE);
+                break;
+            case MODE_CRUISE:
+                if (mPanelCruiseConfig != null) mPanelCruiseConfig.setVisibility(View.VISIBLE);
+                break;
+            case MODE_DELIVERY:
+            case MODE_PROMO:
+            default:
+                if (mPanelDeliveryConfig != null) mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                break;
+        }
+    }
+
+    // =========================================================
     // CHẾ ĐỘ DU THUYỀN (MINIMALIST CRUISE ENGINE)
     // =========================================================
 
     private void switchActiveMode(int mode) {
         mCurrentActiveMode = mode;
-        if (mPanelModeSwitch != null)
-            mPanelModeSwitch.setVisibility(View.GONE);
-        if (mPanelDeliveryConfig != null)
-            mPanelDeliveryConfig.setVisibility(View.GONE);
-        if (mPanelCruiseConfig != null)
-            mPanelCruiseConfig.setVisibility(View.GONE);
-        if (mPanelCollectionMode != null)
-            mPanelCollectionMode.setVisibility(View.GONE);
-        if (mPanelLanguageSelect != null)
-            mPanelLanguageSelect.setVisibility(View.GONE);
+        hideAllContentPanels();
 
         // Update tag indicators in mode switch panel
         if (mTagUsingTransport != null) {
@@ -2222,10 +2248,7 @@ public class DeliveryFragment extends Fragment {
                     Toast.makeText(getContext(), "Đã chọn ngôn ngữ!", Toast.LENGTH_SHORT).show();
                 }
                 updateLanguageCheckmarks();
-                if (mPanelLanguageSelect != null)
-                    mPanelLanguageSelect.setVisibility(View.GONE);
-                if (mPanelDeliveryConfig != null)
-                    mPanelDeliveryConfig.setVisibility(View.VISIBLE);
+                restoreCurrentActiveModePanel();
             }
         };
 
@@ -2311,8 +2334,7 @@ public class DeliveryFragment extends Fragment {
             mTvCruiseModeBadge.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (mPanelCruiseConfig != null)
-                        mPanelCruiseConfig.setVisibility(View.GONE);
+                    hideAllContentPanels();
                     if (mPanelModeSwitch != null)
                         mPanelModeSwitch.setVisibility(View.VISIBLE);
                 }

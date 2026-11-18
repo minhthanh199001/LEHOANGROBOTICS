@@ -431,318 +431,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 2. LEFT SLIDE-IN DRAWER MENU OVERLAY (MATCHES PHOTO 3) -->
-    <RelativeLayout
-        android:id="@+id/panel_left_drawer"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <!-- Scrim background (click to close) -->
-        <View
-            android:id="@+id/view_drawer_scrim"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#80000000"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <!-- Drawer Content (Left side, ~60% width) -->
-        <LinearLayout
-            android:id="@+id/container_drawer_content"
-            android:layout_width="265dp"
-            android:layout_height="match_parent"
-            android:layout_alignParentStart="true"
-            android:background="@drawable/bg_drawer_panel"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="18dp"
-            android:paddingBottom="20dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <!-- Top Row: Power Button & Close with Countdown -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="36dp"
-                android:layout_marginBottom="24dp">
-
-                <TextView
-                    android:id="@+id/btn_drawer_power"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_alignParentStart="true"
-                    android:background="@drawable/bg_pill_power"
-                    android:gravity="center"
-                    android:paddingHorizontal="12dp"
-                    android:text="⏻ Nút nguồn"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/btn_drawer_close"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_alignParentEnd="true"
-                    android:background="@drawable/bg_pill_close_countdown"
-                    android:gravity="center"
-                    android:paddingHorizontal="12dp"
-                    android:text="✕ 30"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </RelativeLayout>
-
-            <!-- Menu Item 1: Gửi robot về vị trí ban đầu -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_return_home"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_drawer_item"
-                android:paddingHorizontal="12dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:id="@+id/ic_return_home"
-                    android:layout_width="28dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="⤺"
-                    android:textColor="#38BDF8"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_return_home"
-                    android:layout_centerVertical="true"
-                    android:text="Gửi robot về vị trí ban đầu"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </RelativeLayout>
-
-            <!-- Menu Item 1.5: Lấy lại vị trí (Relocalize - hidden to match OrionStar drawer) -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_relocalize"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:visibility="gone"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_drawer_item"
-                android:paddingHorizontal="12dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:id="@+id/ic_relocalize"
-                    android:layout_width="28dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="📍"
-                    android:textColor="#38BDF8"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_relocalize"
-                    android:layout_centerVertical="true"
-                    android:text="Lấy lại vị trí (Trạm sạc / Điểm chờ)"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:text="›"
-                    android:textColor="#94A3B8"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </RelativeLayout>
-
-            <!-- Menu Item 2: Chế độ chuyển đổi -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_switch_mode"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_drawer_item"
-                android:paddingHorizontal="12dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:id="@+id/ic_switch_mode"
-                    android:layout_width="28dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="⊞"
-                    android:textColor="#38BDF8"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_switch_mode"
-                    android:layout_centerVertical="true"
-                    android:text="Chế độ chuyển đổi"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:text="›"
-                    android:textColor="#94A3B8"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </RelativeLayout>
-
-            <!-- Menu Item 3: Cài đặt -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_settings"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_drawer_item"
-                android:paddingHorizontal="12dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:id="@+id/ic_settings"
-                    android:layout_width="28dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="⚙"
-                    android:textColor="#38BDF8"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_settings"
-                    android:layout_centerVertical="true"
-                    android:text="Cài đặt"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:text="›"
-                    android:textColor="#94A3B8"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </RelativeLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <!-- Bottom Item 1: Âm nhạc -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_music"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:layout_marginBottom="8dp"
-                android:paddingHorizontal="8dp">
-
-                <TextView
-                    android:id="@+id/ic_music"
-                    android:layout_width="24dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="🎵"
-                    android:textColor="#94A3B8"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/tv_music_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_music"
-                    android:layout_centerVertical="true"
-                    android:text="Không có"
-                    android:textColor="#E2E8F0"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/btn_music_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:background="@drawable/bg_pill_power"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="Chuyển"
-                    android:textColor="#38BDF8"
-                    android:textSize="11sp"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </RelativeLayout>
-
-            <!-- Bottom Item 2: Lịch sử giao (hidden to match OrionStar drawer) -->
-            <RelativeLayout
-                android:id="@+id/btn_menu_history"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:visibility="gone"
-                android:paddingHorizontal="8dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:id="@+id/ic_history"
-                    android:layout_width="24dp"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="🕒"
-                    android:textColor="#94A3B8"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_toEndOf="@id/ic_history"
-                    android:layout_centerVertical="true"
-                    android:text="Xem lịch sử giao..."
-                    android:textColor="#E2E8F0"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:text="›"
-                    android:textColor="#94A3B8"
-                    android:textSize="16sp" />
-            </RelativeLayout>
-        </LinearLayout>
-    </RelativeLayout>
-
     <!-- 3. MODE SWITCH OVERLAY (MATCHES PHOTO 2) -->
     <LinearLayout
         android:id="@+id/panel_mode_switch"
@@ -2280,4 +1968,317 @@
                 android:textStyle="bold" />
         </LinearLayout>
     </RelativeLayout>
+
+    <!-- 2. LEFT SLIDE-IN DRAWER MENU OVERLAY (MATCHES PHOTO 3) -->
+    <RelativeLayout
+        android:id="@+id/panel_left_drawer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <!-- Scrim background (click to close) -->
+        <View
+            android:id="@+id/view_drawer_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Drawer Content (Left side, ~60% width) -->
+        <LinearLayout
+            android:id="@+id/container_drawer_content"
+            android:layout_width="265dp"
+            android:layout_height="match_parent"
+            android:layout_alignParentStart="true"
+            android:background="@drawable/bg_drawer_panel"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="20dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <!-- Top Row: Power Button & Close with Countdown -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:id="@+id/btn_drawer_power"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentStart="true"
+                    android:background="@drawable/bg_pill_power"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="⏻ Nút nguồn"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/btn_drawer_close"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentEnd="true"
+                    android:background="@drawable/bg_pill_close_countdown"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="✕ 30"
+                    android:textColor="#38BDF8"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </RelativeLayout>
+
+            <!-- Menu Item 1: Gửi robot về vị trí ban đầu -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_return_home"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_return_home"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⤺"
+                    android:textColor="#38BDF8"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_return_home"
+                    android:layout_centerVertical="true"
+                    android:text="Gửi robot về vị trí ban đầu"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 1.5: Lấy lại vị trí (Relocalize - hidden to match OrionStar drawer) -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_relocalize"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_relocalize"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="📍"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_relocalize"
+                    android:layout_centerVertical="true"
+                    android:text="Lấy lại vị trí (Trạm sạc / Điểm chờ)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 2: Chế độ chuyển đổi -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_switch_mode"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_switch_mode"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⊞"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_switch_mode"
+                    android:layout_centerVertical="true"
+                    android:text="Chế độ chuyển đổi"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 3: Cài đặt -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_settings"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_settings"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="⚙"
+                    android:textColor="#38BDF8"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_settings"
+                    android:layout_centerVertical="true"
+                    android:text="Cài đặt"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Bottom Item 1: Âm nhạc -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_music"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="8dp">
+
+                <TextView
+                    android:id="@+id/ic_music"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="🎵"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_music_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_music"
+                    android:layout_centerVertical="true"
+                    android:text="Không có"
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/btn_music_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_pill_power"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="Chuyển"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </RelativeLayout>
+
+            <!-- Bottom Item 2: Lịch sử giao (hidden to match OrionStar drawer) -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_history"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:visibility="gone"
+                android:paddingHorizontal="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_history"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="🕒"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_history"
+                    android:layout_centerVertical="true"
+                    android:text="Xem lịch sử giao..."
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#94A3B8"
+                    android:textSize="16sp" />
+            </RelativeLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
 </FrameLayout>
