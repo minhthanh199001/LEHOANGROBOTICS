@@ -7,6 +7,8 @@
   <title>Lê Hoàng Robotics — Cloud Fleet Control Portal</title>
   <link rel="icon" type="image/png" href="img/logo.png">
   <script src="js/signalr.min.js"></script>
+  <link rel="stylesheet" href="css/greeting.css">
+  <script src="js/greeting.js" defer></script>
   <style>
     :root {
       --bg-dark: #070b14;
@@ -1418,6 +1420,9 @@
       <button id="navBtnUsers" class="main-nav-btn" onclick="switchMainView('users')">
         <span>👥</span> NGƯỜI DÙNG
       </button>
+      <button id="navBtnGreeting" class="main-nav-btn" onclick="switchMainView('greeting')">
+        <span>🤖</span> GREETINGBOT
+      </button>
     </nav>
 
     <div class="filters-section">
@@ -1805,8 +1810,62 @@
       </div>
     </div>
 
+  <section id="viewGreeting" class="greeting-panel" style="display:none" aria-label="Quản lý Greetingbot">
+    <div class="greeting-heading"><div><p class="greeting-eyebrow">LÊ HOÀNG ROBOTICS / ORIONSTAR</p>
+      <h1>Điều khiển Greetingbot</h1><p>Điểm từ bản đồ robot · Điều hướng · Kiểm tra microphone và loa</p></div>
+      <span id="greetingOnline" class="greeting-badge">Chưa kết nối</span></div>
+    <form id="greetingAccess" class="greeting-access">
+      <label>Mã quản trị Greetingbot<input id="greetingAdminKey" type="password" autocomplete="off" required placeholder="Mã đã cấu hình trên server"></label>
+      <button type="submit">Kết nối quản lý</button>
+      <label>Robot<select id="greetingRobotSelect" aria-label="Chọn Greetingbot"><option value="">Chưa tải danh sách</option></select></label>
+    </form>
+    <p id="greetingNotice" role="status" aria-live="polite">Nhập mã quản trị để tải danh sách Greetingbot.</p>
+    <div class="greeting-grid">
+      <div class="greeting-card">
+        <div class="greeting-card-heading"><h2 id="greetingRobotName">Điểm đến trên robot</h2><button id="greetingRefresh" type="button" disabled>Đọc lại điểm</button></div>
+        <dl class="greeting-status"><div><dt>Bản đồ hiện tại</dt><dd id="greetingMap">—</dd></div>
+          <div><dt>Quyền điều khiển</dt><dd id="greetingSdk">—</dd></div>
+          <div><dt>Điều hướng</dt><dd id="greetingNavigation">—</dd></div>
+          <div><dt>Microphone / loa</dt><dd id="greetingMicrophone">—</dd></div></dl>
+        <p id="greetingRobotMessage">Mở ứng dụng Lê Hoàng Greetingbot từ Home của RobotOS.</p>
+        <div id="greetingPlaces" class="greeting-places"><p>Chưa có dữ liệu điểm từ robot.</p></div>
+        <div class="greeting-actions"><button id="greetingStop" class="greeting-danger" disabled>Dừng điều hướng</button>
+          <button id="greetingMic" disabled>Test microphone → phát lại</button></div>
+        <p class="greeting-hint">Tạo bản đồ, đặt điểm và định vị trong Map Tool của robot. App tự đọc lại khi quay về màn hình chính.</p>
+      </div>
+      <div class="greeting-card">
+        <h2>Cấu hình vận hành</h2>
+        <form id="greetingSettings" class="greeting-settings">
+          <label>Tốc độ di chuyển (m/s)<input name="linearSpeed" type="number" min="0.1" max="0.7" step="0.05" required></label>
+          <label>Tốc độ xoay (rad/s)<input name="angularSpeed" type="number" min="0.2" max="1.8" step="0.1" required></label>
+          <label>Khoảng kiểm tra đã tới điểm (m)<input name="arrivalTolerance" type="number" min="0.05" max="0.5" step="0.05" required></label>
+          <label>Thời gian chờ vật cản (ms)<input name="obstacleTimeoutMs" type="number" min="5000" max="120000" step="1000" required></label>
+          <label>Thời gian ghi âm (giây)<input name="microphoneSeconds" type="number" min="2" max="15" step="1" required></label>
+          <label>Âm lượng phát lại (%)<input name="playbackVolume" type="number" min="0" max="100" step="1" required></label>
+          <button type="submit" disabled>Lưu cấu hình</button>
+        </form>
+        <p class="greeting-hint">Cấu hình áp dụng cho thao tác tiếp theo. Âm lượng phát lại còn phụ thuộc mức âm lượng media trên robot.</p>
+      </div>
+      <div class="greeting-card">
+        <h2>Ghép nối robot mới</h2>
+        <form id="greetingRegister" class="greeting-settings">
+          <label>ID robot<input name="id" value="GREETING-01" pattern="[A-Za-z0-9_-]{1,64}" maxlength="64" required></label>
+          <label>Tên hiển thị<input name="name" value="Greetingbot Lê Hoàng" maxlength="100" required></label>
+          <button type="submit">Tạo mã ghép nối</button>
+        </form>
+        <p class="greeting-hint">Trên robot: Cấu hình kết nối Web → nhập địa chỉ server, ID và mã ghép nối vừa tạo.</p>
+      </div>
+      <div class="greeting-card"><h2>Kết quả lệnh gần đây</h2><ol id="greetingCommands" class="greeting-command-list"><li>Chưa có lệnh.</li></ol></div>
+    </div>
+    <dialog id="greetingPairing" class="greeting-pairing"><h2>Ghép nối Greetingbot</h2>
+      <p>Lưu mã này để nhập trên robot. Server chỉ lưu bản băm và không hiển thị lại mã.</p>
+      <label>Địa chỉ server<input id="greetingPairServer" readonly></label>
+      <label>ID robot<input id="greetingPairId" readonly></label>
+      <label>Mã ghép nối<input id="greetingPairToken" readonly></label>
+      <button id="greetingClosePairing">Đã lưu mã</button>
+    </dialog>
+  </section>
   </div>
-
   <div id="toastContainer"></div>
 
   <!-- LOGIN MODAL -->
@@ -2007,12 +2066,14 @@
       const views = {
         'dashboard': document.getElementById('viewDashboard'),
         'orgsite': document.getElementById('viewOrgSite'),
-        'users': document.getElementById('viewUsers')
+        'users': document.getElementById('viewUsers'),
+        'greeting': document.getElementById('viewGreeting')
       };
       const btns = {
         'dashboard': document.getElementById('navBtnDashboard'),
         'orgsite': document.getElementById('navBtnOrgSite'),
-        'users': document.getElementById('navBtnUsers')
+        'users': document.getElementById('navBtnUsers'),
+        'greeting': document.getElementById('navBtnGreeting')
       };
 
       Object.keys(views).forEach(key => {
@@ -2023,7 +2084,9 @@
         }
       });
 
-      if (viewName === 'orgsite') {
+      if (viewName === 'greeting') {
+        window.GreetingPanel?.open();
+      } else if (viewName === 'orgsite') {
         populateOrgFilterInSiteTab();
         renderOrganizations();
         renderSites();

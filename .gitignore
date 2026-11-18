@@ -26,6 +26,7 @@ __pycache__/
 *stderr.txt
 *stdout.txt
 scratch/
+.local/
 extracted_docx/
 .vscode/
 

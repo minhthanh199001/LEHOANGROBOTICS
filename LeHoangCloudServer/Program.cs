@@ -10,6 +10,7 @@ builder.WebHost.UseUrls(defaultUrl);
 
 // 1. Core Services
 builder.Services.AddSingleton<CloudDatabaseService>();
+builder.Services.AddSingleton<GreetingService>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
