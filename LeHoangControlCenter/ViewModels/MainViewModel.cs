@@ -1806,6 +1806,7 @@ namespace LeHoangControlCenter.ViewModels
 
                 string summary = string.Join(" | ", FloorConfigs.Select(f => $"{f.FloorLabel}: '{f.MapName}'"));
                 AddLog($"💾 [CÀI ĐẶT TẦNG] Đã lưu thành công: {summary}");
+                UpdateAvailableStationNames();
             }
             catch (Exception ex)
             {
@@ -1978,8 +1979,13 @@ namespace LeHoangControlCenter.ViewModels
             }
             else if (param is string str && !string.IsNullOrWhiteSpace(str))
             {
-                dest = str;
-                var found = MapStations.FirstOrDefault(s => s.Name.Equals(str, StringComparison.OrdinalIgnoreCase));
+                dest = str.Trim();
+                if (dest.StartsWith("[") && dest.Contains("]"))
+                {
+                    int endBracket = dest.IndexOf(']');
+                    dest = dest.Substring(endBracket + 1).Trim();
+                }
+                var found = MapStations.FirstOrDefault(s => s.Name.Equals(dest, StringComparison.OrdinalIgnoreCase));
                 if (found != null)
                 {
                     x = found.X;
@@ -1988,7 +1994,12 @@ namespace LeHoangControlCenter.ViewModels
             }
             else if (!string.IsNullOrWhiteSpace(TargetDestination))
             {
-                dest = TargetDestination;
+                dest = TargetDestination.Trim();
+                if (dest.StartsWith("[") && dest.Contains("]"))
+                {
+                    int endBracket = dest.IndexOf(']');
+                    dest = dest.Substring(endBracket + 1).Trim();
+                }
                 var found = MapStations.FirstOrDefault(s => s.Name.Equals(dest, StringComparison.OrdinalIgnoreCase));
                 if (found != null)
                 {
@@ -2238,58 +2249,73 @@ namespace LeHoangControlCenter.ViewModels
         {
             AvailableStationNames.Clear();
             var allSaved = LoadAllSavedStations();
-
-            // Build floor label lookup
-            var floorLabelsByMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var fc in FloorConfigs)
-            {
-                if (!string.IsNullOrWhiteSpace(fc.MapName))
-                {
-                    floorLabelsByMap[fc.MapName] = fc.FloorLabel;
-                    floorLabelsByMap[fc.MapName.Replace("ă", "â").Replace("ầ", "â")] = fc.FloorLabel;
-                }
-            }
-
             var uniqueItems = new List<string>();
 
-            // 1. Grouped by all available floors in saved_stations.json
-            foreach (var kvp in allSaved)
+            // Case A: User has configured elevator floors in FloorConfigs
+            if (FloorConfigs.Count > 0)
             {
-                string mapName = kvp.Key;
-                string floorLabel = "Tầng ?";
-                if (floorLabelsByMap.TryGetValue(mapName, out var fl))
+                // ONLY show stations that belong to explicitly configured floors!
+                foreach (var fc in FloorConfigs)
                 {
-                    floorLabel = fl;
-                }
-                else if (mapName.Contains("1") || mapName.Contains("MT1") || mapName.Contains("T1"))
-                {
-                    floorLabel = "Tầng 1";
-                }
-                else if (mapName.Contains("2") || mapName.Contains("T2"))
-                {
-                    floorLabel = "Tầng 2";
-                }
+                    if (string.IsNullOrWhiteSpace(fc.MapName)) continue;
+                    string targetMap = fc.MapName.Trim();
+                    string floorLabel = !string.IsNullOrWhiteSpace(fc.FloorLabel) ? fc.FloorLabel.Trim() : "Tầng";
 
-                foreach (var station in kvp.Value)
-                {
-                    if (string.IsNullOrWhiteSpace(station.Name)) continue;
-                    string formatted = $"[{floorLabel}] {station.Name}";
-                    if (!uniqueItems.Contains(formatted))
+                    var matchedStations = FindStationsForMap(allSaved, targetMap);
+                    if (matchedStations != null)
                     {
-                        uniqueItems.Add(formatted);
+                        foreach (var station in matchedStations)
+                        {
+                            if (string.IsNullOrWhiteSpace(station.Name)) continue;
+                            string formatted = $"[{floorLabel}] {station.Name}";
+                            if (!uniqueItems.Contains(formatted))
+                            {
+                                uniqueItems.Add(formatted);
+                            }
+                        }
+                    }
+
+                    // If this configured floor matches the currently active map, also include any active MapStations
+                    if (string.Equals(CurrentMap, targetMap, StringComparison.OrdinalIgnoreCase) ||
+                        NormalizeMapKey(CurrentMap) == NormalizeMapKey(targetMap))
+                    {
+                        foreach (var st in MapStations)
+                        {
+                            if (string.IsNullOrWhiteSpace(st.Name)) continue;
+                            string formatted = $"[{floorLabel}] {st.Name}";
+                            if (!uniqueItems.Contains(formatted))
+                            {
+                                uniqueItems.Add(formatted);
+                            }
+                        }
                     }
                 }
             }
-
-            // 2. Also ensure any active MapStations not yet included are added
-            string currentFloorLabel = FloorConfigs.FirstOrDefault(f => f.MapName == CurrentMap)?.FloorLabel ?? "Tầng 2";
-            foreach (var st in MapStations)
+            else
             {
-                if (string.IsNullOrWhiteSpace(st.Name)) continue;
-                string formatted = $"[{currentFloorLabel}] {st.Name}";
-                if (!uniqueItems.Contains(formatted))
+                // Case B: No elevator floors configured. Use current active map stations without floor tags
+                foreach (var st in MapStations)
                 {
-                    uniqueItems.Add(formatted);
+                    if (string.IsNullOrWhiteSpace(st.Name)) continue;
+                    if (!uniqueItems.Contains(st.Name))
+                    {
+                        uniqueItems.Add(st.Name);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(CurrentMap))
+                {
+                    var matchedStations = FindStationsForMap(allSaved, CurrentMap);
+                    if (matchedStations != null)
+                    {
+                        foreach (var s in matchedStations)
+                        {
+                            if (!string.IsNullOrWhiteSpace(s.Name) && !uniqueItems.Contains(s.Name))
+                            {
+                                uniqueItems.Add(s.Name);
+                            }
+                        }
+                    }
                 }
             }
 
