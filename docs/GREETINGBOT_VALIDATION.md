@@ -6,6 +6,7 @@
 - Hai module Android hiện có `:app:assembleDebug` và `:cloudmobile:assembleDebug`: biên dịch thành công sau khi thêm module Greetingbot.
 - `dotnet build LeHoangCloudServer -c Release`: thành công, 0 cảnh báo / 0 lỗi.
 - `node scripts/test-greeting-integration.mjs`: **39 kiểm tra thành công**, dùng SQLite và server riêng, không gửi lệnh chuyển động tới robot thật.
+- `node scripts/test-greeting-integration.mjs '..\cloud_fleet.db'`: **42 kiểm tra thành công** trên bản sao SQLite của DB tham khảo người vận hành cung cấp. Schema/nội dung cả 5 bảng Fleet cũ được giữ nguyên, hai bảng Greetingbot nằm trong cùng DB, hash file nguồn không thay đổi. `GreetingService` dùng trực tiếp connection string của `CloudDatabaseService`.
 - Các trường hợp đã kiểm tra: phân quyền quản trị/thiết bị, cách ly mã theo robot, thiết bị offline, app chạy nền, SDK mất quyền hoặc bị tiếp quản, chưa định vị, bản đồ cũ, điểm không tồn tại/không thể tới, chống trùng điều hướng, ưu tiên dừng, ACK cuối không bị lùi trạng thái, cấu hình sai khoảng, đồng bộ cấu hình, microphone đang bận, khởi động lại server, hết hạn lệnh, mất phản hồi và không phát lại chuyển động.
 - Web trên server kiểm thử: tab Greetingbot, ghép nối, trạng thái offline và lưu cấu hình hoạt động qua giao diện trình duyệt.
 - Script cập nhật Windows: đã chạy publish sang thư mục phiên bản mới, sao lưu DB, đọc lại mã DPAPI và chạy server thử nghiệm; bản ghi robot và cấu hình được giữ nguyên.

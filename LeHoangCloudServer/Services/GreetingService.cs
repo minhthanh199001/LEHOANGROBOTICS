@@ -15,9 +15,7 @@ public sealed class GreetingService
 
     public GreetingService(CloudDatabaseService existingDatabase)
     {
-        var path = Environment.GetEnvironmentVariable("DATABASE_PATH");
-        if (string.IsNullOrWhiteSpace(path)) path = Path.Combine(AppContext.BaseDirectory, "cloud_fleet.db");
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        _connectionString = existingDatabase.ConnectionString;
         using var db = Open();
         using var cmd = db.CreateCommand();
         cmd.CommandText = """

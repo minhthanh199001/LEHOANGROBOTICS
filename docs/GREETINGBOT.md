@@ -34,6 +34,29 @@ Trên robot, **mở từ Home / Application Center của RobotOS**, không dùng
 
 ## Cập nhật server Windows 192.168.0.123:5050
 
+### Kết nối database theo các service hiện có
+
+Hệ thống dùng file SQLite qua `Microsoft.Data.Sqlite`, không cần tài khoản SQL Server. Hai ứng dụng có database riêng:
+
+| Thành phần | File | Quy tắc tìm đường dẫn |
+| --- | --- | --- |
+| Web/server — `CloudDatabaseService` | `cloud_fleet.db` | Biến môi trường `DATABASE_PATH`; nếu chưa đặt thì nằm cạnh DLL/exe server (`AppContext.BaseDirectory`). |
+| Control Center — `DatabaseService` | `lehoang_fleet.db` | Nằm cạnh exe Control Center (`AppDomain.CurrentDomain.BaseDirectory`). |
+
+`GreetingService` nhận **chính connection string của `CloudDatabaseService`**, nên dữ liệu Greetingbot nằm trong cùng `cloud_fleet.db` với Web hiện tại. Nó thêm hai bảng `GreetingRobots`, `GreetingCommands`. Các bảng Fleet, tổ chức, chi nhánh và tài khoản tiếp tục dùng dữ liệu cũ. Hai file DB có cấu trúc khác nhau; bản dành cho Control Center có cột `BatteryLevel`, còn bản Cloud dùng `Battery` và các cột pose.
+
+Robot gửi dữ liệu/lệnh xác nhận đến HTTP API của server; robot không cần quyền mở trực tiếp file SQLite. Control Center đồng bộ với server qua các API/FleetHub hiện có.
+
+Các file tham khảo `CloudDatabaseService.cs`, `DatabaseService.cs`, `cloud_fleet.db`, `lehoang_fleet.db` trong thư mục `ELEVATOR PROJECT` đã được đối chiếu. Kiểm tra DB có sẵn bằng **bản sao SQLite cách ly** (cần Node.js 24 trở lên):
+
+```powershell
+node .\scripts\test-greeting-integration.mjs '..\cloud_fleet.db'
+```
+
+Lệnh kiểm tra mở file nguồn ở chế độ chỉ đọc, tạo bản sao bằng SQLite Backup API, chạy server trên bản sao rồi so sánh schema/nội dung từng bảng cũ và hash file nguồn. Không đưa các file DB có tài khoản/dữ liệu vận hành này lên GitHub.
+
+### Thao tác trên máy server
+
 1. Cập nhật checkout từ GitHub về commit chứa Greetingbot.
 2. Xác định **đúng file `cloud_fleet.db` server đang dùng** (`DATABASE_PATH`, hoặc cạnh DLL/exe của server). Không thay file này bằng DB demo hay DB từ máy khác.
 3. Chạy trên chính máy server, trong thư mục checkout:

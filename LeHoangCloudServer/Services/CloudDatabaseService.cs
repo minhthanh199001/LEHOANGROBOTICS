@@ -11,6 +11,7 @@ namespace LeHoangCloudServer.Services;
 public class CloudDatabaseService
 {
     private readonly string _connectionString;
+    internal string ConnectionString => _connectionString;
     // In-memory cache for ultra-fast 60fps real-time robot telemetry queries
     private readonly ConcurrentDictionary<string, CloudRobotItem> _robotLiveCache = new();
     private readonly ConcurrentQueue<FleetAlertItem> _recentAlerts = new();
@@ -24,7 +25,7 @@ public class CloudDatabaseService
         {
             Directory.CreateDirectory(parentDir);
         }
-        _connectionString = $"Data Source={dbPath}";
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = dbPath }.ToString();
         InitializeDatabase();
         LoadInitialCache();
     }

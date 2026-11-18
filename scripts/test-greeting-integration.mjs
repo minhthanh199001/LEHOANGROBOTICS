@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {mkdtemp, rm} from 'node:fs/promises';
+import {mkdtemp, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {randomBytes} from 'node:crypto';
+import {createHash, randomBytes} from 'node:crypto';
 import {createServer} from 'node:net';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,6 +15,18 @@ const port = await new Promise(resolvePort => {
 const base = `http://127.0.0.1:${port}`;
 const admin = randomBytes(24).toString('hex');
 const env = {...process.env, GREETING_ADMIN_KEY: admin, DATABASE_PATH: resolve(dir, 'test.db'), ASPNETCORE_URLS: base, ASPNETCORE_ENVIRONMENT:'Production'};
+const sourceDatabase = process.argv[2] ? resolve(process.argv[2]) : null;
+let sourceHash, originalTables, sqlite;
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+function fingerprint(db) {
+  return Object.fromEntries(db.prepare("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(table => {
+    const quotedName = '"' + table.name.replaceAll('"','""') + '"';
+    const statement = db.prepare('SELECT * FROM ' + quotedName);
+    statement.setReadBigInts(true);
+    const rows = statement.all().map(row => JSON.stringify(row, (_, value) => typeof value === 'bigint' ? value.toString() : value)).sort();
+    return [table.name, hash(JSON.stringify({schema:table.sql,rows}))];
+  }));
+}
 let server, logs = '';
 async function start() {
   server = spawn('dotnet', [resolve(root, 'LeHoangCloudServer/bin/Release/net8.0/LeHoangCloudServer.dll')], {cwd:resolve(root,'LeHoangCloudServer'), env, windowsHide:true, stdio:['ignore','pipe','pipe']});
@@ -27,8 +39,10 @@ async function start() {
   throw new Error('Server did not start: ' + logs);
 }
 async function stop() {
-  if (!server || server.exitCode !== null) return;
-  const exited = new Promise(r => server.once('exit', r)); server.kill(); await exited;
+  const running = server;
+  server = null;
+  if (!running || running.exitCode !== null || running.signalCode !== null) return;
+  const exited = new Promise(r => running.once('exit', r)); running.kill(); await exited;
 }
 async function call(path, method='GET', body, key=admin, device=false) {
   const res = await fetch(base+'/api/greeting'+path, {method, headers:{'Content-Type':'application/json', [device?'X-Greeting-Device-Token':'X-Greeting-Admin-Key']:key}, body:body===undefined?undefined:JSON.stringify(body)});
@@ -37,6 +51,15 @@ async function call(path, method='GET', body, key=admin, device=false) {
 let checks = 0;
 function check(condition, message) { assert.ok(condition, message); checks++; }
 try {
+  if (sourceDatabase) {
+    // Exercise migrations against an isolated SQLite backup; never start the server on the source file.
+    sqlite = await import('node:sqlite');
+    sourceHash = hash(await readFile(sourceDatabase));
+    const source = new sqlite.DatabaseSync(sourceDatabase, {readOnly:true});
+    try { await sqlite.backup(source, env.DATABASE_PATH); } finally { source.close(); }
+    const copy = new sqlite.DatabaseSync(env.DATABASE_PATH, {readOnly:true});
+    try { originalTables = fingerprint(copy); } finally { copy.close(); }
+  }
   await start();
   check((await call('/robots','GET',undefined,'wrong-key')).status===401, 'Anonymous/wrong admin rejected');
   check((await call('/robots','POST',{id:'../bad',name:'Bad'})).status===400, 'Robot IDs validated');
@@ -53,7 +76,7 @@ try {
   check((await call('/device/OTHER/sync','POST',{snapshot},token,true)).status===401, 'Device token isolated by robot');
   check((await sync()).status===200, 'Authenticated device heartbeat');
   const list=await call('/robots');
-  check(list.data[0].online && !JSON.stringify(list.data).includes(token) && !JSON.stringify(list.data).includes('tokenHash'), 'Fleet online without leaking credentials');
+  check(list.data.find(r=>r.id==='TEST-GREETING').online && !JSON.stringify(list.data).includes(token) && !JSON.stringify(list.data).includes('tokenHash'), 'Fleet online without leaking credentials');
   check((await call(robotPath+'/commands','POST',command('navigate','Reception','OldMap'))).status===409, 'Stale map rejected');
   check((await call(robotPath+'/commands','POST',command('navigate','Blocked'))).status===409, 'Unreachable point rejected');
   check((await call(robotPath+'/commands','POST',command('navigate','Missing'))).status===409, 'Unknown point rejected');
@@ -108,7 +131,17 @@ try {
   check((await call(robotPath+'/commands','POST',command())).status===202, 'Fresh idle device can recover after unconfirmed delivery');
   const assets=await Promise.all(['/','/js/greeting.js','/css/greeting.css'].map(p=>fetch(base+p)));
   check(assets.every(r=>r.status===200), 'Existing dashboard and Greetingbot assets served');
-  console.log(`PASS: ${checks} Greetingbot integration checks (isolated SQLite; no physical movement).`);
+  if (sourceDatabase) {
+    await stop();
+    const copy = new sqlite.DatabaseSync(env.DATABASE_PATH, {readOnly:true});
+    try {
+      const after = fingerprint(copy);
+      check(Object.entries(originalTables).every(([name,digest])=>after[name]===digest), 'All original table schemas and rows preserved');
+      check(!!after.GreetingRobots && !!after.GreetingCommands, 'Greetingbot tables created in the same database');
+    } finally { copy.close(); }
+    check(hash(await readFile(sourceDatabase))===sourceHash, 'Source database file unchanged');
+  }
+  console.log(`PASS: ${checks} Greetingbot integration checks (isolated ${sourceDatabase ? 'backup of supplied' : 'SQLite'} database; no physical movement).`);
 } finally {
   await stop();
   await rm(dir,{recursive:true,force:true});
