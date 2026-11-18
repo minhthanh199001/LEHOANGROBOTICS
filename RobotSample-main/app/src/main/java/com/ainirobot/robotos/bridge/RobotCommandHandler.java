@@ -363,31 +363,42 @@ public class RobotCommandHandler {
 
         if (!isCustomCoord && !TextUtils.isEmpty(destination)) {
             Log.i(TAG, "Navigating to Named Station via native route: " + destination);
-            RobotApi.getInstance().startNavigation(0, destination, 1.5, timeoutMs, new ActionListener() {
-                @Override
-                public void onResult(int status, String responseString) throws RemoteException {
-                    Log.i(TAG, "Named Station onResult: status=" + status + ", resp=" + responseString);
-                    boolean success = (status == Definition.RESULT_OK && !"false".equalsIgnoreCase(responseString));
-                    if (!success && x != null && y != null) {
-                        Log.w(TAG, "Named navigation returned false. Falling back to Pose navigation...");
-                        navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
-                    } else {
-                        sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
+            int navResult = -1;
+            try {
+                navResult = RobotApi.getInstance().startNavigation(0, destination, 1.5, timeoutMs, new ActionListener() {
+                    @Override
+                    public void onResult(int status, String responseString) throws RemoteException {
+                        Log.i(TAG, "Named Station onResult: status=" + status + ", resp=" + responseString);
+                        boolean success = (status == Definition.RESULT_OK && !"false".equalsIgnoreCase(responseString));
+                        if (!success && x != null && y != null) {
+                            Log.w(TAG, "Named navigation returned false. Falling back to Pose navigation...");
+                            navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                        } else {
+                            sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
+                        }
                     }
-                }
 
-                @Override
-                public void onError(int errorCode, String errorString) throws RemoteException {
-                    Log.e(TAG, "Named Station onError: code=" + errorCode + ", err=" + errorString);
-                    // If named place failed and coordinates exist, fallback to Pose navigation
-                    if (x != null && y != null) {
-                        Log.i(TAG, "Falling back to Pose navigation...");
-                        navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
-                    } else {
-                        sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                    @Override
+                    public void onError(int errorCode, String errorString) throws RemoteException {
+                        Log.e(TAG, "Named Station onError: code=" + errorCode + ", err=" + errorString);
+                        // If named place failed and coordinates exist, fallback to Pose navigation
+                        if (x != null && y != null) {
+                            Log.i(TAG, "Falling back to Pose navigation...");
+                            navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                        } else {
+                            sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                        }
                     }
-                }
-            });
+                });
+            } catch (Throwable t) {
+                Log.w(TAG, "startNavigation by name threw: " + t.getMessage());
+            }
+
+            // If startNavigation by name was rejected immediately (< 0) and coordinates exist, fallback to Pose right away!
+            if (navResult < 0 && x != null && y != null) {
+                Log.w(TAG, "startNavigation by name rejected (code " + navResult + "). Fallback directly to Pose navigation...");
+                navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+            }
             return;
         }
 
@@ -422,19 +433,29 @@ public class RobotCommandHandler {
         pose.setNoDirectionalParking(true); // Don't spin in place to align angle!
         pose.setIgnoreDistance(true);
         Log.i(TAG, "Navigating via Pose (no directional parking): " + pose.toString());
-        RobotApi.getInstance().startNavigation(0, pose, maxDist, timeoutMs, new ActionListener() {
-            @Override
-            public void onResult(int status, String responseString) throws RemoteException {
-                boolean success = (status == Definition.RESULT_OK);
-                sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
-            }
+        try {
+            int ret = RobotApi.getInstance().startNavigation(0, pose, maxDist, timeoutMs, new ActionListener() {
+                @Override
+                public void onResult(int status, String responseString) throws RemoteException {
+                    Log.i(TAG, "Pose Navigate onResult: status=" + status + ", resp=" + responseString);
+                    boolean success = (status == Definition.RESULT_OK);
+                    sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
+                }
 
-            @Override
-            public void onError(int errorCode, String errorString) throws RemoteException {
-                Log.e(TAG, "Pose Navigate onError: code=" + errorCode + ", err=" + errorString);
-                sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                @Override
+                public void onError(int errorCode, String errorString) throws RemoteException {
+                    Log.e(TAG, "Pose Navigate onError: code=" + errorCode + ", err=" + errorString);
+                    sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
+                }
+            });
+            if (ret < 0) {
+                Log.e(TAG, "Pose startNavigation returned error code: " + ret);
+                sendResult(client, msgId, "CMD_NAVIGATE", false, ret, "Pose navigation returned code: " + ret);
             }
-        });
+        } catch (Throwable t) {
+            Log.e(TAG, "Pose startNavigation exception: " + t.getMessage(), t);
+            sendResult(client, msgId, "CMD_NAVIGATE", false, -1, t.getMessage());
+        }
     }
 
     private void handleStopNavigate(final WebSocket client, final String msgId) {
@@ -831,6 +852,16 @@ public class RobotCommandHandler {
                         RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
                     } catch (Throwable ignored) {}
 
+                    // Automatically compute/update topological road routes for newly added points
+                    try {
+                        RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
+                            @Override
+                            public void onResult(int res, String msg) {
+                                Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
+                            }
+                        });
+                    } catch (Throwable ignored) {}
+
                     sendResult(client, msgId, "CMD_ADD_PLACE", ok || diskOk, result,
                             "Đã lưu điểm '" + name + "' thành công");
 
@@ -900,6 +931,16 @@ public class RobotCommandHandler {
                     // Persist deletion to CoreService
                     try {
                         RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
+                    } catch (Throwable ignored) {}
+
+                    // Refresh road routes after deletion
+                    try {
+                        RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
+                            @Override
+                            public void onResult(int res, String msg) {
+                                Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
+                            }
+                        });
                     } catch (Throwable ignored) {}
 
                     sendResult(client, msgId, "CMD_DELETE_PLACE", ok || diskOk, result,

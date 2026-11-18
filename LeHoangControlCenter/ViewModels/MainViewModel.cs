@@ -1824,10 +1824,14 @@ namespace LeHoangControlCenter.ViewModels
                 insidePoint = CurrentMap.Contains("2") ? "TrongThangMay_T2" : "TrongThangMay_T1";
             }
 
-            AddLog($"🛗 [VÀO THANG MÁY] Robot đang di chuyển vào trong buồng thang máy: '{insidePoint}'...");
+            var station = MapStations.FirstOrDefault(s => s.Name.Equals(insidePoint, StringComparison.OrdinalIgnoreCase));
+
+            AddLog($"🛗 [VÀO THANG MÁY] Robot đang di chuyển vào trong buồng thang máy: '{insidePoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
             await _robotService.SendCommandAsync(new NavigateCommand
             {
                 Destination = insidePoint,
+                X = station?.X,
+                Y = station?.Y,
                 MaxDistance = 1.2,
                 TimeoutSeconds = 45
             });
@@ -1843,10 +1847,14 @@ namespace LeHoangControlCenter.ViewModels
                 exitPoint = CurrentMap.Contains("2") ? "ChoThangMay_T2" : "ChoThangMay_T1";
             }
 
-            AddLog($"🚪 [THOÁT THANG MÁY] Robot đang lăn bánh ra điểm chờ ngoài sảnh: '{exitPoint}'...");
+            var station = MapStations.FirstOrDefault(s => s.Name.Equals(exitPoint, StringComparison.OrdinalIgnoreCase));
+
+            AddLog($"🚪 [THOÁT THANG MÁY] Robot đang lăn bánh ra điểm chờ ngoài sảnh: '{exitPoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
             await _robotService.SendCommandAsync(new NavigateCommand
             {
                 Destination = exitPoint,
+                X = station?.X,
+                Y = station?.Y,
                 MaxDistance = 1.5,
                 TimeoutSeconds = 45
             });
