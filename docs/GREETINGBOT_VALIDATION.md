@@ -6,8 +6,9 @@
 - Đối chiếu mẫu native thấy một cụm hướng chính quanh 280–300° xen các mẫu nhảy về 0° hoặc hướng khác trong cùng đoạn thu. Bản 1.3.1 chọn cụm đa số rõ ràng thay vì bắt tất cả mẫu trong đoạn đồng nhất; giữ điều kiện active, cùng boot ID/cửa sổ thu, ít nhất 3 mẫu/100 ms, trên 60% số mẫu active và độ tập trung/độ lệch của cụm.
 - App đo trung vị 20 khung tiếng nền trước khi nghe, tránh ngưỡng khởi tạo thấp làm tiếng quạt mở đoạn thu 4,5 giây liên tục. Giao diện yêu cầu chờ hiệu chỉnh xong trước khi nói.
 - Android **16 test / 0 lỗi**, build thành công. Backend **41 kiểm tra thành công**, bổ sung trường hợp góc chủ đạo có nhiễu, vòng 360°, hai nguồn ngang nhau và đa số yếu phải bị loại. Kiểm tra VAD xác nhận nền quạt đều không mở đoạn nói, vẫn nhận mức giọng cao hơn nền và không bị một tiếng click làm lệch hiệu chỉnh.
-- Đã cài APK 1.3.1. SHA-256 file bàn giao `releases/LeHoangGreetingbot_v1.3.1-debug.apk`: `CAC0BAE244566CA441D355193F81404070D1A8D1CB80D31B1C5032A09DB21936`.
-- **Đang chờ kiểm tra xoay lặp lại trên bản 1.3.1.** Một lần SDK báo hoàn tất và một lần người vận hành thấy xoay chưa chứng minh hoạt động ổn định ở hai phía.
+- Đã cài APK 1.3.1; hash trên robot khớp file bàn giao `releases/LeHoangGreetingbot_v1.3.1-debug.apk`: `CAC0BAE244566CA441D355193F81404070D1A8D1CB80D31B1C5032A09DB21936`. SDK kết nối/đã định vị, 5 điểm vẫn được đọc.
+- Trong lần thử tiếp theo trên 1.3.1, log ghi nhận **5 câu gọi có góc hợp lệ và 5 callback `wakeUp` hoàn tất**: “robot ơi” tại 30° (6 mẫu được giữ trong 8 mẫu active), 317,43° (35/37), 340,45° (11/11), 320,53° (15/21), và “Hello robot” tại 336,11° (9/9). Trước đó có một câu bị loại do không có cụm góc đủ rõ; câu không nhận dạng được không sinh chuyển động.
+- **Đang chờ người vận hành xác nhận chuyển động thực tế/đúng hướng trong lần thử 1.3.1.** Callback SDK chưa thay cho quan sát vật lý ở hai phía.
 
 ## Bản thử MicroArray 1.3.0
 
