@@ -38,4 +38,4 @@ Phép bù không bị áp dụng lại trong vòng kiểm tra heading. `wakeUp(.
 - APK: `releases/LeHoangGreetingbot_v1.3.6-debug.apk`; SHA-256 `B3DACB3C4C4E2B3B5C81DA2241F86F04608C687855E996C5666545C3762D0B65`.
 - Khi cần khôi phục, lấy APK/mã từ tag trên; cài APK bằng `adb install -r`. Giữ khóa OpenAI và token ngoài Git. Vẫn cần proxy Windows/ADB hoạt động với ROM hiện tại.
 
-Web vận hành `192.168.0.123:5050` được kiểm tra vẫn là bản cũ, chưa có trường Greetingbot/offset. Cần cập nhật server giữ đúng database hiện có để dùng cấu hình này tại địa chỉ đó; mốc Git không đồng nghĩa server đã được triển khai.
+Web vận hành `192.168.0.123:5050` đã được cập nhật ngày 18/11/2026; HTTP xác nhận có tab Greetingbot và trường bù góc. Xem `GREETINGBOT_VALIDATION.md` để biết tình trạng ghép nối robot với Web vận hành. Tag giữ nguyên mã thuật toán đã được nghiệm thu trước đợt triển khai Web này.

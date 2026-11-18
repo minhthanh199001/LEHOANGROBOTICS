@@ -7,7 +7,9 @@
 - **44 kiểm tra tích hợp thành công** trên bản sao database vận hành: các bảng Fleet cũ giữ nguyên schema/nội dung, file snapshot nguồn không đổi; cấu hình bù góc lưu và đồng bộ đúng.
 - **8 kiểm tra updater thành công** với Windows PowerShell 5, gói publish độc lập không có source/CSPROJ: Web có trường bù góc, mã quản trị DPAPI, mặc định 25°, đổi thành 37° vẫn giữ sau khởi động lại, tạo bản sao lưu và chỉ dùng database cách ly. Kiểm tra riêng guard sai IP từ chối trước khi dừng server.
 - Đã chép và đối chiếu SHA-256 **39 file runtime** trong `bin\greeting-web-20261118-v1.3.6`. Có launcher local `CAP_NHAT_GREETING_WEB.cmd`, `XEM_MA_GREETING.cmd` và hướng dẫn trong thư mục server. Máy server không cần .NET SDK để chạy gói này.
-- Server `192.168.0.123:5050` vẫn trả Web cũ tại thời điểm chuẩn bị; đang chờ chạy launcher **trên chính máy server**. SMB không cung cấp kênh thực thi tiến trình. Chưa nghiệm thu cập nhật trực tiếp hay ghép nối Web vận hành; thuật toán/ứng dụng giọng nói 1.3.6 giữ nguyên.
+- Người vận hành đã chạy launcher **trên chính máy server**. HTTP xác nhận `192.168.0.123:5050` trả Web mới có tab Greetingbot/trường góc bù; `/js/greeting.js` khớp chính xác gói đã kiểm tra và `/api/greeting/robots` trả JSON 401 khi chưa nhập mã quản trị. Fleet tiếp tục trả 1 tổ chức, 1 chi nhánh, 1 robot, 12 đơn đang hoạt động. Thuật toán/ứng dụng giọng nói 1.3.6 giữ nguyên.
+- Bản chụp SQLite sau triển khai xác nhận hai bảng Greetingbot được tạo trong đúng DB cũ; schema và toàn bộ dữ liệu `Organizations`, `Sites`, `UserAccounts` khớp bản chụp trước cập nhật. Các trường trạng thái robot tiếp tục được cập nhật theo Fleet đang hoạt động.
+- Robot thật vẫn kết nối SDK, đã định vị và đọc bản đồ `LH2-1006084342`. Mã ghép nối cũ bị server mới từ chối; đang chờ tạo mã thiết bị trên Web vận hành để ghép nối và kiểm tra đồng bộ cấu hình cuối cùng.
 
 ## Bản giảm trễ / ghép hướng theo giọng 1.3.6
 
@@ -111,7 +113,7 @@
 
 - Người vận hành nghe thử để đánh giá chất lượng/âm lượng thực tế; hệ thống đã xác nhận hoàn tất chu trình thu/phát, chưa có xác nhận nghe từ người tại robot.
 - Thử đi tới điểm được người vận hành lựa chọn và dừng. Robot đã định vị; chưa gửi lệnh di chuyển vật lý trong quá trình kiểm thử.
-- Chạy `CAP_NHAT_GREETING_WEB.cmd` từ đường dẫn local trên server Windows `192.168.0.123:5050`, giữ đúng database đã xác định; xác minh Web mới và ghép nối app. Gói đã chuẩn bị qua share, chưa có kênh thực thi từ xa.
+- Web mới trên server Windows `192.168.0.123:5050` đã chạy; cần hoàn tất ghép nối app và kiểm tra cấu hình trên robot thật.
 - Ghép nối lại với server vận hành sau cập nhật. Luồng bản đồ/điểm và ACK đã kiểm tra với robot thật trên server kiểm thử cổng 5051, không phải bản đang chạy trên 192.168.0.123.
 
 Không coi các kiểm tra giả lập giao thức là bằng chứng robot đã di chuyển hoặc người vận hành đã nghe âm thanh. Không thay đổi vị trí robot, bản đồ, app mặc định khởi động hay dữ liệu Fleet hiện có trong quá trình cài thử.

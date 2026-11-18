@@ -126,7 +126,7 @@ Lệnh kiểm tra mở file nguồn ở chế độ chỉ đọc, tạo bản sa
 
 #### Gói đã chuẩn bị trong thư mục chia sẻ
 
-Thư mục vận hành được xác định là `\\192.168.0.123\LeHoangCloudServer`, tương ứng đường dẫn local `F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer` trên server. Database hiện có nằm tại `bin\Debug\net8.0\cloud_fleet.db`. Gói `bin\greeting-web-20261118-v1.3.6` đã được chép và đối chiếu SHA-256 đủ 39 file runtime; chưa thay tiến trình đang chạy.
+Thư mục vận hành được xác định là `\\192.168.0.123\LeHoangCloudServer`, tương ứng đường dẫn local `F:\EDU\2026\LEHOANGROBOTICS\LeHoangCloudServer` trên server. Database hiện có nằm tại `bin\Debug\net8.0\cloud_fleet.db`. Gói `bin\greeting-web-20261118-v1.3.6` đã được chép và đối chiếu SHA-256 đủ 39 file runtime. Người vận hành đã chạy launcher ngày 18/11/2026; HTTP đã xác nhận Web mới có tab Greetingbot/trường góc bù, JavaScript khớp gói và API quản trị yêu cầu mã hợp lệ.
 
 Trên **chính máy 192.168.0.123**, mở file local:
 
