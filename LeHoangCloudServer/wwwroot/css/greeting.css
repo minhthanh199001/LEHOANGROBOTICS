@@ -28,3 +28,12 @@
 @media(max-width:850px){.greeting-grid{grid-template-columns:1fr}.greeting-panel{padding:16px}.greeting-heading h1{font-size:24px}.main-nav-tabs{flex-wrap:wrap}.top-header{flex-wrap:wrap;height:auto;gap:12px}}
 @media(max-width:450px){.greeting-settings,.greeting-status{grid-template-columns:1fr}.greeting-access>*{width:100%}.greeting-actions{flex-direction:column;align-items:stretch}.greeting-card{padding:16px}}
 [id="viewGreeting"] [hidden] { display: none !important; }
+.greeting-elevator-dialog{max-width:940px}
+.greeting-floor-row{display:grid;grid-template-columns:85px repeat(4,minmax(0,1fr));gap:12px;border:1px solid #40536d;border-radius:8px;padding:12px;margin:12px 0}
+.greeting-floor-row label{min-width:0;margin:0}.greeting-floor-row select{padding-inline:8px}
+.greeting-map-inventory{max-height:300px;overflow:auto}
+.greeting-map-inventory details{border-top:1px solid #293b53;padding:10px 0;overflow-wrap:anywhere}
+.greeting-map-inventory summary{cursor:pointer}
+#greetingElevatorNotice{color:#fda4af}
+@media(max-width:700px){.greeting-floor-row{grid-template-columns:1fr 1fr}.greeting-floor-row label:last-child{grid-column:1/-1}}
+@media(max-width:400px){.greeting-floor-row{grid-template-columns:1fr}}

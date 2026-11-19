@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 final class CloudSync implements AutoCloseable {
     interface Listener {
         void settings(JSONObject settings);
+        void elevator(JSONObject config);
         void command(JSONObject command, long deadline);
         void connection(String message);
     }
@@ -95,6 +96,8 @@ final class CloudSync implements AutoCloseable {
                 if (closed || config != credentials) return;
                 JSONObject settings = response.optJSONObject("settings");
                 if (settings != null) listener.settings(settings);
+                JSONObject elevator = response.optJSONObject("elevator");
+                if (elevator != null) listener.elevator(elevator);
                 listener.connection("Đã kết nối Web quản lý");
                 if (command != null) listener.command(command, deadline);
             });

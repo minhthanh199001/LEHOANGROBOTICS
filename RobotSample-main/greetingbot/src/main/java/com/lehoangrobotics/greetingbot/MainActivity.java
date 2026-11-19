@@ -26,12 +26,14 @@ import com.ainirobot.coreservice.client.RobotApi;
 import com.ainirobot.coreservice.client.listener.ActionListener;
 import com.ainirobot.coreservice.client.listener.CommandListener;
 import com.ainirobot.coreservice.client.module.ModuleCallbackApi;
+import com.ainirobot.coreservice.client.robotsetting.RobotSettingApi;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.List;
 
-/** A foreground SDK client. No background chassis control or automatic pose restoration. */
+/** Foreground control of RobotOS navigation and the elevator test. */
 public final class MainActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final RobotApi robot = RobotApi.getInstance();
@@ -40,6 +42,17 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private CloudSync cloud;
     private VoiceDirectionTest voiceDirection;
+    private MapInventory inventory;
+    private final MapPositioning positioning = new MapPositioning(main, robot);
+    private JSONObject elevatorJson = new JSONObject();
+    private ElevatorConfig elevator = new ElevatorConfig(elevatorJson);
+    private ElevatorTrip trip;
+    private ElevatorConfig.Floor cabinFloor;
+    private Integer reportedFloor;
+    private boolean positionUnconfirmed, stopRequested, attemptedDock;
+    private long lastInventoryRefresh;
+    private String inventoryViewKey = "";
+    private String elevatorIdentity = "";
     private boolean connected, foreground, suspended, localized, destroyed, refreshing, pendingMicrophone, pendingVoiceDirection;
     private int requestId = 100, navigationGeneration, refreshGeneration;
     private String mapName = "", target = "", navigation = "idle", microphone = "idle";
@@ -50,15 +63,21 @@ public final class MainActivity extends Activity {
     private TextView sdkText, mapText, messageText, webText, emptyText, voiceText;
     private LinearLayout placeList;
     private Button refreshButton, stopButton, micButton, voiceButton;
-    private final ArrayList<Button> placeButtons = new ArrayList<>();
+    private LinearLayout elevatorTools;
+    private Button locateButton, enterButton, floorButton;
+    private final ArrayList<Button> reachableButtons = new ArrayList<>();
     private long lastRefresh;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (destroyed) return;
             if (pendingMicrophone && ready()) { pendingMicrophone = false; microphoneTest(""); }
             if (pendingVoiceDirection && ready() && voiceDirection != null) { pendingVoiceDirection = false; voiceDirection.start(); }
-            if (ready() && !refreshing && !navigation.equals("checking") && !navigation.equals("stopping") &&
+            if (ready() && !refreshing && !positioning.busy() && (navigation.equals("idle") || navigation.equals("moving")) &&
                 SystemClock.elapsedRealtime() - lastRefresh > 5000) refresh(null);
+            if (ready() && navigation.equals("idle") && !positioning.busy()) {
+                checkChargingDock();
+                if (SystemClock.elapsedRealtime() - lastInventoryRefresh > 30000) refreshInventory();
+            }
             render();
             main.postDelayed(this, 1000);
         }
@@ -67,6 +86,12 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         preferences = getSharedPreferences("greetingbot", MODE_PRIVATE);
+        positionUnconfirmed = preferences.getBoolean("positionUnconfirmed", false);
+        inventory = new MapInventory(main, robot, new MapInventory.Host() {
+            @Override public boolean canRead() { return ready(); }
+            @Override public int nextId() { return MainActivity.this.nextId(); }
+            @Override public void updated() { rebuildPlaces(); }
+        });
         try { settings.update(new JSONObject(preferences.getString("motionSettings", "{}"))); } catch (Exception ignored) {}
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         createUi();
@@ -74,6 +99,10 @@ public final class MainActivity extends Activity {
             @Override public void settings(JSONObject json) {
                 settings.update(json);
                 preferences.edit().putString("motionSettings", json.toString()).apply();
+            }
+            @Override public void elevator(JSONObject json) {
+                if (applyElevator(json))
+                    preferences.edit().putString("elevatorConfig", json.toString()).putString("elevatorIdentity", elevatorIdentity).apply();
             }
             @Override public void command(JSONObject json, long deadline) { executeRemote(json, deadline); }
             @Override public void connection(String status) { webMessage = status; render(); }
@@ -84,7 +113,9 @@ public final class MainActivity extends Activity {
                 if (destroyed) return;
                 connected = true; suspended = false;
                 if (voiceDirection == null) voiceDirection = new VoiceDirectionTest(MainActivity.this, new VoiceDirectionTest.Host() {
-                    @Override public boolean canControl() { return ready() && navigation.equals("idle") && !audio.busy(); }
+                    @Override public boolean canControl() {
+                        return ready() && navigation.equals("idle") && !positioning.busy() && !positionUnconfirmed && !audio.busy();
+                    }
                     @Override public int nextId() { return MainActivity.this.nextId(); }
                     @Override public double angleOffset() { return settings.voiceAngleOffset; }
                     @Override public void changed() { render(); }
@@ -95,14 +126,14 @@ public final class MainActivity extends Activity {
                     @Override public void onRecovery() { main.post(() -> {
                         if (destroyed) return;
                         suspended = false; message = "RobotOS đã trả quyền điều khiển.";
-                        if (ready()) refresh(null); render();
+                        if (ready() && !positioning.busy()) refresh(MainActivity.this::refreshInventory); render();
                     }); }
                     @Override public boolean onSendRequest(int id, String type, String text, String params) {
                         return voiceDirection != null && voiceDirection.onModuleRequest(id, type, text, params);
                     }
                 });
                 message = "Đã kết nối SDK. Mở app từ Home của RobotOS để nhận quyền điều khiển.";
-                if (ready()) refresh(null); render();
+                if (ready() && !positioning.busy()) refresh(MainActivity.this::refreshInventory); render();
             }); }
             @Override public void handleApiDisabled() { main.post(() -> { connected = false; loseControl("RobotOS SDK chưa khả dụng."); }); }
             @Override public void handleApiDisconnected() { main.post(() -> { connected = false; loseControl("Mất kết nối RobotOS SDK."); }); }
@@ -111,23 +142,25 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onResume() {
-        super.onResume(); foreground = true; lastRefresh = 0; render();
+        super.onResume(); foreground = true; lastRefresh = -10000; lastInventoryRefresh = -31000; render();
     }
     @Override protected void onPause() {
         // Stop while the Activity still has control. Never resume a previous movement automatically.
         pendingVoiceDirection = false;
         if (voiceDirection != null && voiceDirection.active()) voiceDirection.stop("Đã dừng test hướng âm khi app rời màn hình.", null);
-        if (ready() && (navigation.equals("moving") || navigation.equals("checking"))) stopNavigation("");
+        if (ready() && !navigation.equals("idle") && !navigation.equals("stopping")) stopNavigation("");
         foreground = false; refreshing = false; refreshGeneration++; navigationGeneration++;
+        inventory.cancel(); resetTrip();
         if (!navigationCommand.isEmpty()) cloud.result(navigationCommand, "failed", "Ứng dụng đã rời màn hình.");
         if (!stopCommand.isEmpty()) cloud.result(stopCommand, "failed", "App rời màn hình trước khi nhận xác nhận dừng từ SDK.");
         if (!refreshCommand.isEmpty()) cloud.result(refreshCommand, "failed", "Ứng dụng đã rời màn hình.");
-        navigationCommand = ""; stopCommand = ""; refreshCommand = ""; navigation = "idle"; audio.cancel(); render();
+        navigationCommand = ""; stopCommand = ""; refreshCommand = ""; navigation = "idle"; target = ""; audio.cancel(); render();
         super.onPause();
     }
     @Override protected void onDestroy() {
         destroyed = true; main.removeCallbacks(tick); audio.cancel();
         if (voiceDirection != null) voiceDirection.close();
+        inventory.close();
         if (cloud != null) cloud.close();
         if (connected) robot.disconnectApi();
         super.onDestroy();
@@ -151,6 +184,7 @@ public final class MainActivity extends Activity {
     private void loseControl(String why) {
         if (destroyed) return;
         suspended = true; localized = false; refreshing = false; refreshGeneration++; navigationGeneration++;
+        inventory.cancel(); resetTrip(); lastInventoryRefresh = -31000;
         if (voiceDirection != null) voiceDirection.controlLost("RobotOS đang tiếp quản; test hướng âm đã dừng.");
         if (!navigationCommand.isEmpty()) cloud.result(navigationCommand, "failed", why);
         if (!stopCommand.isEmpty()) cloud.result(stopCommand, "failed", why);
@@ -175,7 +209,10 @@ public final class MainActivity extends Activity {
         refresh(complete, "");
     }
     private void refresh(Runnable complete, String commandId) {
-        if (!ready()) return;
+        if (!ready() || positioning.busy()) {
+            cloud.result(commandId, "failed", "SDK đang chuyển map, định vị hoặc chưa cấp quyền.");
+            return;
+        }
         if (!refreshCommand.isEmpty()) cloud.result(refreshCommand, "failed", "Đã thay thế bằng yêu cầu đọc bản đồ mới.");
         refreshCommand = commandId;
         refreshing = true;
@@ -187,7 +224,7 @@ public final class MainActivity extends Activity {
                     if (generation != refreshGeneration || !ready()) return;
                     if (code != Definition.RESULT_OK || value == null || value.trim().isEmpty()) { failure(code, "Không đọc được tên bản đồ."); return; }
                     if (!mapName.equals(value)) {
-                        if (navigation.equals("moving")) stopNavigation("");
+                        if (navigation.equals("moving") && !stopRequested) stopNavigation("");
                         mapName = value; places = new JSONArray(); localized = false; rebuildPlaces();
                     }
                     robot.getPlaceList(nextId(), new Reply() {
@@ -195,12 +232,14 @@ public final class MainActivity extends Activity {
                             if (generation != refreshGeneration || !ready()) return;
                             try {
                                 if (status != Definition.RESULT_OK) throw new IllegalStateException("SDK " + status);
-                                places = new JSONArray(data); rebuildPlaces();
+                                places = new JSONArray(data);
+                                inventory.recordActive(mapName, places);
+                                rebuildPlaces();
                                 robot.isRobotEstimate(nextId(), new Reply() {
                                     @Override void success(int result, String estimate) {
                                         if (generation != refreshGeneration || !ready()) return;
                                         localized = result == Definition.RESULT_OK && "true".equals(estimate);
-                                        if (navigation.equals("moving") && !localized) stopNavigation("");
+                                        if (navigation.equals("moving") && !stopRequested && !localized) stopNavigation("");
                                         cloud.result(refreshCommand, "completed", "Đã đọc điểm từ bản đồ robot."); refreshCommand = "";
                                         refreshing = false; refreshGeneration++;
                                         if (message.startsWith("Đã kết nối SDK") || message.startsWith("Đang đọc bản đồ"))
@@ -227,15 +266,8 @@ public final class MainActivity extends Activity {
         cloud.result(refreshCommand, "failed", "Không đọc được bản đồ: " + why); refreshCommand = "";
         refreshing = false; refreshGeneration++; localized = false;
         if (navigation.equals("checking")) finishNavigation(false, "Không đọc được bản đồ: " + why);
+        else if (navigation.equals("moving") && !stopRequested) stopNavigation("");
         else { message = "SDK " + code + ": " + why; render(); }
-    }
-
-    private boolean reachable(String name) {
-        for (int i = 0; i < places.length(); i++) {
-            JSONObject point = places.optJSONObject(i);
-            if (point != null && name.equals(point.optString("name")) && point.optInt("status", -1) == 0) return true;
-        }
-        return false;
     }
 
     private void navigate(String name, String expectedMap, String commandId) {
@@ -245,36 +277,64 @@ public final class MainActivity extends Activity {
         if (voiceDirection != null && voiceDirection.active()) {
             message = "Dừng test hướng âm trước khi điều hướng."; cloud.result(commandId, "failed", message); render(); return;
         }
-        if (!ready() || !navigation.equals("idle")) { cloud.result(commandId, "failed", "Robot chưa sẵn sàng hoặc đang điều hướng."); return; }
-        navigationCommand = commandId; target = name; navigation = "checking";
+        if (!ready() || !navigation.equals("idle") || positioning.busy() || positionUnconfirmed) {
+            rejectNavigation(commandId, "Robot đang bận hoặc cần xác nhận lại tầng và vị trí."); return;
+        }
+        navigationCommand = commandId; target = name;
+        if (expectedMap.equals(mapName)) {
+            startLeg(name, expectedMap, deadline, () -> true, () -> finishNavigation(true, "Đã tới: " + name));
+            return;
+        }
+        ElevatorConfig.Floor source = elevator.forMap(mapName), destination = elevator.forMap(expectedMap);
+        if (!commandId.isEmpty() || source == null || destination == null || !localized ||
+                ElevatorConfig.point(inventory.places(destination.map), name) == null ||
+                ElevatorConfig.point(places, source.cabin) == null ||
+                ElevatorConfig.point(inventory.places(destination.map), destination.cabin) == null) {
+            finishNavigation(false, "Kiểm tra tầng hiện tại, điểm đích và điểm cabin trên hai map."); return;
+        }
+        trip = new ElevatorTrip(elevator, source, destination, name);
+        startLeg(source.waiting, source.map, deadline, () -> true, () -> {
+            navigation = "wait_door";
+            message = "Đã tới điểm chờ. Gọi thang tại " + source.label() + " và xác nhận khi cửa mở.";
+            render();
+        });
+    }
+
+    private interface BeforeMove { boolean allowed(); }
+
+    private void startLeg(String name, String expectedMap, long deadline, BeforeMove beforeMove, Runnable arrived) {
+        navigation = "checking";
         message = "Đang kiểm tra bản đồ và định vị…"; render();
         final int generation = ++navigationGeneration;
         refresh(() -> {
             if (generation != navigationGeneration || !ready()) return;
-            if (SystemClock.elapsedRealtime() >= deadline || !mapName.equals(expectedMap) || !reachable(name) || !localized) {
+            if (SystemClock.elapsedRealtime() >= deadline || !mapName.equals(expectedMap) ||
+                    ElevatorConfig.point(places, name) == null || !localized) {
                 finishNavigation(false, "Bản đồ/điểm đã thay đổi hoặc robot chưa định vị. Kiểm tra trong Map Tool."); return;
             }
+            if (!beforeMove.allowed()) { finishNavigation(false, "Không ghi được trạng thái vị trí; đã dừng lộ trình."); return; }
             navigation = "moving"; message = "Đang đi tới: " + name;
-            cloud.result(commandId, "running", message); render();
+            cloud.result(navigationCommand, "running", message); render();
             try {
                 int accepted = robot.startNavigation(nextId(), name, settings.arrivalTolerance, settings.obstacleTimeoutMs,
                     settings.linearSpeed, settings.angularSpeed, new ActionListener() {
                         private void result(int code, String response) { main.post(() -> {
                             if (generation != navigationGeneration || destroyed) return;
-                            if (code == Definition.ACTION_RESPONSE_STOP_SUCCESS) { stopped(); return; }
-                            finishNavigation(code == Definition.RESULT_OK && "true".equals(response),
-                                code == Definition.RESULT_OK && "true".equals(response) ? "Đã tới: " + name : "Điều hướng không thành công (" + code + ").");
+                            if (code == Definition.ACTION_RESPONSE_STOP_SUCCESS || stopRequested) { stopped(); return; }
+                            if (code == Definition.RESULT_OK && "true".equals(response)) { navigationGeneration++; arrived.run(); }
+                            else finishNavigation(false, "Điều hướng không thành công (" + code + ").");
                         }); }
                         @Override public void onResult(int code, String response) { result(code, response); }
                         @Override public void onResult(int code, String response, String extra) { result(code, response); }
                         @Override public void onError(int code, String text) { main.post(() -> {
                             if (generation != navigationGeneration || destroyed) return;
-                            finishNavigation(code == Definition.ERROR_IN_DESTINATION,
-                                code == Definition.ERROR_IN_DESTINATION ? "Robot đã ở điểm: " + name : "Lỗi điều hướng " + code + ": " + text);
+                            if (stopRequested) { stopped(); return; }
+                            if (code == Definition.ERROR_IN_DESTINATION) { navigationGeneration++; arrived.run(); }
+                            else finishNavigation(false, "Lỗi điều hướng " + code + ": " + text);
                         }); }
                         @Override public void onError(int code, String text, String extra) { onError(code, text); }
                         @Override public void onStatusUpdate(int code, String data, String extra) { main.post(() -> {
-                            if (generation != navigationGeneration || destroyed) return;
+                            if (generation != navigationGeneration || destroyed || stopRequested) return;
                             if (code == 1020 || code == 1025) { stopNavigation(""); return; }
                             message = code == 1018 ? "Có vật cản; robot đang chờ đường trống." : "Đang đi tới: " + name + " (" + code + ")";
                             render();
@@ -291,15 +351,18 @@ public final class MainActivity extends Activity {
         cloud.result(navigationCommand, ok ? "completed" : "failed", why);
         if (!stopCommand.isEmpty()) cloud.result(stopCommand, ok ? "completed" : "failed", "Điều hướng đã kết thúc: " + why);
         stopCommand = "";
-        navigationCommand = ""; navigation = "idle"; target = ""; message = why; render();
+        resetTrip();
+        navigationCommand = ""; navigation = "idle"; target = ""; message = why; rebuildPlaces();
     }
     private void stopped() {
         navigationGeneration++; refreshGeneration++; refreshing = false;
         cloud.result(refreshCommand, "failed", "Đã hủy yêu cầu đọc bản đồ."); refreshCommand = "";
         cloud.result(navigationCommand, "failed", "Điều hướng đã được dừng.");
         cloud.result(stopCommand, "completed", "SDK đã xác nhận dừng điều hướng.");
+        resetTrip();
         navigationCommand = ""; stopCommand = ""; navigation = "idle"; target = "";
-        message = "Đã dừng điều hướng."; render();
+        message = positionUnconfirmed ? "Đã dừng. Xác nhận tầng và vị trí thực tế trước khi điều hướng." : "Đã dừng điều hướng.";
+        rebuildPlaces();
     }
     private void stopNavigation(String commandId) {
         if (voiceDirection != null && voiceDirection.active()) {
@@ -309,8 +372,9 @@ public final class MainActivity extends Activity {
             return;
         }
         if (!ready()) { cloud.result(commandId, "failed", "RobotOS đang giữ quyền điều khiển."); return; }
-        if (navigation.equals("idle") || navigation.equals("checking")) { stopCommand = commandId; stopped(); return; }
         if (navigation.equals("stopping")) { cloud.result(commandId, "failed", "Đang chờ SDK xác nhận dừng."); return; }
+        if (!navigation.equals("moving")) { stopCommand = commandId; stopped(); return; }
+        stopRequested = true;
         stopCommand = commandId; navigation = "stopping"; message = "Đang yêu cầu SDK dừng điều hướng…";
         cloud.result(commandId, "running", message); render();
         try {
@@ -328,6 +392,232 @@ public final class MainActivity extends Activity {
     private void stopUnconfirmed(String why) {
         cloud.result(stopCommand, "failed", why); stopCommand = "";
         navigation = "moving"; message = why; render();
+    }
+
+    private static final class ElevatorTrip {
+        final ElevatorConfig config;
+        final ElevatorConfig.Floor source, destination;
+        final String point;
+
+        ElevatorTrip(ElevatorConfig config, ElevatorConfig.Floor source, ElevatorConfig.Floor destination, String point) {
+            this.config = config;
+            this.source = source;
+            this.destination = destination;
+            this.point = point;
+        }
+    }
+
+    private void rejectNavigation(String commandId, String error) {
+        cloud.result(commandId, "failed", error);
+        message = error;
+        render();
+    }
+
+    private boolean applyElevator(JSONObject config) {
+        if (elevatorJson.toString().equals(config.toString())) return false;
+        elevatorJson = config;
+        elevator = new ElevatorConfig(config);
+        attemptedDock = false;
+        rebuildPlaces();
+        return true;
+    }
+
+    private ElevatorConfig activeElevator() { return trip != null ? trip.config : elevator; }
+
+    private void resetTrip() {
+        trip = null;
+        cabinFloor = null;
+        reportedFloor = null;
+        stopRequested = false;
+    }
+
+    private boolean setPositionUnconfirmed(boolean value) {
+        if (positionUnconfirmed == value) return true;
+        if (!preferences.edit().putBoolean("positionUnconfirmed", value).commit()) return false;
+        positionUnconfirmed = value;
+        return true;
+    }
+
+    private ElevatorConfig.Floor currentFloor() {
+        if (!localized) return null;
+        return positionUnconfirmed ? cabinFloor : activeElevator().forMap(mapName);
+    }
+
+    private void enterCabin() {
+        ElevatorTrip route = trip;
+        if (!ready() || route == null || !navigation.equals("wait_door")) return;
+        startLeg(route.source.cabin, route.source.map, Long.MAX_VALUE, () -> setPositionUnconfirmed(true), () -> {
+            cabinFloor = route.source;
+            navigation = "wait_floor";
+            message = "Robot đã vào cabin. Chọn tầng cabin đang dừng. Tầng đích: " + route.destination.label() + ".";
+            render();
+        });
+    }
+
+    private void reportFloor() {
+        ElevatorTrip route = trip;
+        if (!ready() || route == null || !navigation.equals("wait_floor")) return;
+        List<ElevatorConfig.Floor> floors = route.config.floors;
+        String[] choices = new String[floors.size()];
+        for (int i = 0; i < floors.size(); i++) {
+            ElevatorConfig.Floor floor = floors.get(i);
+            choices[i] = floor.label() + (floor == route.destination ? " · tầng đích, cửa đã mở" : "");
+        }
+        new AlertDialog.Builder(this).setTitle("Báo tầng cabin đang dừng")
+            .setItems(choices, (dialog, index) -> {
+                if (trip != route || !ready() || !navigation.equals("wait_floor")) return;
+                ElevatorConfig.Floor floor = floors.get(index);
+                if (floor == route.destination) {
+                    new AlertDialog.Builder(this).setTitle(floor.label() + " · Xác nhận mở cửa")
+                        .setMessage("Xác nhận cabin đã dừng đúng tầng và giữ cửa mở cho đến khi robot đi ra.")
+                        .setNegativeButton("Hủy", null)
+                        .setPositiveButton("Cửa đã mở", (confirm, which) -> acceptFloor(route, floor)).show();
+                } else acceptFloor(route, floor);
+            }).setNegativeButton("Đóng", null).show();
+    }
+
+    private void acceptFloor(ElevatorTrip route, ElevatorConfig.Floor floor) {
+        if (trip != route || !ready() || !navigation.equals("wait_floor")) return;
+        reportedFloor = floor.number;
+        cabinFloor = null;
+        positionAt(floor, floor.cabin, false, () -> {
+            cabinFloor = floor;
+            if (floor != route.destination) {
+                navigation = "wait_floor";
+                message = "Đã định vị trong cabin tại " + floor.label() + ". Chờ báo tầng tiếp theo.";
+                render();
+                return;
+            }
+            startLeg(route.point, floor.map, Long.MAX_VALUE, () -> true, () -> {
+                if (route.point.equals(floor.cabin)) {
+                    finishNavigation(true, "Đã tới điểm cabin. Xác nhận vị trí thực tế trước lộ trình tiếp theo.");
+                } else completePosition("Đã tới: " + route.point + " · " + floor.label() + ".");
+            });
+        });
+    }
+
+    private void choosePosition() {
+        if (!canSetPosition()) return;
+        List<ElevatorConfig.Floor> floors = elevator.floors;
+        if (floors.isEmpty()) {
+            choosePositionPoint(mapName, mapName);
+            return;
+        }
+        String[] choices = new String[floors.size()];
+        for (int i = 0; i < floors.size(); i++) choices[i] = floors.get(i).label() + " · " + floors.get(i).map;
+        new AlertDialog.Builder(this).setTitle("Robot đang ở tầng nào?")
+            .setItems(choices, (dialog, index) -> choosePositionPoint(floors.get(index).map, floors.get(index).label()))
+            .setNegativeButton("Hủy", null).show();
+    }
+
+    private void choosePositionPoint(String map, String floorLabel) {
+        ElevatorConfig config = elevator;
+        JSONArray points = pointsForMap(map);
+        ArrayList<String> names = new ArrayList<>();
+        for (int i = 0; points != null && i < points.length(); i++) {
+            JSONObject point = points.optJSONObject(i);
+            if (point != null && point.optInt("status", -1) == 0) names.add(point.optString("name"));
+        }
+        if (names.isEmpty()) { rejectNavigation("", "Chưa có điểm trên map " + map + ". Đọc lại danh sách điểm."); return; }
+        new AlertDialog.Builder(this).setTitle("Chọn vị trí thực tế · " + floorLabel)
+            .setItems(names.toArray(new String[0]), (dialog, index) -> {
+                String name = names.get(index);
+                new AlertDialog.Builder(this).setTitle("Định vị tại " + name)
+                    .setMessage("Đặt robot đúng tại điểm đã chọn, cùng hướng đã lưu trên map.")
+                    .setNegativeButton("Hủy", null).setPositiveButton("Xác nhận", (confirm, which) -> {
+                        if (!canSetPosition() || elevator != config || (config.floors.isEmpty() && !map.equals(mapName))) return;
+                        positionAt(map, floorLabel, name, false, () -> completePosition("Đã định vị thủ công tại " + name + " · " + floorLabel + "."));
+                    }).show();
+            }).setNegativeButton("Hủy", null).show();
+    }
+
+    private boolean canSetPosition() {
+        return ready() && navigation.equals("idle") && !positioning.busy() &&
+            (!elevator.floors.isEmpty() || (positionUnconfirmed && !mapName.isEmpty())) &&
+            !audio.busy() && (voiceDirection == null || !voiceDirection.active());
+    }
+
+    private boolean chargingAtPile() {
+        try {
+            return robot.getChargeStatus() && Definition.CHARGING_TYPE_PILE.equals(
+                RobotSettingApi.getInstance().getRobotString(Definition.ROBOT_SETTINGS_CHARGING_TYPE));
+        } catch (Exception e) { return false; }
+    }
+
+    private void checkChargingDock() {
+        ElevatorConfig.Floor dock = elevator.dock;
+        if (dock == null || !canSetPosition()) return;
+        if (!chargingAtPile()) {
+            attemptedDock = false;
+            return;
+        }
+        if (attemptedDock) return;
+        attemptedDock = true;
+        positionAt(dock, dock.charging, true, () -> completePosition("Đã nhận trạm sạc chính và định vị tại " + dock.label() + "."));
+    }
+
+    private void completePosition(String text) {
+        boolean saved = setPositionUnconfirmed(false);
+        finishNavigation(saved, saved ? text : "Đã định vị nhưng không lưu được trạng thái xác nhận.");
+    }
+
+    private void positionAt(ElevatorConfig.Floor floor, String point, boolean dock, Runnable done) {
+        positionAt(floor.map, floor.label(), point, dock, done);
+    }
+
+    private void positionAt(String map, String floorLabel, String point, boolean dock, Runnable done) {
+        if (!setPositionUnconfirmed(true)) {
+            finishNavigation(false, "Không lưu được trạng thái xác nhận vị trí.");
+            return;
+        }
+        cloud.result(refreshCommand, "failed", "Đã hủy đọc bản đồ để định vị.");
+        refreshCommand = "";
+        refreshing = false; refreshGeneration++;
+        inventory.cancel();
+        lastInventoryRefresh = -31000;
+        final int generation = ++navigationGeneration;
+        navigation = "positioning";
+        localized = false;
+        message = "Đang chuyển map và định vị tại " + point + " · " + floorLabel + "…";
+        positioning.start(map, point, new MapPositioning.Host() {
+            @Override public boolean authorized() {
+                return generation == navigationGeneration && ready() && (!dock || chargingAtPile());
+            }
+            @Override public int nextId() { return MainActivity.this.nextId(); }
+            @Override public void finished(JSONArray points, String error) {
+                if (generation != navigationGeneration || destroyed) { render(); return; }
+                if (error != null) {
+                    lastRefresh = -10000;
+                    finishNavigation(false, error + " Xác nhận lại tầng và vị trí thực tế.");
+                    return;
+                }
+                mapName = map;
+                places = points;
+                inventory.recordActive(mapName, places);
+                localized = true;
+                lastRefresh = SystemClock.elapsedRealtime();
+                rebuildPlaces();
+                done.run();
+            }
+        });
+        render();
+    }
+
+    private JSONArray pointsForMap(String map) { return mapName.equals(map) ? places : inventory.places(map); }
+
+    private void refreshInventory() {
+        lastInventoryRefresh = SystemClock.elapsedRealtime();
+        inventory.refresh(mapName, checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private void refreshAllMaps() {
+        if (inventory.needsStorage() && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 9);
+            return;
+        }
+        inventory.cancel();
+        message = "Đang đọc bản đồ…";
+        refresh(this::refreshInventory);
     }
 
     private void microphoneTest(String commandId) {
@@ -352,6 +642,10 @@ public final class MainActivity extends Activity {
     }
     @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(code, permissions, grantResults);
+        if (code == 9) {
+            refreshInventory();
+            return;
+        }
         if (code == 7 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) pendingMicrophone = true;
         else if (code == 8 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) pendingVoiceDirection = true;
         else { message = "Cần cấp quyền microphone để ghi âm."; render(); }
@@ -385,8 +679,13 @@ public final class MainActivity extends Activity {
             case "stop_navigation": stopNavigation(id); break;
             case "microphone_test": microphoneTest(id); break;
             case "refresh_places":
+                if (trip != null || positioning.busy()) {
+                    cloud.result(id, "failed", "Đợi lộ trình hoặc định vị kết thúc để đọc bản đồ.");
+                    break;
+                }
                 cloud.result(id, "running", "Đang đọc bản đồ.");
-                refresh(null, id);
+                inventory.cancel();
+                refresh(this::refreshInventory, id);
                 break;
             default: cloud.result(id, "failed", "Lệnh không được hỗ trợ.");
         }
@@ -399,8 +698,24 @@ public final class MainActivity extends Activity {
             if (!preferences.edit().putString("autoRobotId", identity.id).putString("autoDeviceToken", identity.token).commit()) {
                 cloud.configure("", "", "", false); webMessage = "Không lưu được mã tự kết nối Web."; return;
             }
+            configureElevatorIdentity(server, identity.id);
             cloud.configure(server, identity.id, identity.token, true);
-        } else cloud.configure(server, preferences.getString("robotId", "GREETING-01"), preferences.getString("deviceToken", ""), false);
+        } else {
+            String id = preferences.getString("robotId", "GREETING-01");
+            configureElevatorIdentity(server, id);
+            cloud.configure(server, id, preferences.getString("deviceToken", ""), false);
+        }
+    }
+    private void configureElevatorIdentity(String server, String robotId) {
+        String identity = server + "/" + robotId;
+        if (identity.equals(elevatorIdentity)) return;
+        elevatorIdentity = identity;
+        JSONObject config = new JSONObject();
+        if (identity.equals(preferences.getString("elevatorIdentity", ""))) {
+            try { config = new JSONObject(preferences.getString("elevatorConfig", "{}")); }
+            catch (Exception ignored) {}
+        }
+        applyElevator(config);
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView label(String text, int size) {
@@ -423,7 +738,7 @@ public final class MainActivity extends Activity {
         mapText = label("", 20); root.addView(mapText);
         messageText = label(message, 18); messageText.setMaxLines(3); root.addView(messageText);
         LinearLayout tools = new LinearLayout(this); tools.setOrientation(LinearLayout.HORIZONTAL); root.addView(tools);
-        refreshButton = button("↻  Đọc lại điểm", tools, v -> { message = "Đang đọc bản đồ…"; refresh(null); });
+        refreshButton = button("↻  Đọc lại điểm", tools, v -> refreshAllMaps());
         button("Mở ứng dụng bản đồ", tools, v -> openMapTool());
         button("Cấu hình", tools, v -> showConfiguration());
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL); root.addView(actions);
@@ -433,6 +748,10 @@ public final class MainActivity extends Activity {
         });
         voiceButton = button("◎  Test hướng âm: Hello robot / robot ơi", root, v -> toggleVoiceDirection());
         voiceText = label("Bấm test rồi gọi robot từ một hướng. Test tự tắt sau 60 giây.", 15); voiceText.setMaxLines(5); root.addView(voiceText);
+        elevatorTools = new LinearLayout(this); elevatorTools.setOrientation(LinearLayout.HORIZONTAL); root.addView(elevatorTools);
+        locateButton = button("Xác nhận tầng và vị trí", elevatorTools, v -> choosePosition());
+        enterButton = button("Cửa đã mở · Vào cabin", elevatorTools, v -> enterCabin());
+        floorButton = button("Mô phỏng tầng cabin", elevatorTools, v -> reportFloor());
         TextView heading = label("CHỌN ĐIỂM ĐẾN", 18); heading.setTypeface(null, Typeface.BOLD); root.addView(heading);
         emptyText = label("Chưa có điểm. Tạo bản đồ và điểm trong Map Tool của robot, sau đó bấm Đọc lại điểm.", 18); root.addView(emptyText);
         ScrollView pointsScroll = new ScrollView(this); root.addView(pointsScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -442,35 +761,78 @@ public final class MainActivity extends Activity {
     }
 
     private void rebuildPlaces() {
-        placeList.removeAllViews(); placeButtons.clear(); emptyText.setVisibility(places.length() == 0 ? View.VISIBLE : View.GONE);
-        for (int i = 0; i < places.length(); i++) {
-            JSONObject point = places.optJSONObject(i); if (point == null) continue;
-            String name = point.optString("name"); if (name.isEmpty()) continue;
-            String pointMap = mapName;
-            Button view = button(name + (point.optInt("status", -1) == 0 ? "   →" : " · Không thể tới"), placeList, v -> navigate(name, pointMap, ""));
-            view.setTag(point.optInt("status", -1) == 0); placeButtons.add(view);
+        ElevatorConfig config = activeElevator();
+        StringBuilder key = new StringBuilder(mapName).append(places);
+        for (ElevatorConfig.Floor floor : config.floors) {
+            key.append(floor.number).append(floor.map).append(floor.waiting).append(floor.cabin).append(floor.charging)
+                .append(floor == config.dock).append(pointsForMap(floor.map));
+        }
+        if (inventoryViewKey.equals(key.toString())) { render(); return; }
+        inventoryViewKey = key.toString();
+        placeList.removeAllViews(); reachableButtons.clear();
+        emptyText.setVisibility(config.floors.isEmpty() && places.length() == 0 ? View.VISIBLE : View.GONE);
+        if (config.forMap(mapName) == null) {
+            if (!config.floors.isEmpty() && !mapName.isEmpty()) placeList.addView(label(mapName + " · Chưa gán tầng", 18));
+            addPoints(mapName, places, null, false);
+        }
+        for (ElevatorConfig.Floor floor : config.floors) {
+            TextView heading = label(floor.label() + " · " + floor.map, 18);
+            heading.setTypeface(null, Typeface.BOLD);
+            placeList.addView(heading);
+            JSONArray points = pointsForMap(floor.map);
+            if (points == null || points.length() == 0)
+                placeList.addView(label("Chưa đọc được điểm trên bản đồ này.", 16));
+            else addPoints(floor.map, points, floor, floor == config.dock);
         }
         render();
+    }
+
+    private void addPoints(String pointMap, JSONArray points, ElevatorConfig.Floor floor, boolean mainDock) {
+        for (int i = 0; i < points.length(); i++) {
+            JSONObject point = points.optJSONObject(i); if (point == null) continue;
+            String name = point.optString("name"); if (name.isEmpty()) continue;
+            String role = floor == null ? "" : name.equals(floor.waiting) ? " · Chờ thang" : name.equals(floor.cabin) ? " · Cabin"
+                : name.equals(floor.charging) ? (mainDock ? " · Trạm sạc chính" : " · Điểm sạc trên map") : "";
+            boolean reachable = point.optInt("status", -1) == 0;
+            Button view = button(name + role + (reachable ? "   →" : " · Không thể tới"), placeList, v -> navigate(name, pointMap, ""));
+            view.setEnabled(reachable);
+            if (reachable) reachableButtons.add(view);
+        }
     }
     private void render() {
         if (sdkText == null || destroyed) return;
         boolean authorized = authorized(); boolean ready = connected && authorized && foreground && !suspended;
         setText(sdkText, !connected ? "SDK: chưa kết nối" : !authorized ? "SDK: cần mở app từ Home RobotOS" : suspended ? "SDK: hệ thống đang tiếp quản" : "SDK: đã kết nối · " + (localized ? "Đã định vị" : "Chưa định vị"));
-        setText(mapText, "Bản đồ: " + (mapName.isEmpty() ? "Chưa đọc được" : mapName));
+        ElevatorConfig.Floor floor = currentFloor();
+        setText(mapText, "Bản đồ: " + (mapName.isEmpty() ? "Chưa đọc được" : mapName)
+            + (floor != null ? " · " + floor.label() : positionUnconfirmed ? " · Tầng chưa xác nhận" : ""));
         setText(messageText, message); setText(webText, webMessage);
-        refreshButton.setEnabled(ready && !refreshing && !navigation.equals("checking") && !navigation.equals("stopping"));
+        boolean idle = navigation.equals("idle") && !positioning.busy();
+        refreshButton.setEnabled(ready && !refreshing && idle);
         boolean voiceActive = voiceDirection != null && voiceDirection.active();
-        for (Button button : placeButtons) button.setEnabled(ready && !voiceActive && localized && navigation.equals("idle") && Boolean.TRUE.equals(button.getTag()));
+        for (Button button : reachableButtons) button.setEnabled(ready && !voiceActive && localized && idle && !positionUnconfirmed);
+        elevatorTools.setVisibility(!activeElevator().floors.isEmpty() || positionUnconfirmed ? View.VISIBLE : View.GONE);
+        locateButton.setVisibility(idle ? View.VISIBLE : View.GONE);
+        locateButton.setEnabled(ready && idle && !voiceActive && !audio.busy());
+        enterButton.setVisibility(navigation.equals("wait_door") ? View.VISIBLE : View.GONE);
+        enterButton.setEnabled(ready);
+        floorButton.setVisibility(navigation.equals("wait_floor") ? View.VISIBLE : View.GONE);
+        floorButton.setEnabled(ready);
+        setText(floorButton, "Mô phỏng tầng cabin" + (reportedFloor == null ? "" : " · Báo gần nhất: " + reportedFloor));
+        if (!idle && trip == null && !navigation.equals("wait_floor")) elevatorTools.setVisibility(View.GONE);
         stopButton.setEnabled(ready && (voiceActive || (!navigation.equals("stopping") && !navigation.equals("idle"))));
         micButton.setEnabled((ready && !voiceActive) || audio.busy());
-        voiceButton.setEnabled(voiceActive || (ready && voiceDirection != null && navigation.equals("idle") && !audio.busy()));
+        voiceButton.setEnabled(voiceActive || (ready && voiceDirection != null && idle && !positionUnconfirmed && !audio.busy()));
         setText(voiceButton, voiceActive ? "■  Dừng test hướng âm / dừng xoay" : "◎  Test hướng âm: Hello robot / robot ơi");
         if (voiceDirection != null) setText(voiceText, voiceDirection.display());
         setText(micButton, audio.busy() ? "■  Hủy kiểm tra microphone" : "●  Test microphone → phát lại qua loa");
         if (cloud != null) {
             try { cloud.snapshot(new JSONObject().put("sdkConnected", connected).put("authorized", authorized)
                 .put("foreground", foreground).put("suspended", suspended).put("localized", localized)
-                .put("mapName", mapName).put("places", places).put("navigationState", navigation)
+                .put("mapName", mapName).put("places", places).put("maps", inventory.snapshot(mapName))
+                .put("mapInventoryMessage", inventory.message()).put("currentFloor", floor == null ? JSONObject.NULL : floor.number)
+                .put("elevatorFloor", reportedFloor == null ? JSONObject.NULL : reportedFloor)
+                .put("navigationState", idle && positionUnconfirmed ? "floor_unknown" : navigation)
                 .put("target", target).put("microphoneState", microphone).put("message", message)
                 .put("systemVersion", connected ? robot.getVersion() : "")); } catch (Exception ignored) {}
         }

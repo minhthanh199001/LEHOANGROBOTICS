@@ -25,6 +25,8 @@ public sealed class GreetingService
             CREATE TABLE IF NOT EXISTS GreetingCommands (
                 Id TEXT PRIMARY KEY, RobotId TEXT NOT NULL, Payload TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS IX_GreetingCommands_RobotId ON GreetingCommands(RobotId);
+            CREATE TABLE IF NOT EXISTS GreetingElevators (
+                RobotId TEXT PRIMARY KEY, Config TEXT NOT NULL);
             """;
         cmd.ExecuteNonQuery();
     }
@@ -80,20 +82,27 @@ public sealed class GreetingService
             return new GreetingRobot { Id = registration.Id, Name = registration.Name };
     }
 
-    public List<GreetingRobot> List()
+    public List<GreetingRobot> List(string? id = null)
     {
         lock (_gate)
         {
             using var db = Open();
             using var cmd = db.CreateCommand();
-            cmd.CommandText = "SELECT Id,Name,Settings,Snapshot,LastSeen FROM GreetingRobots ORDER BY Name";
+            cmd.CommandText = id == null
+                ? "SELECT Id,Name,Settings,json_remove(Snapshot,'$.maps'),LastSeen,NULL FROM GreetingRobots ORDER BY Name"
+                : """
+                    SELECT r.Id,r.Name,r.Settings,r.Snapshot,r.LastSeen,e.Config FROM GreetingRobots r
+                    LEFT JOIN GreetingElevators e ON e.RobotId=r.Id WHERE r.Id=$id
+                    """;
+            if (id != null) cmd.Parameters.AddWithValue("$id", id);
             using var reader = cmd.ExecuteReader();
             var result = new List<GreetingRobot>();
             while (reader.Read()) result.Add(new GreetingRobot {
                 Id = reader.GetString(0), Name = reader.GetString(1),
                 Settings = Deserialize<GreetingSettings>(reader.GetString(2)),
                 Snapshot = Deserialize<GreetingSnapshot>(reader.GetString(3)),
-                LastSeen = reader.IsDBNull(4) ? null : DateTimeOffset.Parse(reader.GetString(4))
+                LastSeen = reader.IsDBNull(4) ? null : DateTimeOffset.Parse(reader.GetString(4)),
+                Elevator = reader.IsDBNull(5) ? new GreetingElevator() : Deserialize<GreetingElevator>(reader.GetString(5))
             });
             return result;
         }
@@ -103,9 +112,46 @@ public sealed class GreetingService
     {
         lock (_gate)
         {
-            var robot = List().Find(r => r.Id == id);
+            var robot = List(id).SingleOrDefault();
             if (robot != null) robot.Commands = Commands(id).OrderByDescending(c => c.CreatedAt).Take(20).ToList();
             return robot;
+        }
+    }
+
+    public void SaveElevator(string id, GreetingElevator elevator)
+    {
+        lock (_gate)
+        {
+            var robot = Get(id) ?? throw new KeyNotFoundException("Không tìm thấy Greetingbot.");
+            var floors = elevator.Floors;
+            if (floors.Any(f => f == null) || floors.Select(f => f.Number).Distinct().Count() != floors.Count ||
+                floors.Select(f => f.MapName).Distinct(StringComparer.Ordinal).Count() != floors.Count)
+                throw new InvalidOperationException("Mỗi tầng và mỗi bản đồ chỉ được gán một lần.");
+            if (floors.Count == 0 ? elevator.MainChargingFloor.HasValue : !floors.Any(f => f.Number == elevator.MainChargingFloor))
+                throw new InvalidOperationException("Chọn đúng một tầng có trạm sạc chính.");
+
+            foreach (var floor in floors)
+            {
+                var points = floor.MapName == robot.Snapshot.MapName ? robot.Snapshot.Places
+                    : robot.Snapshot.Maps.FirstOrDefault(m => m.Name == floor.MapName)?.Places;
+                if (points == null)
+                    throw new InvalidOperationException($"Tầng {floor.Number}: chưa nhận được bản đồ từ robot.");
+                var names = new[] { floor.WaitingPoint, floor.CabinPoint, floor.ChargingPoint };
+                if (names.Distinct(StringComparer.Ordinal).Count() != names.Length ||
+                    names.Any(name => !points.Any(p => p.Name == name && p.Status == 0)))
+                    throw new InvalidOperationException($"Tầng {floor.Number}: chọn ba điểm khác nhau có thể tới trên bản đồ.");
+            }
+
+            elevator.Floors = floors.OrderBy(f => f.Number).ToList();
+            using var db = Open();
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO GreetingElevators(RobotId,Config) VALUES ($id,$config)
+                ON CONFLICT(RobotId) DO UPDATE SET Config=excluded.Config
+                """;
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Parameters.AddWithValue("$config", Serialize(elevator));
+            cmd.ExecuteNonQuery();
         }
     }
 
@@ -165,7 +211,7 @@ public sealed class GreetingService
                     throw new InvalidOperationException("Bản đồ đã thay đổi. Hãy tải lại điểm.");
                 if (!robot.Snapshot.Places.Any(p => p.Name == request.PlaceName && p.Status == 0))
                     throw new InvalidOperationException("Điểm không tồn tại hoặc không thể tới trên bản đồ hiện tại.");
-                if (robot.Snapshot.NavigationState is "moving" or "checking" or "stopping" ||
+                if (robot.Snapshot.NavigationState != "idle" ||
                     robot.Commands.Any(c => c.Type == "navigate" && c.Status is "queued" or "delivered"))
                     throw new InvalidOperationException("Đã có lệnh điều hướng. Dừng trước khi chọn điểm khác.");
             }
@@ -217,7 +263,7 @@ public sealed class GreetingService
                 cmd.CommandText = "DELETE FROM GreetingCommands WHERE Id=$id";
                 cmd.Parameters.AddWithValue("$id", old.Id); cmd.ExecuteNonQuery();
             }
-            return new { settings = robot.Settings, command = next, serverTime = DateTimeOffset.UtcNow };
+            return new { settings = robot.Settings, elevator = robot.Elevator, command = next, serverTime = DateTimeOffset.UtcNow };
         }
     }
 }

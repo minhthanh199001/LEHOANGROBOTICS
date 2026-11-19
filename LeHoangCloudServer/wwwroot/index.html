@@ -1823,7 +1823,7 @@
     <div class="greeting-grid">
       <div class="greeting-card">
         <div class="greeting-card-heading"><h2 id="greetingRobotName">Điểm đến trên robot</h2><button id="greetingRefresh" type="button" disabled>Đọc lại điểm</button></div>
-        <dl class="greeting-status"><div><dt>Bản đồ hiện tại</dt><dd id="greetingMap">—</dd></div>
+        <dl class="greeting-status"><div><dt>Bản đồ và tầng hiện tại</dt><dd id="greetingMap">—</dd></div>
           <div><dt>Quyền điều khiển</dt><dd id="greetingSdk">—</dd></div>
           <div><dt>Điều hướng</dt><dd id="greetingNavigation">—</dd></div>
           <div><dt>Microphone / loa</dt><dd id="greetingMicrophone">—</dd></div></dl>
@@ -1847,6 +1847,11 @@
         </form>
         <p class="greeting-hint">Cấu hình áp dụng cho thao tác tiếp theo. Âm lượng phát lại còn phụ thuộc mức âm lượng media trên robot.</p>
       </div>
+      <div class="greeting-card">
+        <div class="greeting-card-heading"><h2>Thang máy</h2><button id="greetingEditElevator" type="button" disabled>Cấu hình tầng</button></div>
+        <p id="greetingElevatorSummary">Chọn robot để cấu hình.</p>
+        <div id="greetingMapInventory" class="greeting-map-inventory"></div>
+      </div>
       <div class="greeting-card" id="greetingRegisterCard">
         <h2>Ghép nối robot mới</h2>
         <form id="greetingRegister" class="greeting-settings">
@@ -1858,6 +1863,20 @@
       </div>
       <div class="greeting-card"><h2>Kết quả lệnh gần đây</h2><ol id="greetingCommands" class="greeting-command-list"><li>Chưa có lệnh.</li></ol></div>
     </div>
+    <dialog id="greetingElevatorDialog" class="greeting-pairing greeting-elevator-dialog" aria-labelledby="greetingElevatorTitle">
+      <h2 id="greetingElevatorTitle">Cấu hình thang máy</h2>
+      <form id="greetingElevatorForm">
+        <label>Số tầng hoạt động<input id="greetingFloorCount" type="number" min="0" max="32" step="1" required></label>
+        <p class="greeting-hint">Chọn 0 tầng để tắt chế độ đa tầng. Mỗi tầng cần một map và ba điểm khác nhau.</p>
+        <div id="greetingFloorRows"></div>
+        <label>Tầng có trạm sạc chính<select id="greetingMainChargingFloor"></select></label>
+        <p id="greetingElevatorNotice" role="status" aria-live="polite"></p>
+        <div class="greeting-actions">
+          <button id="greetingCancelElevator" type="button">Đóng</button>
+          <button id="greetingSaveElevator" type="submit">Lưu cấu hình thang máy</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="greetingPairing" class="greeting-pairing"><h2>Ghép nối Greetingbot</h2>
       <p>Lưu mã này để nhập trên robot. Server chỉ lưu bản băm và không hiển thị lại mã.</p>
       <label>Địa chỉ server<input id="greetingPairServer" readonly></label>

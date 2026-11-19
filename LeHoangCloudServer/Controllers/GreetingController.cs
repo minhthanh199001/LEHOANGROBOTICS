@@ -78,8 +78,18 @@ public sealed class GreetingController : ControllerBase
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
+    [HttpPut("robots/{id}/elevator")]
+    [RequestSizeLimit(131072)]
+    public IActionResult Elevator(string id, GreetingElevator elevator)
+    {
+        var error = CheckAdmin(); if (error != null) return error;
+        try { _service.SaveElevator(id, elevator); return Ok(elevator); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpPost("device/{id}/sync")]
-    [RequestSizeLimit(524288)]
+    [RequestSizeLimit(33554432)]
     public IActionResult Sync(string id, GreetingSyncRequest request)
     {
         if (!_service.Authenticate(id, Request.Headers["X-Greeting-Device-Token"].ToString()))

@@ -70,13 +70,37 @@ try {
   const robotPath='/robots/TEST-GREETING', syncPath='/device/TEST-GREETING/sync';
   const command=(type='navigate',placeName='Reception',mapName='Ground')=>({type,placeName,mapName});
   check((await call(robotPath+'/commands','POST',command())).status===409, 'Offline robot rejects movement');
-  const snapshot={sdkConnected:true,authorized:true,foreground:true,suspended:false,localized:true,mapName:'Ground',places:[{name:'Reception',x:1,y:2,theta:0,status:0},{name:'Blocked',x:3,y:4,theta:0,status:1}],navigationState:'idle',microphoneState:'idle',message:'Ready'};
+  const point = (name, status = 0) => ({name, x:1, y:2, theta:0, status});
+  const elevatorPoints = () => [point('Wait'), point('Cabin'), point('Dock')];
+  const snapshot={sdkConnected:true,authorized:true,foreground:true,suspended:false,localized:true,mapName:'Ground',
+    places:[point('Reception'),point('Blocked',1),...elevatorPoints()],currentFloor:1,
+    maps:['Second','Third','Fourth'].map(name => ({name, places:[point('Reception'),...elevatorPoints()]})),
+    navigationState:'idle',microphoneState:'idle',message:'Ready'};
   const sync=(state=snapshot,results=[],key=token)=>call(syncPath,'POST',{snapshot:state,results},key,true);
   check((await sync(snapshot,[],'bad-token')).status===401, 'Wrong device token rejected');
   check((await call('/device/OTHER/sync','POST',{snapshot},token,true)).status===401, 'Device token isolated by robot');
   check((await sync()).status===200, 'Authenticated device heartbeat');
   const list=await call('/robots');
   check(list.data.find(r=>r.id==='TEST-GREETING').online && !JSON.stringify(list.data).includes(token) && !JSON.stringify(list.data).includes('tokenHash'), 'Fleet online without leaking credentials');
+  const elevatorPath = robotPath + '/elevator';
+  const elevator = {floors:['Ground','Second','Third','Fourth'].map((mapName, index) => ({
+    number:index+1, mapName, waitingPoint:'Wait', cabinPoint:'Cabin', chargingPoint:'Dock'
+  })), mainChargingFloor:3};
+  check((await call(robotPath)).data.snapshot.maps.length===3, 'Robot detail returns map catalog alongside active map');
+  check((await call(elevatorPath,'PUT',elevator,'wrong-key')).status===401, 'Elevator configuration requires admin');
+  check((await call(elevatorPath,'PUT',{...elevator,mainChargingFloor:9})).status===400, 'Charging floor must be configured');
+  check((await call(elevatorPath,'PUT',{...elevator,floors:[...elevator.floors,{...elevator.floors[0],number:5}]})).status===400, 'Duplicate map rejected');
+  check((await call(elevatorPath,'PUT',{...elevator,floors:[{...elevator.floors[0],waitingPoint:'Blocked'},...elevator.floors.slice(1)]})).status===400, 'Unreachable elevator point rejected');
+  check((await call(elevatorPath,'PUT',{...elevator,floors:[...elevator.floors.slice(0,3),{...elevator.floors[3],cabinPoint:'Missing'}]})).status===400, 'Cabin point must exist on its assigned inactive map');
+  check((await call(elevatorPath,'PUT',elevator)).status===200, 'Four floor mappings and one main dock saved');
+  check(JSON.stringify((await sync()).data.elevator)===JSON.stringify(elevator), 'Floor settings sent to authenticated robot');
+  const otherRobot = await call('/robots','POST',{id:'TEST-OTHER',name:'Other robot'});
+  const otherSync = await call('/device/TEST-OTHER/sync','POST',{snapshot},otherRobot.data.deviceToken,true);
+  check(otherSync.data.elevator.floors.length===0, 'Floor mapping is isolated by robot');
+  await sync({...snapshot,navigationState:'wait_floor',elevatorFloor:2});
+  check((await call(robotPath+'/commands','POST',command())).status===409, 'Web navigation cannot interrupt an elevator trip');
+  check((await call(robotPath)).data.snapshot.elevatorFloor===2, 'Reported elevator floor visible in Web detail');
+  await sync();
   check((await call(robotPath+'/commands','POST',command('navigate','Reception','OldMap'))).status===409, 'Stale map rejected');
   check((await call(robotPath+'/commands','POST',command('navigate','Blocked'))).status===409, 'Unreachable point rejected');
   check((await call(robotPath+'/commands','POST',command('navigate','Missing'))).status===409, 'Unknown point rejected');
@@ -120,6 +144,7 @@ try {
   await stop(); await start();
   const restored=await call(robotPath);
   check(restored.data.settings.linearSpeed===0.25 && restored.data.settings.voiceAngleOffset===25 && restored.data.commands.find(c=>c.id===mic.data.id).status==='completed', 'Settings, voice compensation and command results survive restart');
+  check(restored.data.elevator.mainChargingFloor===3 && restored.data.elevator.floors.length===4, 'Elevator settings survive restart and motion settings update');
   check((await sync()).status===200, 'Pairing survives server restart');
   const lost=await call(robotPath+'/commands','POST',command());
   check((await sync()).data.command.id===lost.data.id, 'Deliver command whose response will be lost');

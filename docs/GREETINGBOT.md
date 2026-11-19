@@ -5,12 +5,22 @@
 ## Chức năng
 
 - Đọc tên bản đồ và các điểm trong Map Tool qua `getMapName` / `getPlaceList`; đọc lại khi trở về từ Map Tool.
-- Chỉ cho đi tới điểm thuộc bản đồ hiện tại, `status=0`, sau khi `isRobotEstimate` xác nhận định vị. Dùng `startNavigation` / `stopNavigation` cùng cặp API.
+- Web gửi lệnh đến điểm có `status=0` trên map hiện tại. Từ bản 1.5.0, màn hình robot điều hướng được đến điểm trên các tầng đã cấu hình. Mỗi chặng kiểm tra lại map, điểm và định vị trước khi dùng `startNavigation`.
 - Nút dừng và test microphone luôn nằm ngoài vùng cuộn danh sách điểm.
 - Ghi âm 2–15 giây rồi phát lại **âm thanh vừa ghi**, không chuyển thành TTS. Theo hướng dẫn Orion: `MIC`, 16 kHz, PCM16, đầu vào stereo; tách kênh trái và phát mono qua loa media. Âm thanh chỉ ở RAM, không tải lên server.
 - Web cấu hình tốc độ tiến/xoay, khoảng kiểm tra đã tới điểm, thời gian chờ vật cản, thời gian ghi âm và mức phát lại. Cấu hình lưu SQLite trên server và bộ nhớ riêng của app.
 - App vẫn đọc điểm, điều hướng và test âm thanh trực tiếp khi không có Web/server.
 - Test hướng âm trên màn hình: nghe tối đa 60 giây, nhận câu gọi **Hello robot** hoặc **robot ơi**, chờ góc MicroArray hợp lệ rồi gọi `wakeUp` / `stopWakeUp`. Không xoay khi chưa có góc thực từ hệ thống.
+
+## Thử đi thang máy trên Greetingbot 1.5.0
+
+1. Mở Greetingbot từ Home RobotOS. Trên Web, vào **Greetingbot**, chọn đúng robot và mở **Thang máy → Cấu hình tầng**. Bấm **Đọc lại điểm** trên robot nếu Web còn thiếu map hoặc điểm. Nếu RobotOS phải dùng dữ liệu map lưu trên máy, app sẽ hỏi quyền đọc bộ nhớ khi bấm nút này.
+2. Nhập số tầng. Gán mỗi tầng một map, một điểm chờ ngoài cửa, một điểm đứng trong cabin và một điểm sạc trên map. Chọn đúng một tầng có trạm sạc vật lý rồi lưu. Điểm cabin trên các map phải tương ứng cùng vị trí và hướng đứng trong cabin.
+3. Trên robot, kiểm tra nhãn map và tầng. Để đặt lại, dùng **Xác nhận tầng và vị trí**, chọn tầng rồi chọn điểm robot đang đứng, cùng hướng đã lưu. Khi RobotOS báo đang sạc bằng đế, app chuyển về map trạm sạc chính và định vị tại điểm sạc đã cấu hình. Tính năng này dựa trên thiết lập chỉ có một đế sạc vật lý.
+4. Chạm điểm cùng tầng để đi trực tiếp. Với điểm khác tầng, robot đi đến điểm chờ. Người vận hành gọi thang, giữ cửa mở rồi bấm **Cửa đã mở · Vào cabin**. Đợi app báo đã vào cabin trước khi cho thang di chuyển.
+5. Khi cabin dừng, mở **Mô phỏng tầng cabin** và chọn số tầng thực tế. Robot đổi map và xác nhận định vị tại điểm cabin. Nếu cabin dừng ở tầng trung gian, robot tiếp tục chờ. Ở tầng đích, xác nhận **Cửa đã mở** và giữ cửa mở đến khi robot ra khỏi cabin. Sau khi định vị thành công robot tự đi đến điểm đã chọn.
+
+Sau khi dừng hoặc RobotOS tiếp quản trong lúc vào cabin hoặc đang ở trong cabin, app yêu cầu xác nhận lại tầng và vị trí trước chuyến mới. Nếu robot chạm đế sạc chính và RobotOS trả quyền SDK cho Greetingbot, app có thể tự định vị lại ở trạm. Chế độ thử dùng xác nhận cửa và báo tầng trên Android. [SDK OrionStar về đổi map và định vị](https://doc.orionstar.com/en/knowledge-base/map-and-position/).
 
 ## Tự kết nối Web trong LAN — 1.4.0
 

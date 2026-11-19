@@ -28,6 +28,27 @@ public class GreetingPlace
     public int Status { get; set; }
 }
 
+public sealed class GreetingMap
+{
+    [Required, StringLength(200)] public string Name { get; set; } = "";
+    [MaxLength(1000)] public List<GreetingPlace> Places { get; set; } = new();
+}
+
+public sealed class GreetingFloor
+{
+    [Range(-999, 999)] public int Number { get; set; }
+    [Required, StringLength(200)] public string MapName { get; set; } = "";
+    [Required, StringLength(200)] public string WaitingPoint { get; set; } = "";
+    [Required, StringLength(200)] public string CabinPoint { get; set; } = "";
+    [Required, StringLength(200)] public string ChargingPoint { get; set; } = "";
+}
+
+public sealed class GreetingElevator
+{
+    [MaxLength(32)] public List<GreetingFloor> Floors { get; set; } = new();
+    public int? MainChargingFloor { get; set; }
+}
+
 public class GreetingSnapshot
 {
     public bool SdkConnected { get; set; }
@@ -37,6 +58,10 @@ public class GreetingSnapshot
     public bool Localized { get; set; }
     [StringLength(200)] public string MapName { get; set; } = "";
     [MaxLength(1000)] public List<GreetingPlace> Places { get; set; } = new();
+    [MaxLength(64)] public List<GreetingMap> Maps { get; set; } = new();
+    [StringLength(300)] public string MapInventoryMessage { get; set; } = "";
+    public int? CurrentFloor { get; set; }
+    public int? ElevatorFloor { get; set; }
     [StringLength(32)] public string NavigationState { get; set; } = "idle";
     [StringLength(200)] public string Target { get; set; } = "";
     [StringLength(32)] public string MicrophoneState { get; set; } = "idle";
@@ -81,6 +106,7 @@ public class GreetingRobot
     public string Name { get; set; } = "";
     public string Model => "OrionStar Greetingbot";
     public GreetingSettings Settings { get; set; } = new();
+    public GreetingElevator Elevator { get; set; } = new();
     public GreetingSnapshot Snapshot { get; set; } = new();
     public DateTimeOffset? LastSeen { get; set; }
     public bool Online => LastSeen.HasValue && DateTimeOffset.UtcNow - LastSeen.Value < TimeSpan.FromSeconds(10);
