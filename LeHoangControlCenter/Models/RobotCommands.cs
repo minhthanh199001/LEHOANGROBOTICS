@@ -141,6 +141,9 @@ namespace LeHoangControlCenter.Models
         {
             Type = "CMD_GET_MAP_DATA";
         }
+
+        [JsonPropertyName("mapName")]
+        public string MapName { get; set; } = string.Empty;
     }
 
     public class SetPoseEstimateCommand : BaseRobotCommand

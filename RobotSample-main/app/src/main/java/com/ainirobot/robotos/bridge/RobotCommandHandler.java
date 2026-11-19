@@ -90,7 +90,7 @@ public class RobotCommandHandler {
                     handleDoor(client, msgId, json);
                     break;
                 case "CMD_GET_MAP_DATA":
-                    handleGetMapData(client, msgId);
+                    handleGetMapData(client, msgId, json);
                     break;
                 case "CMD_SWITCH_MAP":
                     handleSwitchMap(client, msgId, json);
@@ -622,18 +622,30 @@ public class RobotCommandHandler {
         });
     }
 
-    private void handleGetMapData(final WebSocket client, final String msgId) {
-        String currentMap = "";
-        try {
-            if (GlobalData.getInstance() != null) {
-                currentMap = GlobalData.getInstance().getCurrentMapName();
-            }
-        } catch (Throwable ignored) {}
-        JsonObject mapData = RobotMapManager.buildMapDataJson(currentMap);
+    private void handleGetMapData(final WebSocket client, final String msgId, JsonObject json) {
+        String targetMap = (json != null && json.has("mapName") && !json.get("mapName").isJsonNull())
+                ? json.get("mapName").getAsString().trim()
+                : "";
+        if (TextUtils.isEmpty(targetMap)) {
+            try {
+                if (GlobalData.getInstance() != null) {
+                    targetMap = GlobalData.getInstance().getCurrentMapName();
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (TextUtils.isEmpty(targetMap)) {
+            targetMap = RobotMapManager.getCurrentMapName();
+        }
+        JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
         mapData.addProperty("msgId", msgId);
         try {
-            client.send(mapData.toString());
-            Log.i(TAG, "Sent MAP_DATA to PC");
+            if (client != null && client.isOpen()) {
+                client.send(mapData.toString());
+            } else {
+                RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
+                if (server != null) server.broadcast(mapData.toString());
+            }
+            Log.i(TAG, "Sent MAP_DATA to PC for map: " + targetMap);
         } catch (Throwable t) {
             Log.e(TAG, "Failed to send MAP_DATA: " + t.getMessage());
         }
@@ -662,10 +674,15 @@ public class RobotCommandHandler {
                         }
                     } catch (Throwable ignored) {}
 
-                    // Broadcast updated MAP_DATA
+                    // Broadcast updated MAP_DATA to all clients
                     JsonObject mapData = RobotMapManager.buildMapDataJson(mapName);
                     try {
-                        client.send(mapData.toString());
+                        RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
+                        if (server != null) {
+                            server.broadcast(mapData.toString());
+                        } else if (client != null && client.isOpen()) {
+                            client.send(mapData.toString());
+                        }
                     } catch (Throwable ignored) {}
 
                     // Notify local app UI (DeliveryFragment) to immediately reload stations for the new map
@@ -997,58 +1014,57 @@ public class RobotCommandHandler {
             return;
         }
 
-        // 1. Immediately persist to place.json on disk
+        // 1. Immediately persist to place.json on disk for targetMap
         boolean diskOk = RobotMapManager.saveOrUpdatePlaceToDisk(targetMap, name, x, y, theta);
-        Log.i(TAG, "saveOrUpdatePlaceToDisk result=" + diskOk + " for " + name);
+        Log.i(TAG, "saveOrUpdatePlaceToDisk result=" + diskOk + " for " + name + " on map " + targetMap);
 
-        // 2. Also register into CoreService SLAM pose map
-        try {
-            Pose pose = new Pose(x, y, theta, name);
-            RobotApi.getInstance().saveMappingPose(0, pose, new CommandListener() {
-                @Override
-                public void onResult(int result, String message) {
-                    boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
-                    Log.i(TAG, "saveMappingPose onResult: " + result + ", msg=" + message);
+        String activeMap = RobotMapManager.getCurrentMapName();
+        boolean isActiveMap = !TextUtils.isEmpty(activeMap) &&
+                RobotMapManager.normalizeMapName(activeMap).equalsIgnoreCase(RobotMapManager.normalizeMapName(targetMap));
 
-                    // Persist to place file in CoreService
-                    try {
-                        RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
-                    } catch (Throwable ignored) {}
-
-                    // Automatically compute/update topological road routes for newly added points
-                    try {
-                        RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
-                            @Override
-                            public void onResult(int res, String msg) {
-                                Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
-                            }
-                        });
-                    } catch (Throwable ignored) {}
-
-                    sendResult(client, msgId, "CMD_ADD_PLACE", ok || diskOk, result,
-                            "Đã lưu điểm '" + name + "' thành công");
-
-                    // Broadcast refreshed map data containing new place to ALL clients
-                    try {
-                        JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
-                        RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
-                        if (server != null) {
-                            server.broadcast(mapData.toString());
-                        } else if (client != null && client.isOpen()) {
-                            client.send(mapData.toString());
-                        }
-                    } catch (Throwable ignored) {}
-                }
-            });
-        } catch (Throwable t) {
-            Log.e(TAG, "saveMappingPose exception: " + t.getMessage(), t);
-            // Even if CoreService threw, if disk save worked, consider successful
-            sendResult(client, msgId, "CMD_ADD_PLACE", diskOk, diskOk ? 0 : -1, diskOk ? "Đã lưu điểm '" + name + "' vào bộ nhớ" : t.getMessage());
+        if (isActiveMap) {
+            // 2. Also register into CoreService SLAM pose map ONLY if targetMap is the currently active map
             try {
-                JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
-                RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
-                if (server != null) server.broadcast(mapData.toString());
-            } catch (Throwable ignored) {}
+                Pose pose = new Pose(x, y, theta, name);
+                RobotApi.getInstance().saveMappingPose(0, pose, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
+                        Log.i(TAG, "saveMappingPose onResult: " + result + ", msg=" + message);
+
+                        // Persist to place file in CoreService
+                        try {
+                            RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
+                        } catch (Throwable ignored) {}
+
+                        // Automatically compute/update topological road routes for newly added points
+                        try {
+                            RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
+                                @Override
+                                public void onResult(int res, String msg) {
+                                    Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
+                                }
+                            });
+                        } catch (Throwable ignored) {}
+
+                        sendResult(client, msgId, "CMD_ADD_PLACE", ok || diskOk, result,
+                                "Đã lưu điểm '" + name + "' thành công");
+
+                        broadcastRefreshedMap(targetMap, client);
+                    }
+                });
+            } catch (Throwable t) {
+                Log.e(TAG, "saveMappingPose exception: " + t.getMessage(), t);
+                sendResult(client, msgId, "CMD_ADD_PLACE", diskOk, diskOk ? 0 : -1, diskOk ? "Đã lưu điểm '" + name + "' vào bộ nhớ" : t.getMessage());
+                broadcastRefreshedMap(targetMap, client);
+            }
+        } else {
+            // targetMap is NOT currently loaded in CoreService (e.g. Robot is on Tầng 2, user configuring Tầng G)
+            // DO NOT call saveMappingPose or savePlaceListToPlaceFile into CoreService because CoreService has another map in RAM!
+            Log.i(TAG, "targetMap '" + targetMap + "' is not active CoreService map ('" + activeMap + "'). Persisted to disk only.");
+            sendResult(client, msgId, "CMD_ADD_PLACE", diskOk, diskOk ? 0 : -1,
+                    diskOk ? "Đã lưu điểm '" + name + "' vào bản đồ " + targetMap : "Lỗi lưu file");
+            broadcastRefreshedMap(targetMap, client);
         }
     }
 
@@ -1083,53 +1099,63 @@ public class RobotCommandHandler {
         boolean diskOk = RobotMapManager.deletePlaceFromDisk(targetMap, name);
         Log.i(TAG, "deletePlaceFromDisk result=" + diskOk + " for " + name);
 
-        // 2. Delete from CoreService SLAM
-        try {
-            RobotApi.getInstance().deleteMappingPose(0, name, new CommandListener() {
-                @Override
-                public void onResult(int result, String message) {
-                    boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
-                    Log.i(TAG, "deleteMappingPose onResult: " + result + ", msg=" + message);
+        String activeMap = RobotMapManager.getCurrentMapName();
+        boolean isActiveMap = !TextUtils.isEmpty(activeMap) &&
+                RobotMapManager.normalizeMapName(activeMap).equalsIgnoreCase(RobotMapManager.normalizeMapName(targetMap));
 
-                    // Persist deletion to CoreService
-                    try {
-                        RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
-                    } catch (Throwable ignored) {}
-
-                    // Refresh road routes after deletion
-                    try {
-                        RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
-                            @Override
-                            public void onResult(int res, String msg) {
-                                Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
-                            }
-                        });
-                    } catch (Throwable ignored) {}
-
-                    sendResult(client, msgId, "CMD_DELETE_PLACE", ok || diskOk, result,
-                            "Đã xóa điểm '" + name + "'");
-
-                    // Broadcast refreshed map data to ALL clients
-                    try {
-                        JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
-                        RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
-                        if (server != null) {
-                            server.broadcast(mapData.toString());
-                        } else if (client != null && client.isOpen()) {
-                            client.send(mapData.toString());
-                        }
-                    } catch (Throwable ignored) {}
-                }
-            });
-        } catch (Throwable t) {
-            Log.e(TAG, "deleteMappingPose exception: " + t.getMessage(), t);
-            sendResult(client, msgId, "CMD_DELETE_PLACE", diskOk, diskOk ? 0 : -1, diskOk ? "Đã xóa điểm '" + name + "'" : t.getMessage());
+        if (isActiveMap) {
+            // 2. Delete from CoreService SLAM only if this is the active map
             try {
-                JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
-                RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
-                if (server != null) server.broadcast(mapData.toString());
-            } catch (Throwable ignored) {}
+                RobotApi.getInstance().deleteMappingPose(0, name, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
+                        Log.i(TAG, "deleteMappingPose onResult: " + result + ", msg=" + message);
+
+                        // Persist deletion to CoreService
+                        try {
+                            RobotApi.getInstance().savePlaceListToPlaceFile(0, targetMap, null);
+                        } catch (Throwable ignored) {}
+
+                        // Refresh road routes after deletion
+                        try {
+                            RobotApi.getInstance().autoDrawRoad(0, targetMap, new CommandListener() {
+                                @Override
+                                public void onResult(int res, String msg) {
+                                    Log.i(TAG, "autoDrawRoad onResult: " + res + ", msg=" + msg);
+                                }
+                            });
+                        } catch (Throwable ignored) {}
+
+                        sendResult(client, msgId, "CMD_DELETE_PLACE", ok || diskOk, result,
+                                "Đã xóa điểm '" + name + "'");
+
+                        broadcastRefreshedMap(targetMap, client);
+                    }
+                });
+            } catch (Throwable t) {
+                Log.e(TAG, "deleteMappingPose exception: " + t.getMessage(), t);
+                sendResult(client, msgId, "CMD_DELETE_PLACE", diskOk, diskOk ? 0 : -1, diskOk ? "Đã xóa điểm '" + name + "'" : t.getMessage());
+                broadcastRefreshedMap(targetMap, client);
+            }
+        } else {
+            Log.i(TAG, "targetMap '" + targetMap + "' is not active CoreService map ('" + activeMap + "'). Deleted from disk only.");
+            sendResult(client, msgId, "CMD_DELETE_PLACE", diskOk, diskOk ? 0 : -1,
+                    diskOk ? "Đã xóa điểm '" + name + "' trên bản đồ " + targetMap : "Lỗi xóa điểm");
+            broadcastRefreshedMap(targetMap, client);
         }
+    }
+
+    private void broadcastRefreshedMap(String targetMap, WebSocket client) {
+        try {
+            JsonObject mapData = RobotMapManager.buildMapDataJson(targetMap);
+            RobotBridgeServer server = RobotBridgeManager.getInstance().getServer();
+            if (server != null) {
+                server.broadcast(mapData.toString());
+            } else if (client != null && client.isOpen()) {
+                client.send(mapData.toString());
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void sendResult(WebSocket client, String msgId, String command, boolean success, int resultCode, String message) {

@@ -277,7 +277,11 @@ public class RobotMapManager {
         }
 
         // Only fallback to CoreService getPlaceList() if place.json on disk was empty or missing
-        if (placesMap.isEmpty()) {
+        // AND strictly only if actualMap is the robot's currently active map in CoreService!
+        String activeMap = getCurrentMapName();
+        boolean isActiveMap = !TextUtils.isEmpty(activeMap) &&
+                normalizeMapName(activeMap).equalsIgnoreCase(normalizeMapName(actualMap));
+        if (placesMap.isEmpty() && isActiveMap) {
             try {
                 if (RobotApi.getInstance().isApiConnectedService()) {
                     List<com.ainirobot.coreservice.client.actionbean.Pose> placeList = RobotApi.getInstance().getPlaceList();
@@ -294,7 +298,7 @@ public class RobotMapManager {
                                 placesMap.put(key, item);
                             }
                         }
-                        Log.i(TAG, "Loaded " + placesMap.size() + " places from CoreService getPlaceList() fallback");
+                        Log.i(TAG, "Loaded " + placesMap.size() + " places from CoreService getPlaceList() fallback for active map: " + actualMap);
                     }
                 }
             } catch (Throwable t) {
@@ -313,18 +317,20 @@ public class RobotMapManager {
 
     public static void switchMap(final String mapName, final CommandListener listener) {
         try {
+            File mapDir = resolveMapDir(mapName);
+            final String actualMap = (mapDir != null && mapDir.exists()) ? mapDir.getName() : mapName;
             if (RobotApi.getInstance().isApiConnectedService()) {
-                RobotApi.getInstance().switchMap(0, mapName, new CommandListener() {
+                RobotApi.getInstance().switchMap(0, actualMap, new CommandListener() {
                     @Override
                     public void onResult(int result, String message) {
                         boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
                         if (ok) {
                             try {
                                 if (GlobalData.getInstance() != null) {
-                                    GlobalData.getInstance().setCurrentMapName(mapName);
+                                    GlobalData.getInstance().setCurrentMapName(actualMap);
                                 }
                             } catch (Throwable ignored) {}
-                            notifyMapPlacesChanged(mapName);
+                            notifyMapPlacesChanged(actualMap);
                         }
                         if (listener != null) {
                             listener.onResult(result, message);

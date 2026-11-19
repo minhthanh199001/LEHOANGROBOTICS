@@ -2702,7 +2702,7 @@
 
 
 
-                                <Canvas Canvas.Left="{Binding CanvasRobotLeft}" Canvas.Top="{Binding CanvasRobotTop}" Width="50" Height="50" Margin="-25,-25,0,0" Panel.ZIndex="10">
+                                <Canvas Canvas.Left="{Binding CanvasRobotLeft}" Canvas.Top="{Binding CanvasRobotTop}" Width="50" Height="50" Margin="-25,-25,0,0" Panel.ZIndex="10" Visibility="{Binding RobotOnCurrentMapVisibility}">
 
 
 
@@ -3481,7 +3481,16 @@
 
 
 
-                            <Button Command="{Binding RefreshMapCommand}" Content="🔄 Tải lại" Style="{StaticResource CyberButton}" Padding="8,4" Margin="0,0,10,0" ToolTip="Tải lại danh sách bản đồ từ robot" />
+                            <Button Command="{Binding RefreshMapCommand}" Content="🔄 Tải lại" Style="{StaticResource CyberButton}" Padding="8,4" Margin="0,0,10,0" ToolTip="Tải lại dữ liệu bản đồ từ robot" />
+
+                            <!-- Notice when viewing another floor than robot's current location -->
+                            <Border Background="#1E1B4B" BorderBrush="#818CF8" BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,10,0"
+                                    Visibility="{Binding RobotDifferentMapBannerVisibility}" ToolTip="Robot đang ở bản đồ khác. Bạn đang ở chế độ xem / chỉnh sửa cấu hình điểm trạm.">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding RobotLocationNotice}" Foreground="#C7D2FE" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Button Command="{Binding SwitchToRobotMapCommand}" Content="👁️ Xem tầng Robot" Style="{StaticResource CyberButton}" Padding="6,2" FontSize="10" />
+                                </StackPanel>
+                            </Border>
 
 
 
@@ -4017,7 +4026,7 @@
 
 
 
-                                <Canvas Canvas.Left="{Binding CanvasRobotLeft}" Canvas.Top="{Binding CanvasRobotTop}" Width="50" Height="50" Margin="-25,-25,0,0" Panel.ZIndex="10">
+                                <Canvas Canvas.Left="{Binding CanvasRobotLeft}" Canvas.Top="{Binding CanvasRobotTop}" Width="50" Height="50" Margin="-25,-25,0,0" Panel.ZIndex="10" Visibility="{Binding RobotOnCurrentMapVisibility}">
 
 
 

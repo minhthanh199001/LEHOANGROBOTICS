@@ -229,7 +229,39 @@ namespace LeHoangControlCenter.ViewModels
             SwitchToMapLocal(value);
             if (IsConnected)
             {
-                _ = SwitchMapAsync();
+                _ = _robotService.SendCommandAsync(new GetMapDataCommand { MapName = value });
+            }
+        }
+
+        [ObservableProperty]
+        private string _robotCurrentMap = "";
+
+        public bool IsRobotOnCurrentMap
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(RobotCurrentMap) || string.IsNullOrEmpty(CurrentMap)) return true;
+                return string.Equals(RobotCurrentMap, CurrentMap, StringComparison.OrdinalIgnoreCase) ||
+                       NormalizeMapKey(RobotCurrentMap) == NormalizeMapKey(CurrentMap);
+            }
+        }
+
+        public Visibility RobotOnCurrentMapVisibility => IsRobotOnCurrentMap ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility RobotDifferentMapBannerVisibility => (!IsRobotOnCurrentMap && !string.IsNullOrEmpty(RobotCurrentMap)) ? Visibility.Visible : Visibility.Collapsed;
+
+        public string RobotLocationNotice => $"🤖 Robot hiện ở: {RobotCurrentMap}";
+
+        [RelayCommand]
+        public void SwitchToRobotMap()
+        {
+            if (!string.IsNullOrEmpty(RobotCurrentMap))
+            {
+                SwitchToMapLocal(RobotCurrentMap);
+                if (IsConnected)
+                {
+                    _ = _robotService.SendCommandAsync(new GetMapDataCommand { MapName = RobotCurrentMap });
+                }
             }
         }
 
@@ -800,13 +832,22 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     RobotState = telemetry.Status.State;
                     string incomingMap = string.IsNullOrEmpty(telemetry.Status.CurrentMap) ? "--" : telemetry.Status.CurrentMap;
-                    if (incomingMap != "--" && incomingMap != "Bản đồ Mặc định" && !string.Equals(incomingMap, CurrentMap, StringComparison.OrdinalIgnoreCase))
+                    if (incomingMap != "--" && incomingMap != "Bản đồ Mặc định")
                     {
-                        SwitchToMapLocal(incomingMap);
-                    }
-                    else if (incomingMap != "--" && incomingMap != "Bản đồ Mặc định")
-                    {
-                        CurrentMap = incomingMap;
+                        if (RobotCurrentMap != incomingMap)
+                        {
+                            RobotCurrentMap = incomingMap;
+                            OnPropertyChanged(nameof(IsRobotOnCurrentMap));
+                            OnPropertyChanged(nameof(RobotOnCurrentMapVisibility));
+                            OnPropertyChanged(nameof(RobotDifferentMapBannerVisibility));
+                            OnPropertyChanged(nameof(RobotLocationNotice));
+                        }
+
+                        // Only auto-switch view on initial connect if CurrentMap is still empty
+                        if (string.IsNullOrEmpty(CurrentMap))
+                        {
+                            SwitchToMapLocal(incomingMap);
+                        }
                     }
                     CurrentPlace = string.IsNullOrEmpty(telemetry.Status.CurrentPlace) ? "--" : telemetry.Status.CurrentPlace;
                     IsEmergencyStopActive = telemetry.Status.EmergencyStop;
@@ -840,8 +881,35 @@ namespace LeHoangControlCenter.ViewModels
         {
             Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
+                // If this map data is for a different map than the one user is currently viewing,
+                // do not disrupt the user's view, just update RobotCurrentMap and AvailableMaps
+                bool isViewingDifferentMap = !string.IsNullOrEmpty(CurrentMap) &&
+                    !string.Equals(data.CurrentMap, CurrentMap, StringComparison.OrdinalIgnoreCase) &&
+                    NormalizeMapKey(data.CurrentMap) != NormalizeMapKey(CurrentMap);
+
+                if (isViewingDifferentMap)
+                {
+                    RobotCurrentMap = data.CurrentMap;
+                    OnPropertyChanged(nameof(IsRobotOnCurrentMap));
+                    OnPropertyChanged(nameof(RobotOnCurrentMapVisibility));
+                    OnPropertyChanged(nameof(RobotDifferentMapBannerVisibility));
+                    OnPropertyChanged(nameof(RobotLocationNotice));
+
+                    bool mapsChanged = AvailableMaps.Count != data.MapList.Count || !AvailableMaps.SequenceEqual(data.MapList);
+                    if (mapsChanged && data.MapList.Count > 0)
+                    {
+                        AvailableMaps.Clear();
+                        foreach (var m in data.MapList) AvailableMaps.Add(m);
+                    }
+                    return;
+                }
+
                 CurrentMap = data.CurrentMap;
                 SelectedMap = data.CurrentMap;
+                OnPropertyChanged(nameof(IsRobotOnCurrentMap));
+                OnPropertyChanged(nameof(RobotOnCurrentMapVisibility));
+                OnPropertyChanged(nameof(RobotDifferentMapBannerVisibility));
+                OnPropertyChanged(nameof(RobotLocationNotice));
 
                 // 1. Snapshot all currently configured map names before updating AvailableMaps
                 var savedMapSelections = new Dictionary<string, string>();
@@ -959,11 +1027,23 @@ namespace LeHoangControlCenter.ViewModels
                     }
                 }
 
-                // 2. Merge places from robot (authoritative)
+                // 2. Merge places from robot (authoritative) ONLY if they legitimately belong to this floor
                 if (data.Places != null && data.Places.Count > 0)
                 {
+                    // Detect points that uniquely belong to other floors in saved_stations.json
+                    var otherFloorsPoints = allSaved
+                        .Where(kvp => NormalizeMapKey(kvp.Key) != NormalizeMapKey(data.CurrentMap))
+                        .SelectMany(kvp => kvp.Value.Select(st => st.Name))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                     foreach (var p in data.Places)
                     {
+                        // If this place is uniquely registered on ANOTHER floor and NOT originally part of this map's local stations, discard!
+                        if (otherFloorsPoints.Contains(p.Name) && (matchedLocal == null || !matchedLocal.Any(s => s.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase))))
+                        {
+                            continue;
+                        }
+
                         placesDict[p.Name] = p;
                         p.Icon = (p.Name.ToLowerInvariant().Contains("charge") || p.Name.ToLowerInvariant().Contains("sạc")) ? "⚡" : "📍";
                     }
@@ -1188,13 +1268,15 @@ namespace LeHoangControlCenter.ViewModels
             if (string.IsNullOrEmpty(SelectedMap)) return;
             AddLog($"[CHUYỂN BẢN ĐỒ] Đang đổi sang bản đồ: {SelectedMap}...");
             await _robotService.SendCommandAsync(new SwitchMapCommand { MapName = SelectedMap });
+            await _robotService.SendCommandAsync(new GetMapDataCommand { MapName = SelectedMap });
         }
 
         [RelayCommand]
         public async Task RefreshMapAsync()
         {
-            AddLog("[TẢI BẢN ĐỒ] Yêu cầu cập nhật dữ liệu bản đồ từ robot...");
-            await _robotService.SendCommandAsync(new GetMapDataCommand());
+            string target = !string.IsNullOrEmpty(SelectedMap) ? SelectedMap : CurrentMap;
+            AddLog($"[TẢI BẢN ĐỒ] Yêu cầu cập nhật dữ liệu bản đồ '{target}' từ robot...");
+            await _robotService.SendCommandAsync(new GetMapDataCommand { MapName = target });
         }
 
         [RelayCommand]
@@ -1410,6 +1492,10 @@ namespace LeHoangControlCenter.ViewModels
             CanvasRobotTop = WorldToCanvasY(PoseY);
 
             UpdateAvailableStationNames();
+            OnPropertyChanged(nameof(IsRobotOnCurrentMap));
+            OnPropertyChanged(nameof(RobotOnCurrentMapVisibility));
+            OnPropertyChanged(nameof(RobotDifferentMapBannerVisibility));
+            OnPropertyChanged(nameof(RobotLocationNotice));
             AddLog($"🗺️ [CHUYỂN BẢN ĐỒ] Đang hiển thị bản đồ '{mapName}' ({MapStations.Count} điểm trạm)");
         }
 
@@ -2260,6 +2346,20 @@ namespace LeHoangControlCenter.ViewModels
 
             if (string.IsNullOrWhiteSpace(dest)) return;
 
+            if (!IsRobotOnCurrentMap)
+            {
+                var ask = System.Windows.MessageBox.Show(
+                    $"Robot hiện đang ở '{RobotCurrentMap}', trong khi bạn đang chọn điểm '{dest}' trên bản đồ '{CurrentMap}'.\n\nBạn có muốn đổi bản đồ trên robot sang '{CurrentMap}' trước khi di chuyển không?",
+                    "Khác bản đồ hoạt động",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Question);
+                if (ask == System.Windows.MessageBoxResult.Yes)
+                {
+                    await SwitchMapAsync();
+                }
+                return;
+            }
+
             // Nếu robot đang mất định vị, gợi ý người dùng định vị robot tại điểm này
             if (!IsEstimated && !IsSimulationMode && IsConnected)
             {
@@ -2301,6 +2401,15 @@ namespace LeHoangControlCenter.ViewModels
         public void NavigateToCanvasPoint(double canvasX, double canvasY)
         {
             if (MapDisplayWidth <= 0 || MapDisplayHeight <= 0) return;
+
+            if (!IsRobotOnCurrentMap)
+            {
+                AddLog($"⚠️ [CHẶN ĐIỀU HƯỚNG] Robot đang ở '{RobotCurrentMap}', không thể điều hướng trên bản đồ '{CurrentMap}' đang xem.");
+                System.Windows.MessageBox.Show(
+                    $"Robot hiện đang ở '{RobotCurrentMap}', còn bạn đang xem bản đồ '{CurrentMap}'.\n\nKhông thể gửi lệnh di chuyển vì khác tầng/bản đồ!\n\nHãy đổi bản đồ cho Robot hoặc bấm 'Xem tầng Robot' để quay lại đúng tầng của Robot.",
+                    "Khác bản đồ / Tầng", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
 
             double normX = Math.Clamp(canvasX / MapDisplayWidth, 0.0, 1.0);
             double normY = Math.Clamp(canvasY / MapDisplayHeight, 0.0, 1.0);
