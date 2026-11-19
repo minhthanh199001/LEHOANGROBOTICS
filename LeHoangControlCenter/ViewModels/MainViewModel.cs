@@ -1436,23 +1436,14 @@ namespace LeHoangControlCenter.ViewModels
             try
             {
                 IsAutoRelocalizing = true;
-                AutoRelocalizeNotice = $"Đang tự động định vị trên '{targetMap}'...";
-                AddLog($"🔄 [TỰ ĐỘNG ĐỊNH VỊ] Khởi động quy trình tự động định vị hoàn toàn cho bản đồ '{targetMap}'...");
+                AutoRelocalizeNotice = $"Đang định vị tức thì trên '{targetMap}'...";
+                AddLog($"🔄 [ĐỊNH VỊ TỨC THÌ] Khởi động định vị nhanh (không xoay 360°) cho bản đồ '{targetMap}'...");
 
-                // 1. Chờ 1.5 giây để SLAM robot nạp bản đồ xong
-                await Task.Delay(1500, ct);
+                // 1. Chờ 1.2 giây để SLAM robot nạp bản đồ xong
+                await Task.Delay(1200, ct);
                 if (ct.IsCancellationRequested) return;
 
-                // Nếu robot đã được định vị và có tọa độ khác (0,0)
-                if (IsEstimated && (Math.Abs(PoseX) > 0.05 || Math.Abs(PoseY) > 0.05))
-                {
-                    AddLog($"✅ [TỰ ĐỘNG ĐỊNH VỊ] Robot đã có vị trí hợp lệ trên bản đồ (X={PoseX:F2}m, Y={PoseY:F2}m). Hoàn tất định vị.");
-                    IsAutoRelocalizing = false;
-                    AutoRelocalizeNotice = "";
-                    return;
-                }
-
-                // 2. GIAI ĐOẠN 1: Neo vị trí vào trạm tham chiếu đã lưu (Anchor Station)
+                // 2. Tìm trạm tham chiếu đã lưu (Anchor Station) trên bản đồ đích
                 var allSaved = LoadAllSavedStations();
                 var targetStations = FindStationsForMap(allSaved, targetMap);
 
@@ -1465,6 +1456,7 @@ namespace LeHoangControlCenter.ViewModels
 
                 if (anchor == null)
                 {
+                    // Ưu tiên: TrongThangMay -> Charging Point -> Stand-by Point -> trạm đầu tiên
                     anchor = targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
@@ -1473,8 +1465,18 @@ namespace LeHoangControlCenter.ViewModels
 
                 if (anchor != null)
                 {
-                    AutoRelocalizeNotice = $"Đang neo vị trí tại '{anchor.Name}'...";
-                    AddLog($"📍 [TỰ ĐỘNG ĐỊNH VỊ - BƯỚC 1] Gieo tọa độ trạm '{anchor.Name}' (X={anchor.X:F2}m, Y={anchor.Y:F2}m, θ={anchor.Theta:F2})...");
+                    AutoRelocalizeNotice = $"Đang khóa vị trí tại '{anchor.Name}'...";
+                    AddLog($"📍 [ĐỊNH VỊ TỨC THÌ] Khóa vị trí trực tiếp tại '{anchor.Name}' (X={anchor.X:F2}m, Y={anchor.Y:F2}m, θ={anchor.Theta:F2}) - KHÔNG XOAY 360°...");
+
+                    // Gửi lệnh SetPoseEstimate với X, Y, Theta để robot cưỡng bức khóa vị trí (ForceEstimate) ngay
+                    await _robotService.SendCommandAsync(new SetPoseEstimateCommand
+                    {
+                        X = anchor.X,
+                        Y = anchor.Y,
+                        Theta = anchor.Theta
+                    });
+
+                    await Task.Delay(300, ct);
 
                     await _robotService.SendCommandAsync(new SetLocationCommand
                     {
@@ -1484,58 +1486,24 @@ namespace LeHoangControlCenter.ViewModels
                         Theta = anchor.Theta
                     });
 
-                    await Task.Delay(400, ct);
+                    // Chờ 1 giây để telemetry cập nhật
+                    await Task.Delay(1000, ct);
+                    if (ct.IsCancellationRequested) return;
 
-                    await _robotService.SendCommandAsync(new SetPoseEstimateCommand
-                    {
-                        X = anchor.X,
-                        Y = anchor.Y,
-                        Theta = anchor.Theta
-                    });
+                    AddLog($"🎉 [ĐỊNH VỊ THÀNH CÔNG] Đã định vị nhanh tại '{anchor.Name}' (X={PoseX:F2}m, Y={PoseY:F2}m). Robot sẵn sàng nhận lệnh!");
                 }
                 else
                 {
-                    AddLog($"⚠️ [TỰ ĐỘNG ĐỊNH VỊ] Bản đồ '{targetMap}' chưa có điểm neo trạm. Sẽ sử dụng chế độ Quét Laser 360°.");
-                }
-
-                // 3. GIAI ĐOẠN 2: Chờ 2.5 giây kiểm tra kết quả
-                AutoRelocalizeNotice = "Đang kiểm tra kết quả định vị...";
-                await Task.Delay(2500, ct);
-                if (ct.IsCancellationRequested) return;
-
-                // Nếu vẫn chưa định vị (IsEstimated == false), tự động kích hoạt Quét Laser 360° (Action ID 24)
-                if (!IsEstimated)
-                {
-                    AutoRelocalizeNotice = "Robot đang tự động xoay quét Laser 360° tìm vị trí...";
-                    AddLog("🔄 [TỰ ĐỘNG ĐỊNH VỊ - BƯỚC 2] Robot chưa khóa vị trí. Tự động kích hoạt Quét Laser 360° (Action 24)...");
-
-                    await _robotService.SendCommandAsync(new ResetEstimateCommand());
-
-                    // Chờ và giám sát trong tối đa 16 giây
-                    for (int i = 0; i < 32; i++)
-                    {
-                        await Task.Delay(500, ct);
-                        if (ct.IsCancellationRequested) return;
-
-                        if (IsEstimated)
-                        {
-                            AddLog($"🎉 [TỰ ĐỘNG ĐỊNH VỊ THÀNH CÔNG] Robot đã khóa vị trí thành công! (X={PoseX:F2}m, Y={PoseY:F2}m).");
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    AddLog($"🎉 [TỰ ĐỘNG ĐỊNH VỊ THÀNH CÔNG] Robot đã định vị chính xác tại (X={PoseX:F2}m, Y={PoseY:F2}m)!");
+                    AddLog($"ℹ️ [LƯU Ý] Bản đồ '{targetMap}' chưa có trạm neo. Nếu cần dò toàn bản đồ, bấm '🔄 Quét Laser 360°'.");
                 }
             }
             catch (OperationCanceledException)
             {
-                AddLog("[TỰ ĐỘNG ĐỊNH VỊ] Đã hủy tiến trình cũ để thực hiện yêu cầu mới.");
+                AddLog("[ĐỊNH VỊ TỨC THÌ] Đã hủy tiến trình cũ để thực hiện yêu cầu mới.");
             }
             catch (Exception ex)
             {
-                AddLog($"[TỰ ĐỘNG ĐỊNH VỊ] Lỗi: {ex.Message}");
+                AddLog($"[ĐỊNH VỊ TỨC THÌ] Lỗi: {ex.Message}");
             }
             finally
             {

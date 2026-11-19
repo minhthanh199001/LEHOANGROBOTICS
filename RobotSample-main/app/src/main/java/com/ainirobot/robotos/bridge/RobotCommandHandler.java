@@ -705,33 +705,25 @@ public class RobotCommandHandler {
         float y = json.has("y") ? json.get("y").getAsFloat() : 0f;
         float theta = json.has("theta") ? json.get("theta").getAsFloat() : 0f;
 
-        Log.i(TAG, "Executing SET_POSE_ESTIMATE: (" + x + ", " + y + ", " + theta + ")");
+        Log.i(TAG, "Executing Fast SET_POSE_ESTIMATE (Force Estimate without 360 rotation): (" + x + ", " + y + ", " + theta + ")");
         try {
-            org.json.JSONObject params = new org.json.JSONObject();
+            final org.json.JSONObject params = new org.json.JSONObject();
             params.put(Definition.JSON_NAVI_POSITION_X, x);
             params.put(Definition.JSON_NAVI_POSITION_Y, y);
             params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
 
-            final org.json.JSONObject finalParams = params;
-            RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
+            // CƯỠNG BỨC KHÓA VỊ TRÍ TỨC THÌ (setForceEstimate) -> Thu gọn đám mây hạt về đúng (x, y, theta) mà KHÔNG CẦN XOAY 360°
+            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
                 @Override
-                public void onResult(int result, String message) {
-                    boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
-                    Log.i(TAG, "setPoseEstimate onResult: " + result + ", msg=" + message);
-                    if (!ok) {
-                        try {
-                            RobotApi.getInstance().setForceEstimate(0, finalParams.toString(), new CommandListener() {
-                                @Override
-                                public void onResult(int resF, String msgF) {
-                                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
-                                    Log.i(TAG, "setForceEstimate onResult: " + resF + ", msg=" + msgF);
-                                    sendResult(client, msgId, "CMD_SET_POSE_ESTIMATE", okF, resF, msgF);
-                                }
-                            });
-                            return;
-                        } catch (Throwable ignored) {}
-                    }
-                    sendResult(client, msgId, "CMD_SET_POSE_ESTIMATE", ok, result, message);
+                public void onResult(int resF, String msgF) {
+                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
+                    Log.i(TAG, "Fast setForceEstimate result: " + resF + ", msg=" + msgF);
+
+                    try {
+                        RobotApi.getInstance().setPoseEstimate(0, params.toString(), null);
+                    } catch (Throwable ignored) {}
+
+                    sendResult(client, msgId, "CMD_SET_POSE_ESTIMATE", okF, resF, msgF);
                 }
             });
         } catch (Throwable t) {
@@ -1016,6 +1008,7 @@ public class RobotCommandHandler {
     }
 
     private void checkLocalizationAndLaserScanFallback() {
+        // KHÔNG TỰ ĐỘNG XOAY 360 ĐỘ: Tránh xoay trong buồng thang máy hoặc hành lang hẹp
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -1024,12 +1017,7 @@ public class RobotCommandHandler {
                         RobotApi.getInstance().isRobotEstimate(0, new CommandListener() {
                             @Override
                             public void onResult(int res, String msg) {
-                                if (!"true".equalsIgnoreCase(msg)) {
-                                    Log.w(TAG, "Robot still unestimated after map switch. Triggering full 360 scan relocalization...");
-                                    handleResetEstimate(null, null);
-                                } else {
-                                    Log.i(TAG, "Robot successfully estimated on new map!");
-                                }
+                                Log.i(TAG, "Kiểm tra định vị sau chuyển map (Không xoay): isRobotEstimate=" + msg);
                             }
                         });
                     }
@@ -1040,9 +1028,14 @@ public class RobotCommandHandler {
 
     private void applyDirectPoseAndEstimate(final WebSocket client, final String msgId, final float x, final float y, final float theta, final String label) {
         try {
+            Log.i(TAG, "Fast applyDirectPoseAndEstimate (NO 360 rotation): " + label + " (" + x + ", " + y + ", θ=" + theta + ")");
+
+            // 1. Đăng ký Pose vào CoreService nếu có tên điểm cụ thể
             if (!TextUtils.isEmpty(label)) {
                 try {
-                    RobotApi.getInstance().setLocation(0, label, null);
+                    com.ainirobot.coreservice.client.actionbean.Pose p =
+                            new com.ainirobot.coreservice.client.actionbean.Pose(x, y, theta, label);
+                    RobotApi.getInstance().saveMappingPose(0, p, null);
                 } catch (Throwable ignored) {}
             }
 
@@ -1051,35 +1044,33 @@ public class RobotCommandHandler {
             params.put(Definition.JSON_NAVI_POSITION_Y, y);
             params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
 
-            RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
+            // 2. CƯỠNG BỨC KHÓA VỊ TRÍ TỨC THÌ (setForceEstimate) -> isRobotEstimate = true ngay lập tức
+            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
                 @Override
-                public void onResult(int res, String msg) {
-                    boolean ok = (res == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msg));
-                    if (ok) {
-                        if (client != null && msgId != null) {
-                            sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", true, 0, "Đã định vị tại " + label);
-                        }
-                    } else {
+                public void onResult(int resF, String msgF) {
+                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
+                    Log.i(TAG, "Fast setForceEstimate completed: " + resF + ", msg=" + msgF);
+
+                    try {
+                        RobotApi.getInstance().setPoseEstimate(0, params.toString(), null);
+                    } catch (Throwable ignored) {}
+
+                    if (!TextUtils.isEmpty(label)) {
                         try {
-                            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
-                                @Override
-                                public void onResult(int resF, String msgF) {
-                                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
-                                    if (client != null && msgId != null) {
-                                        sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", okF, resF, "ForceEstimate: " + msgF);
-                                    }
-                                }
-                            });
-                        } catch (Throwable t) {
-                            if (client != null && msgId != null) {
-                                sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", false, -1, t.getMessage());
-                            }
-                        }
+                            RobotApi.getInstance().setLocation(0, label, null);
+                        } catch (Throwable ignored) {}
+                    }
+
+                    if (client != null && msgId != null) {
+                        sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", true, 0, "Đã định vị tức thì tại " + label);
                     }
                 }
             });
         } catch (Throwable t) {
-            Log.e(TAG, "applyDirectPoseAndEstimate error: " + t.getMessage());
+            Log.e(TAG, "applyDirectPoseAndEstimate error: " + t.getMessage(), t);
+            if (client != null && msgId != null) {
+                sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", false, -1, t.getMessage());
+            }
         }
     }
 

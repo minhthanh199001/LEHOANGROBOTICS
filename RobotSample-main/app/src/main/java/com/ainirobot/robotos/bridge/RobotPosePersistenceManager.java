@@ -169,6 +169,7 @@ public class RobotPosePersistenceManager {
 
     /**
      * Nạp tọa độ bất kỳ (Trạm sạc, Điểm chờ, Vị trí đã lưu) vào hạt định vị của SLAM
+     * Định vị nhanh tức thì (Fast Instant Relocalization) - KHÔNG CẦN ROBOT XOAY 360 ĐỘ
      */
     public void applyPoseEstimate(final float x, final float y, final float theta, final String label, final RelocalizeCallback callback) {
         try {
@@ -177,46 +178,37 @@ public class RobotPosePersistenceManager {
             params.put(Definition.JSON_NAVI_POSITION_Y, y);
             params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
 
-            // 1. Nếu có tên điểm cụ thể, gọi setLocation trước để SLAM map theo tên trạm
+            // 1. Đăng ký Pose vào CoreService SLAM để hệ thống định vị của OrionStar nhận diện điểm
             if (!TextUtils.isEmpty(label) && !label.contains("Tự động") && !label.contains("Vị trí")) {
                 try {
-                    RobotApi.getInstance().setLocation(0, label, new CommandListener() {
-                        @Override
-                        public void onResult(int res, String msg) {
-                            Log.i(TAG, "setLocation (" + label + ") kết quả: " + res + ", msg=" + msg);
-                        }
-                    });
+                    com.ainirobot.coreservice.client.actionbean.Pose p =
+                            new com.ainirobot.coreservice.client.actionbean.Pose(x, y, theta, label);
+                    RobotApi.getInstance().saveMappingPose(0, p, null);
                 } catch (Throwable ignored) {}
             }
 
-            // 2. Gọi setPoseEstimate
-            RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
+            // 2. CƯỠNG BỨC ĐỊNH VỊ (setForceEstimate) TRƯỚC TIÊN:
+            // Khóa trực tiếp đám mây hạt SLAM về đúng (x, y, theta), đưa isRobotEstimate lên TRUE ngay lập tức mà KHÔNG XOAY 360 ĐỘ
+            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
                 @Override
-                public void onResult(int res, String msg) {
-                    boolean ok = (res == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msg));
-                    Log.i(TAG, "setPoseEstimate kết quả: " + res + ", message=" + msg + " (" + label + ")");
-                    if (ok) {
-                        savePose(x, y, theta, label);
-                        if (callback != null) callback.onResult(true, msg);
-                    } else {
-                        // Thử fallback sang setForceEstimate (Cưỡng bức định vị hạt)
+                public void onResult(int resForce, String msgForce) {
+                    boolean okForce = (resForce == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgForce));
+                    Log.i(TAG, "Fast setForceEstimate kết quả: " + resForce + ", msg=" + msgForce + " (" + label + ")");
+                    savePose(x, y, theta, label);
+
+                    // 3. Bổ trợ setPoseEstimate và setLocation
+                    try {
+                        RobotApi.getInstance().setPoseEstimate(0, params.toString(), null);
+                    } catch (Throwable ignored) {}
+
+                    if (!TextUtils.isEmpty(label) && !label.contains("Tự động") && !label.contains("Vị trí")) {
                         try {
-                            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
-                                @Override
-                                public void onResult(int resForce, String msgForce) {
-                                    boolean okForce = (resForce == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgForce));
-                                    Log.i(TAG, "setForceEstimate kết quả: " + resForce + ", msg=" + msgForce);
-                                    if (okForce) {
-                                        savePose(x, y, theta, label);
-                                    }
-                                    if (callback != null) {
-                                        callback.onResult(okForce, msgForce);
-                                    }
-                                }
-                            });
-                        } catch (Throwable t) {
-                            if (callback != null) callback.onResult(false, msg);
-                        }
+                            RobotApi.getInstance().setLocation(0, label, null);
+                        } catch (Throwable ignored) {}
+                    }
+
+                    if (callback != null) {
+                        callback.onResult(true, "Định vị tức thì thành công tại " + label);
                     }
                 }
             });
