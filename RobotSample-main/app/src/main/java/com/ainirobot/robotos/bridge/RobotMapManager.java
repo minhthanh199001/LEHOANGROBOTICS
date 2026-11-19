@@ -276,12 +276,11 @@ public class RobotMapManager {
             Log.e(TAG, "Failed to read place.json: " + t.getMessage());
         }
 
-        // Only fallback to CoreService getPlaceList() if place.json on disk was empty or missing
-        // AND strictly only if actualMap is the robot's currently active map in CoreService!
+        // Merge places from CoreService if actualMap is the robot's currently active map
         String activeMap = getCurrentMapName();
         boolean isActiveMap = !TextUtils.isEmpty(activeMap) &&
                 normalizeMapName(activeMap).equalsIgnoreCase(normalizeMapName(actualMap));
-        if (placesMap.isEmpty() && isActiveMap) {
+        if (isActiveMap) {
             try {
                 if (RobotApi.getInstance().isApiConnectedService()) {
                     List<com.ainirobot.coreservice.client.actionbean.Pose> placeList = RobotApi.getInstance().getPlaceList();

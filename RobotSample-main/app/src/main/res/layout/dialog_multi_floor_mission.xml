@@ -161,6 +161,18 @@
             android:textStyle="bold"
             android:layout_marginBottom="10dp" />
 
+        <!-- Skip Step Button (Manual advance) -->
+        <Button
+            android:id="@+id/btn_mission_skip"
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_station_glass_button"
+            android:text="⏩ BỎ QUA BƯỚC NÀY (Robot đã ở vị trí)"
+            android:textColor="#38BDF8"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
         <!-- Abort Mission Button -->
         <Button
             android:id="@+id/btn_mission_abort"

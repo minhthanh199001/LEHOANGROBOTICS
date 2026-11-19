@@ -334,6 +334,7 @@ public class DeliveryFragment extends Fragment {
     private TextView mMissionTvStep4;
     private TextView mMissionTvStep5;
     private Button mMissionBtnAction;
+    private Button mMissionBtnSkip;
     private Button mMissionBtnAbort;
 
     public static DeliveryFragment newInstance() {
@@ -3312,31 +3313,62 @@ public class DeliveryFragment extends Fragment {
         return mapName;
     }
 
+    private JsonObject findBestElevatorPoint(String mapName, boolean isCabin) {
+        if (TextUtils.isEmpty(mapName)) return null;
+        try {
+            JsonObject mapData = RobotMapManager.buildMapDataJson(mapName);
+            if (mapData != null && mapData.has("places")) {
+                JsonArray places = mapData.getAsJsonArray("places");
+
+                // 1. Exact priority matches
+                String[] priorities = isCabin
+                        ? new String[]{"TrongThangMay", "TrongThangMay_T2", "TrongThangMay_T1", "TrongThangMay_TG", "TrongTM", "TrongTha", "Cabin"}
+                        : new String[]{"ChoThangMay", "ChoThangMay_T2", "ChoThangMay_T1", "ChoThangMay_TG", "ChoTM", "ChoThan", "SanhThangMay", "SanhCho"};
+
+                for (String prio : priorities) {
+                    for (int i = 0; i < places.size(); i++) {
+                        JsonObject p = places.get(i).getAsJsonObject();
+                        if (p.has("name") && prio.equalsIgnoreCase(p.get("name").getAsString().trim())) {
+                            return p;
+                        }
+                    }
+                }
+
+                // 2. Fuzzy contains match
+                for (int i = 0; i < places.size(); i++) {
+                    JsonObject p = places.get(i).getAsJsonObject();
+                    if (p.has("name")) {
+                        String n = p.get("name").getAsString().toLowerCase();
+                        if (isCabin) {
+                            if (n.contains("trong") && (n.contains("thang") || n.contains("tm") || n.contains("cabin") || n.contains("tha"))) {
+                                return p;
+                            }
+                        } else {
+                            if (n.contains("cho") && (n.contains("thang") || n.contains("tm") || n.contains("sanh") || n.contains("than"))) {
+                                return p;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "findBestElevatorPoint error: " + t.getMessage());
+        }
+        return null;
+    }
+
     private String resolveCabinPoint(String mapName) {
-        JsonObject p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T2");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T1");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "TrongTM");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "TrongTha");
+        JsonObject p = findBestElevatorPoint(mapName, true);
         if (p != null && p.has("name")) return p.get("name").getAsString();
         return "TrongThangMay";
     }
 
     private String resolveHallPoint(String mapName) {
-        JsonObject p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay");
+        JsonObject p = findBestElevatorPoint(mapName, false);
         if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T2");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T1");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "ChoTM");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
-        p = RobotMapManager.getPlaceByName(mapName, "ChoThan");
-        if (p != null && p.has("name")) return p.get("name").getAsString();
+        // Fallback: If no separate waiting point on this floor, use cabin point as destination!
+        JsonObject cabin = findBestElevatorPoint(mapName, true);
+        if (cabin != null && cabin.has("name")) return cabin.get("name").getAsString();
         return "ChoThangMay";
     }
 
@@ -3487,6 +3519,7 @@ public class DeliveryFragment extends Fragment {
         mMissionTvStep4 = mElevatorMissionDialog.findViewById(R.id.tv_step_4_pill);
         mMissionTvStep5 = mElevatorMissionDialog.findViewById(R.id.tv_step_5_pill);
         mMissionBtnAction = mElevatorMissionDialog.findViewById(R.id.btn_mission_action);
+        mMissionBtnSkip = mElevatorMissionDialog.findViewById(R.id.btn_mission_skip);
         mMissionBtnAbort = mElevatorMissionDialog.findViewById(R.id.btn_mission_abort);
 
         if (mMissionTvRoute != null) {
@@ -3498,6 +3531,15 @@ public class DeliveryFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     onMissionActionButtonClicked();
+                }
+            });
+        }
+
+        if (mMissionBtnSkip != null) {
+            mMissionBtnSkip.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onMissionSkipButtonClicked();
                 }
             });
         }
@@ -3695,6 +3737,52 @@ public class DeliveryFragment extends Fragment {
         }
     }
 
+    private void onMissionSkipButtonClicked() {
+        if (mElevatorMissionStep == ElevatorMissionStep.STEP_1_GOING_TO_HALL) {
+            mElevatorMissionStep = ElevatorMissionStep.STEP_1_ARRIVED_HALL;
+            updateMissionStepUI(1,
+                    "Đã tới sảnh chờ thang máy!",
+                    "Mở cửa buồng thang máy và bấm nút bên dưới để robot tiến vào cabin.",
+                    true,
+                    "🛗 CỬA THANG ĐÃ MỞ ➔ CHO ROBOT VÀO CABIN");
+            TTSPlayer.playVietnameseText("Đã chuyển sang bước tiếp theo. Vui lòng mở cửa buồng thang.", null);
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_2_ENTERING_CABIN) {
+            mElevatorMissionStep = ElevatorMissionStep.STEP_2_IN_CABIN;
+            String targetFloor = getFriendlyFloorLabel(mMissionTargetMap);
+            updateMissionStepUI(2,
+                    "Robot đã vào trong buồng cabin an toàn!",
+                    "Hãy bấm chọn " + targetFloor + " trên bảng điều khiển thang máy. Khi thang tới tầng, bấm nút bên dưới.",
+                    true,
+                    "🏢 THANG ĐÃ ĐẾN " + targetFloor + " ➔ ĐỔI MAP & ĐỊNH VỊ");
+            TTSPlayer.playVietnameseText("Robot đã ở trong buồng cabin. Vui lòng điều khiển thang lên " + targetFloor + ".", null);
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_3_SWITCHING_MAP_AND_RELOCALIZING) {
+            mElevatorMissionStep = ElevatorMissionStep.STEP_4_ARRIVED_TARGET_HALL;
+            updateMissionStepUI(4,
+                    "Robot đã ra ngoài sảnh tầng đích!",
+                    "Bấm nút bên dưới để robot di chuyển đến bàn '" + mMissionTargetStation + "'.",
+                    true,
+                    "🍽️ BẮT ĐẦU GIAO MÓN TỚI BÀN: " + mMissionTargetStation);
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_4_EXITING_CABIN_TO_HALL) {
+            mElevatorMissionStep = ElevatorMissionStep.STEP_4_ARRIVED_TARGET_HALL;
+            updateMissionStepUI(4,
+                    "Robot đã ra ngoài sảnh tầng đích an toàn!",
+                    "Bấm nút bên dưới để robot di chuyển đến bàn '" + mMissionTargetStation + "' phục vụ khách.",
+                    true,
+                    "🍽️ BẮT ĐẦU GIAO MÓN TỚI BÀN: " + mMissionTargetStation);
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_5_GOING_TO_DESTINATION) {
+            mElevatorMissionStep = ElevatorMissionStep.COMPLETED;
+            updateMissionStepUI(5,
+                    "🎉 HOÀN THÀNH XUẤT SẮC!",
+                    "Robot đã giao món thành công đến bàn '" + mMissionTargetStation + "'!",
+                    true,
+                    "🎉 HOÀN TẤT & ĐÓNG");
+        }
+    }
+
     private void updateMissionStepUI(int stepIndex, String title, String detail, boolean actionEnabled, String actionText) {
         if (mMissionTvStepBadge != null) {
             mMissionTvStepBadge.setText("BƯỚC " + stepIndex + "/5");
@@ -3760,34 +3848,43 @@ public class DeliveryFragment extends Fragment {
             }
 
             final String activeMap = !TextUtils.isEmpty(mapName) ? mapName : mCurrentMap;
-            JsonObject p = RobotMapManager.getPlaceByName(activeMap, destName);
-            if (p == null) {
-                // Fallback alias lookup
-                if (destName.toLowerCase().contains("cho")) {
-                    p = RobotMapManager.getPlaceByName(activeMap, "ChoThangMay_T2");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoThangMay_T1");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoTM");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoThan");
-                } else if (destName.toLowerCase().contains("trong")) {
-                    p = RobotMapManager.getPlaceByName(activeMap, "TrongThangMay_T2");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongThangMay_T1");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongTM");
-                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongTha");
+            boolean isElevatorTarget = destName.toLowerCase().contains("thang") || destName.toLowerCase().contains("cabin") || destName.toLowerCase().contains("cho");
+            boolean isCabin = destName.toLowerCase().contains("trong") || destName.toLowerCase().contains("cabin");
+            JsonObject p = null;
+            if (isElevatorTarget) {
+                p = findBestElevatorPoint(activeMap, isCabin);
+                if (p == null) {
+                    p = findBestElevatorPoint(activeMap, !isCabin);
                 }
             }
+            if (p == null) {
+                p = RobotMapManager.getPlaceByName(activeMap, destName);
+            }
 
-            final String actualDest = (p != null && p.has("name")) ? p.get("name").getAsString() : destName;
-            final Float posX = (p != null && p.has("x")) ? p.get("x").getAsFloat() : null;
-            final Float posY = (p != null && p.has("y")) ? p.get("y").getAsFloat() : null;
-            final Float posTheta = (p != null && p.has("theta")) ? p.get("theta").getAsFloat() : 0.0f;
+            if (p == null) {
+                Log.w(TAG, "navigateToElevatorPoint: Point '" + destName + "' not found on map '" + activeMap + "'! Auto-advancing step.");
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getContext(), "⚠️ Chưa có điểm '" + destName + "' trên map, tự động hoàn tất bước này.", Toast.LENGTH_SHORT).show();
+                        if (onArrival != null) onArrival.run();
+                    }
+                });
+                return;
+            }
 
-            // 1. Proximity check: If robot is ALREADY at/near destination (<0.45m), complete immediately!
+            final String actualDest = p.has("name") ? p.get("name").getAsString() : destName;
+            final Float posX = p.has("x") ? p.get("x").getAsFloat() : null;
+            final Float posY = p.has("y") ? p.get("y").getAsFloat() : null;
+            final Float posTheta = p.has("theta") ? p.get("theta").getAsFloat() : 0.0f;
+
+            // 1. Proximity check: If robot is ALREADY at/near destination (<0.65m), complete immediately!
             if (posX != null && posY != null && RobotPosePersistenceManager.getInstance() != null) {
                 float curX = RobotPosePersistenceManager.getInstance().getLastX();
                 float curY = RobotPosePersistenceManager.getInstance().getLastY();
                 double dist = Math.hypot(curX - posX, curY - posY);
-                if (dist < 0.45) {
-                    Log.i(TAG, "navigateToElevatorPoint: Robot is ALREADY at " + actualDest + " (dist=" + dist + "m < 0.45m). Advancing immediately!");
+                if (dist < 0.65) {
+                    Log.i(TAG, "navigateToElevatorPoint: Robot is ALREADY at " + actualDest + " (dist=" + dist + "m < 0.65m). Advancing immediately!");
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -3807,7 +3904,6 @@ public class DeliveryFragment extends Fragment {
             }
 
             // 3. Pose navigation with narrow passage clearance (obsDist=0.25m)
-            boolean isElevatorTarget = destName.toLowerCase().contains("thang") || destName.toLowerCase().contains("cabin");
             double maxDist = isElevatorTarget ? 0.35 : 1.2;
             double obsDist = 0.25; // Narrow doorway clearance (25cm)
 

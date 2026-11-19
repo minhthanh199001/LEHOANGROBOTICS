@@ -356,14 +356,20 @@
     },
     {
       "Name": "ChoThangMay",
-      "X": -1.38,
-      "Y": -2.87,
+      "X": -0.9,
+      "Y": -2.93,
+      "Theta": 0
+    },
+    {
+      "Name": "Positioning Point",
+      "X": -1.08,
+      "Y": -2.86,
       "Theta": 0
     },
     {
       "Name": "TrongThangMay",
-      "X": -3.41,
-      "Y": -2.10,
+      "X": -3.44,
+      "Y": -2.1,
       "Theta": 0
     }
   ],
