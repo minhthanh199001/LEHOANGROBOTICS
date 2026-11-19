@@ -1615,8 +1615,30 @@ namespace LeHoangControlCenter.ViewModels
                 return;
             }
 
-            AddLog($"[ĐỊNH VỊ NHANH 1-CHẠM] Đang định vị robot tại trạm: '{stationName}'...");
-            await _robotService.SendCommandAsync(new SetLocationCommand { PlaceName = stationName });
+            var allSaved = LoadAllSavedStations();
+            var targetStations = FindStationsForMap(allSaved, CurrentMap);
+            var st = targetStations?.FirstOrDefault(s => s.Name.Equals(stationName, StringComparison.OrdinalIgnoreCase))
+                  ?? targetStations?.FirstOrDefault(s => s.Name.Contains(stationName, StringComparison.OrdinalIgnoreCase));
+
+            AddLog($"[ĐỊNH VỊ NHANH 1-CHẠM] Đang định vị robot tại trạm: '{stationName}'" + (st != null ? $" (X={st.X:F2}m, Y={st.Y:F2}m)" : "") + "...");
+
+            await _robotService.SendCommandAsync(new SetLocationCommand
+            {
+                PlaceName = stationName,
+                X = st?.X,
+                Y = st?.Y,
+                Theta = st?.Theta
+            });
+
+            if (st != null)
+            {
+                await _robotService.SendCommandAsync(new SetPoseEstimateCommand
+                {
+                    X = st.X,
+                    Y = st.Y,
+                    Theta = (st.Theta) * Math.PI / 180.0
+                });
+            }
         }
 
         // =========================================================

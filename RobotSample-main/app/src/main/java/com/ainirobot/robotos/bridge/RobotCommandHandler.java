@@ -1025,10 +1025,8 @@ public class RobotCommandHandler {
                             @Override
                             public void onResult(int res, String msg) {
                                 if (!"true".equalsIgnoreCase(msg)) {
-                                    Log.w(TAG, "Robot still unestimated after map switch. Triggering resetEstimate 360 scan...");
-                                    try {
-                                        RobotApi.getInstance().resetEstimate(0, 3, null);
-                                    } catch (Throwable ignored) {}
+                                    Log.w(TAG, "Robot still unestimated after map switch. Triggering full 360 scan relocalization...");
+                                    handleResetEstimate(null, null);
                                 } else {
                                     Log.i(TAG, "Robot successfully estimated on new map!");
                                 }

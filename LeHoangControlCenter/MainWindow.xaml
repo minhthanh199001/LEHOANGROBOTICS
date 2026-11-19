@@ -2059,78 +2059,27 @@
 
 
                                             <Setter Property="Background" Value="#064E3B" />
-
-
-
                                             <Style.Triggers>
-
-
-
                                                 <DataTrigger Binding="{Binding IsEstimated}" Value="False">
-
-
-
                                                     <Setter Property="Background" Value="#7F1D1D" />
-
-
-
                                                 </DataTrigger>
-
-
-
+                                                <DataTrigger Binding="{Binding IsAutoRelocalizing}" Value="True">
+                                                    <Setter Property="Background" Value="#1E3A8A" />
+                                                </DataTrigger>
                                             </Style.Triggers>
-
-
-
                                         </Style>
-
-
-
                                     </Border.Style>
-
-
-
                                     <TextBlock Text="{Binding LocalizationStatusText}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
-
-
-
                                 </Border>
 
-
-
-
-
-
-
                                 <!-- Quick Relocalize Tools Right on Dashboard -->
-
-
-
                                 <Button Command="{Binding ToggleRelocalizeModeCommand}" Content="{Binding RelocalizeModeText}"
-
-
-
                                         Style="{StaticResource CyberButton}" Background="#DC2626" FontSize="10" Padding="6,3" Margin="6,0,0,0"
-
-
-
                                         ToolTip="Bấm vào đây rồi click chuột lên bản đồ tại chỗ robot đang đứng để định vị lại robot ngay lập tức!" />
 
-
-
-
-
-
-
-                                <Button Command="{Binding ResetEstimateCommand}" Content="🔍 Tự dò vị trí"
-
-
-
-                                        Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="6,3" Margin="4,0,0,0"
-
-
-
-                                        ToolTip="Robot tự động quét Lidar để tìm lại vị trí trên toàn bộ bản đồ" />
+                                <Button Command="{Binding AutoRelocalizeCurrentMapCommand}" Content="⚡ Tự dò vị trí"
+                                        Style="{StaticResource CyberButton}" Background="#059669" FontSize="10" Padding="6,3" Margin="4,0,0,0"
+                                        ToolTip="Tự động định vị toàn diện 100%: Gieo tọa độ trạm và tự xoay quét Laser 360°" />
 
 
 
@@ -2836,121 +2785,59 @@
 
 
                                         <Style.Triggers>
-
-
-
                                             <DataTrigger Binding="{Binding IsEstimated}" Value="False">
-
-
-
                                                 <Setter Property="Visibility" Value="Visible" />
-
-
-
                                             </DataTrigger>
-
-
-
+                                            <DataTrigger Binding="{Binding IsAutoRelocalizing}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Background" Value="#064E3B" />
+                                                <Setter Property="BorderBrush" Value="#10B981" />
+                                            </DataTrigger>
                                         </Style.Triggers>
-
-
-
                                     </Style>
-
-
-
                                 </Border.Style>
 
-
-
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-
-
-
-                                    <TextBlock Text="⚠️ ROBOT ĐANG MẤT ĐỊNH VỊ TRÊN BẢN ĐỒ!" FontSize="11" FontWeight="Bold" Foreground="#FFE4E6" VerticalAlignment="Center" Margin="0,0,12,0" />
-
-
-
-
-
-
-
-                                    <!-- Quick Station Relocalize 1-Click (100% Reliable) -->
-
-
-
-                                    <Button Command="{Binding RelocalizeAtStationCommand}" CommandParameter="Charging Point"
-
-
-
-                                            Content="⚡ Tại Trạm Sạc" Style="{StaticResource CyberButton}" Background="#D97706" FontSize="10" Padding="8,4" Margin="0,0,6,0"
-
-
-
-                                            ToolTip="1-Chạm: Khôi phục định vị tức thì khi robot đang ở Trạm Sạc" />
-
-
-
-
-
-
-
-                                    <Button Command="{Binding RelocalizeAtStationCommand}" CommandParameter="Stand-by Point"
-
-
-
-                                            Content="📍 Tại Điểm Chờ" Style="{StaticResource CyberButton}" Background="#0284C7" FontSize="10" Padding="8,4" Margin="0,0,6,0"
-
-
-
-                                            ToolTip="1-Chạm: Khôi phục định vị tức thì khi robot đang ở Điểm Chờ ban đầu" />
-
-
-
-
-
-
-
-                                    <!-- Click on Map Relocalize -->
-
-
-
-                                    <Button Command="{Binding ToggleRelocalizeModeCommand}" Content="{Binding RelocalizeModeText}"
-
-
-
-                                            Style="{StaticResource CyberButton}" Background="#E11D48" FontSize="10" Padding="8,4" Margin="0,0,6,0"
-
-
-
-                                            ToolTip="Bấm vào đây rồi click chuột trực tiếp lên vị trí robot đang đứng trên bản đồ" />
-
-
-
-
-
-
-
-                                    <!-- 360 Scan Relocalize -->
-
-
-
-                                    <Button Command="{Binding ResetEstimateCommand}" Content="🔄 Quét Laser 360°"
-
-
-
-                                            Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="8,4"
-
-
-
-                                            ToolTip="Robot tự động xoay 360 độ và quét Laser đối chiếu bản đồ tìm lại vị trí" />
-
-
-
-                                </StackPanel>
-
-
-
+                                <Grid VerticalAlignment="Center">
+                                    <!-- Khi Robot đang tự động định vị lại -->
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                Visibility="{Binding AutoRelocalizingBannerVisibility}">
+                                        <TextBlock Text="🔄" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding AutoRelocalizeNotice}" FontSize="11" FontWeight="Bold" Foreground="#6EE7B7" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="(Hệ thống đang tự động khôi phục tọa độ robot, vui lòng đợi trong giây lát...)" FontSize="11" Foreground="#CBD5E1" VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- Khi Robot mất định vị và chờ lệnh -->
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                Visibility="{Binding ManualUnlocalizedBannerVisibility}">
+
+                                        <TextBlock Text="⚠️ ROBOT ĐANG MẤT ĐỊNH VỊ TRÊN BẢN ĐỒ!" FontSize="11" FontWeight="Bold" Foreground="#FFE4E6" VerticalAlignment="Center" Margin="0,0,12,0" />
+
+                                        <!-- Nút Tự động định vị hoàn toàn (100% Tự động: Neo trạm + Quét 360) -->
+                                        <Button Command="{Binding AutoRelocalizeCurrentMapCommand}"
+                                                Content="⚡ TỰ ĐỘNG ĐỊNH VỊ TOÀN DIỆN" Style="{StaticResource CyberButton}" Background="#059669" FontWeight="Bold" FontSize="10" Padding="10,4" Margin="0,0,8,0"
+                                                ToolTip="Kích hoạt chu trình tự động định vị 100%: Tự gieo tọa độ trạm và tự quét Laser 360°" />
+
+                                        <!-- Quick Station Relocalize 1-Click (100% Reliable) -->
+                                        <Button Command="{Binding RelocalizeAtStationCommand}" CommandParameter="Charging Point"
+                                                Content="⚡ Tại Trạm Sạc" Style="{StaticResource CyberButton}" Background="#D97706" FontSize="10" Padding="8,4" Margin="0,0,6,0"
+                                                ToolTip="1-Chạm: Khôi phục định vị tức thì khi robot đang ở Trạm Sạc" />
+
+                                        <Button Command="{Binding RelocalizeAtStationCommand}" CommandParameter="Stand-by Point"
+                                                Content="📍 Tại Điểm Chờ" Style="{StaticResource CyberButton}" Background="#0284C7" FontSize="10" Padding="8,4" Margin="0,0,6,0"
+                                                ToolTip="1-Chạm: Khôi phục định vị tức thì khi robot đang ở Điểm Chờ ban đầu" />
+
+                                        <!-- Click on Map Relocalize -->
+                                        <Button Command="{Binding ToggleRelocalizeModeCommand}" Content="{Binding RelocalizeModeText}"
+                                                Style="{StaticResource CyberButton}" Background="#E11D48" FontSize="10" Padding="8,4" Margin="0,0,6,0"
+                                                ToolTip="Bấm vào đây rồi click chuột trực tiếp lên vị trí robot đang đứng trên bản đồ" />
+
+                                        <!-- 360 Scan Relocalize -->
+                                        <Button Command="{Binding ResetEstimateCommand}" Content="🔄 Quét Laser 360°"
+                                                Style="{StaticResource CyberButton}" Background="#1E293B" FontSize="10" Padding="8,4"
+                                                ToolTip="Robot tự động xoay 360 độ và quét Laser đối chiếu bản đồ tìm lại vị trí" />
+
+                                    </StackPanel>
+                                </Grid>
                             </Border>
 
 
@@ -3548,6 +3435,9 @@
 
 
                                                     <Setter Property="Foreground" Value="#F87171" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsAutoRelocalizing}" Value="True">
+                                                    <Setter Property="Foreground" Value="#38BDF8" />
 
 
 
@@ -3583,7 +3473,7 @@
 
 
 
-                            <Button Command="{Binding ResetEstimateCommand}" Content="🔍 Tự dò vị trí" Style="{StaticResource CyberButton}" Padding="8,4" Margin="0,0,10,0" ToolTip="Robot tự quét Lidar tìm lại vị trí trên toàn bản đồ" />
+                            <Button Command="{Binding AutoRelocalizeCurrentMapCommand}" Content="⚡ Tự dò vị trí" Style="{StaticResource CyberButton}" Background="#059669" Padding="8,4" Margin="0,0,10,0" ToolTip="Tự động định vị toàn diện 100%: Gieo tọa độ trạm và tự quét Laser 360°" />
 
 
 
