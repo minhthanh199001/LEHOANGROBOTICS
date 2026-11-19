@@ -1,0 +1,16 @@
+CAP NHAT WEB GREETINGBOT
+
+1. Tren may server 192.168.0.123, mo thu muc LOCAL cua LeHoangCloudServer.
+2. Chay CAP_NHAT_GREETING_WEB_TU_DONG.cmd. Khong chay tu may khac qua duong dan mang.
+3. Script chuan bi ban chay moi, kiem tra ma quan tri ma hoa, dung dung tien trinh LeHoangCloudServer,
+   sao luu database hien tai, roi mo Web moi tai http://192.168.0.123:5050.
+4. Giu cua so server dang mo. Dung XEM_MA_GREETING_TU_DONG.cmd (cung tai khoan Windows) neu can xem ma quan tri thu cong.
+5. Mo tab GREETINGBOT qua IP server. Robot tu tao ID/ma noi bo va xuat hien tren Web khi cung LAN; khong can nhap ma quan tri/ghep noi.
+6. Chinh Bu theo chieu quay; mac dinh 25 do. Gia tri duoc luu trong database va gui xuong robot khi dong bo.
+
+DATABASE GIU NGUYEN: bin\Debug\net8.0\cloud_fleet.db
+Ban sao luu va ban chay moi: %LOCALAPPDATA%\LeHoangRobotics\Greetingbot
+Goi cap nhat: bin\greeting-web-20261118-v1.4.0-auto
+Ma nguon va file Debug/Release cu khong bi ghi de. Neu can quay lai: dung cua so server moi,
+mo PowerShell tai thu muc LeHoangCloudServer va chay .\bin\Debug\net8.0\LeHoangCloudServer.exe.
+Khong thay URL giong noi OpenAI tren robot: cau noi PC/ADB hien tai van duoc giu nguyen.

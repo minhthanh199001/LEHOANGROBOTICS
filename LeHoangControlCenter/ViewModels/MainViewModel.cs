@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LeHoangControlCenter.Helpers;
 using LeHoangControlCenter.Models;
 using LeHoangControlCenter.Services;
 
@@ -1544,17 +1545,79 @@ namespace LeHoangControlCenter.ViewModels
             NewPlaceName = "";
         }
 
+        public string DetectFloorNumberForMap(string? mapName)
+        {
+            if (string.IsNullOrWhiteSpace(mapName)) return "1";
+
+            // 1. If TargetFloorInput is provided explicitly by user
+            if (!string.IsNullOrWhiteSpace(TargetFloorInput))
+            {
+                return TargetFloorInput.Trim();
+            }
+
+            // 2. Check if this map is configured in FloorConfigs
+            var activeCfg = FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, mapName, StringComparison.OrdinalIgnoreCase) ||
+                                                            NormalizeMapKey(f.MapName) == NormalizeMapKey(mapName));
+            if (activeCfg != null && !string.IsNullOrWhiteSpace(activeCfg.FloorNumber))
+            {
+                return activeCfg.FloorNumber.Trim();
+            }
+
+            // 3. Ground floor detection: "TG", "Tầng G", "Tang G", "Ground", "G-"
+            if (mapName.StartsWith("TG", StringComparison.OrdinalIgnoreCase) ||
+                mapName.IndexOf("TangG", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                mapName.IndexOf("Tầng G", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                mapName.IndexOf("Ground", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "G";
+            }
+
+            // 4. Numbered floors: "T2-...", "T3-...", "tầng 2", "floor 2", "MT1", "tang2"
+            var m = System.Text.RegularExpressions.Regex.Match(mapName, @"(?i)(?:t(?:ầng|ang)?|floor|mt)\s*([0-9]+)");
+            if (m.Success) return m.Groups[1].Value;
+
+            var mPrefix = System.Text.RegularExpressions.Regex.Match(mapName, @"^([0-9]+)[\-_]");
+            if (mPrefix.Success) return mPrefix.Groups[1].Value;
+
+            // Check existing stations on map: e.g. ChoThangMay_T2 -> 2
+            foreach (var st in MapStations)
+            {
+                var stMatch = System.Text.RegularExpressions.Regex.Match(st.Name, @"(?i)_(?:T([0-9]+)|TG)");
+                if (stMatch.Success)
+                {
+                    string captured = stMatch.Groups[1].Value;
+                    return !string.IsNullOrEmpty(captured) ? captured : "G";
+                }
+            }
+
+            // Any standalone number in map name
+            var mAny = System.Text.RegularExpressions.Regex.Match(mapName, @"[0-9]+");
+            if (mAny.Success && mAny.Value.Length <= 2) return mAny.Value;
+
+            return "1";
+        }
+
         [RelayCommand]
         public async Task CreateWaitingElevatorPointAsync()
         {
-            string floorNum = !string.IsNullOrWhiteSpace(TargetFloorInput) ? TargetFloorInput.Trim() : "1";
-            var activeCfg = FloorConfigs.FirstOrDefault(f => f.MapName == CurrentMap);
-            if (activeCfg != null && string.IsNullOrWhiteSpace(TargetFloorInput))
+            string floorNum = DetectFloorNumberForMap(CurrentMap);
+            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{floorNum}";
+
+            // If user did not manually type a custom name in NewPlaceName, prompt to confirm/edit
+            string? pointName = defaultName;
+            if (string.IsNullOrWhiteSpace(NewPlaceName))
             {
-                floorNum = activeCfg.FloorNumber;
+                pointName = CyberInputDialog.Show(
+                    "🚪 TẠO ĐIỂM CHỜ THANG MÁY",
+                    $"Xác nhận hoặc sửa tên điểm chờ thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
+                    defaultName);
+
+                if (string.IsNullOrWhiteSpace(pointName))
+                {
+                    return; // User cancelled
+                }
             }
 
-            string pointName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{floorNum}";
             double x = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceX : Math.Round(PoseX, 2);
             double y = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceY : Math.Round(PoseY, 2);
             double theta = PoseTheta * Math.PI / 180.0;
@@ -1562,13 +1625,30 @@ namespace LeHoangControlCenter.ViewModels
             // 1. Instantly update MapStations
             AddOrUpdateMapStation(pointName, x, y);
 
-            // 2. Update FloorConfigs
-            var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum);
+            // 2. Update FloorConfigs: bind OutsideWaitingPoint AND MapName
+            var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum)
+                        ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
             if (floorCfg != null)
             {
                 floorCfg.OutsideWaitingPoint = pointName;
+                if (string.IsNullOrEmpty(floorCfg.MapName)) floorCfg.MapName = CurrentMap;
                 SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm chờ ngoài sảnh' của Tầng {floorNum}.");
+                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm chờ ngoài sảnh' của {floorCfg.FloorLabel}.");
+            }
+            else
+            {
+                // Auto create floor config if none exists for this floor
+                var newCfg = new FloorMapConfig
+                {
+                    FloorNumber = floorNum,
+                    FloorLabel = $"Tầng {floorNum}",
+                    MapName = CurrentMap,
+                    OutsideWaitingPoint = pointName,
+                    InsideCabinPoint = $"TrongThangMay_T{floorNum}"
+                };
+                FloorConfigs.Add(newCfg);
+                SaveFloorConfigs();
+                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động tạo cấu hình Tầng {floorNum} (Bản đồ: '{CurrentMap}') và gán '{pointName}'.");
             }
 
             AddLog($"🚪 [THANG MÁY] Đã tạo 'Điểm Chờ thang máy' Tầng {floorNum}: '{pointName}' tại ({x:F2}m, {y:F2}m).");
@@ -1595,14 +1675,24 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public async Task CreateInsideElevatorPointAsync()
         {
-            string floorNum = !string.IsNullOrWhiteSpace(TargetFloorInput) ? TargetFloorInput.Trim() : "1";
-            var activeCfg = FloorConfigs.FirstOrDefault(f => f.MapName == CurrentMap);
-            if (activeCfg != null && string.IsNullOrWhiteSpace(TargetFloorInput))
+            string floorNum = DetectFloorNumberForMap(CurrentMap);
+            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{floorNum}";
+
+            // If user did not manually type a custom name in NewPlaceName, prompt to confirm/edit
+            string? pointName = defaultName;
+            if (string.IsNullOrWhiteSpace(NewPlaceName))
             {
-                floorNum = activeCfg.FloorNumber;
+                pointName = CyberInputDialog.Show(
+                    "🛗 TẠO ĐIỂM TRONG THANG MÁY",
+                    $"Xác nhận hoặc sửa tên điểm trong buồng thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
+                    defaultName);
+
+                if (string.IsNullOrWhiteSpace(pointName))
+                {
+                    return; // User cancelled
+                }
             }
 
-            string pointName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{floorNum}";
             double x = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceX : Math.Round(PoseX, 2);
             double y = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceY : Math.Round(PoseY, 2);
             double theta = PoseTheta * Math.PI / 180.0;
@@ -1610,13 +1700,29 @@ namespace LeHoangControlCenter.ViewModels
             // 1. Instantly update MapStations
             AddOrUpdateMapStation(pointName, x, y);
 
-            // 2. Update FloorConfigs
-            var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum);
+            // 2. Update FloorConfigs: bind InsideCabinPoint AND MapName
+            var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum)
+                        ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
             if (floorCfg != null)
             {
                 floorCfg.InsideCabinPoint = pointName;
+                if (string.IsNullOrEmpty(floorCfg.MapName)) floorCfg.MapName = CurrentMap;
                 SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm trong cabin' của Tầng {floorNum}.");
+                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm trong cabin' của {floorCfg.FloorLabel}.");
+            }
+            else
+            {
+                var newCfg = new FloorMapConfig
+                {
+                    FloorNumber = floorNum,
+                    FloorLabel = $"Tầng {floorNum}",
+                    MapName = CurrentMap,
+                    OutsideWaitingPoint = $"ChoThangMay_T{floorNum}",
+                    InsideCabinPoint = pointName
+                };
+                FloorConfigs.Add(newCfg);
+                SaveFloorConfigs();
+                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động tạo cấu hình Tầng {floorNum} (Bản đồ: '{CurrentMap}') và gán '{pointName}'.");
             }
 
             AddLog($"🛗 [THANG MÁY] Đã tạo 'Điểm Trong thang máy' Tầng {floorNum}: '{pointName}' tại ({x:F2}m, {y:F2}m).");
@@ -1638,6 +1744,109 @@ namespace LeHoangControlCenter.ViewModels
             }
 
             NewPlaceName = "";
+        }
+
+        [RelayCommand]
+        public async Task RenamePlaceAsync(object? param)
+        {
+            string oldName = "";
+            MapPlaceItem? stationItem = null;
+
+            if (param is MapPlaceItem place)
+            {
+                oldName = place.Name;
+                stationItem = place;
+            }
+            else if (param is string str && !string.IsNullOrWhiteSpace(str))
+            {
+                oldName = str.Trim();
+                stationItem = MapStations.FirstOrDefault(p => p.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (string.IsNullOrWhiteSpace(oldName) || stationItem == null)
+            {
+                AddLog("⚠️ Vui lòng chọn điểm cần sửa tên!");
+                return;
+            }
+
+            string? newName = CyberInputDialog.Show(
+                "✏️ SỬA TÊN ĐIỂM BẢN ĐỒ",
+                $"Nhập tên mới cho điểm '{oldName}' trên bản đồ '{CurrentMap}':",
+                oldName);
+
+            if (string.IsNullOrWhiteSpace(newName) || newName.Equals(oldName, StringComparison.OrdinalIgnoreCase))
+            {
+                return; // User cancelled or name unchanged
+            }
+
+            // Check if new name already exists on current map
+            if (MapStations.Any(s => s != stationItem && s.Name.Equals(newName, StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.Show($"Tên điểm '{newName}' đã tồn tại trên bản đồ '{CurrentMap}'!\nVui lòng chọn tên khác.", "Trùng tên điểm", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            double x = stationItem.X;
+            double y = stationItem.Y;
+            double theta = PoseTheta * Math.PI / 180.0;
+
+            // 1. Update MapStations collection locally
+            stationItem.Name = newName;
+
+            // 2. Update in saved_stations.json
+            SaveCurrentMapStationsToDisk();
+
+            // 3. Update in FloorConfigs if referenced
+            bool floorUpdated = false;
+            foreach (var fc in FloorConfigs)
+            {
+                if (string.Equals(fc.InsideCabinPoint, oldName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fc.InsideCabinPoint = newName;
+                    floorUpdated = true;
+                }
+                if (string.Equals(fc.OutsideWaitingPoint, oldName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fc.OutsideWaitingPoint = newName;
+                    floorUpdated = true;
+                }
+                if (string.Equals(fc.ElevatorPoint, oldName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fc.ElevatorPoint = newName;
+                    floorUpdated = true;
+                }
+            }
+            if (floorUpdated)
+            {
+                SaveFloorConfigs();
+            }
+
+            // 4. Update AvailableStationNames dropdowns
+            UpdateAvailableStationNames();
+
+            AddLog($"✏️ [SỬA TÊN ĐIỂM] Đã đổi tên điểm từ '{oldName}' thành '{newName}' thành công!");
+
+            // 5. Sync to Robot via WebSocket: Delete old place, Add new place
+            if (_robotService.IsConnected)
+            {
+                await _robotService.SendCommandAsync(new DeletePlaceCommand
+                {
+                    MapName = CurrentMap,
+                    Name = oldName
+                });
+
+                await Task.Delay(150);
+
+                await _robotService.SendCommandAsync(new AddPlaceCommand
+                {
+                    MapName = CurrentMap,
+                    Name = newName,
+                    X = x,
+                    Y = y,
+                    Theta = theta
+                });
+                AddLog($"🤖 [ROBOT SYNC] Đã cập nhật trạm '{newName}' trên robot.");
+            }
         }
 
         [RelayCommand]

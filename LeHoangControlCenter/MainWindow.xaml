@@ -4717,6 +4717,18 @@
 
 
 
+                                                        <Button Command="{Binding DataContext.RenamePlaceCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+
+
+
+                                                                CommandParameter="{Binding}"
+
+
+
+                                                                Content="✏️" Style="{StaticResource CyberButton}" Background="#1E293B" Foreground="#38BDF8" FontSize="9" Padding="5,4" Margin="0,0,3,0" ToolTip="Đổi / sửa tên điểm trạm này" />
+
+
+
                                                         <Button Command="{Binding DataContext.DeletePlaceCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
 
 
