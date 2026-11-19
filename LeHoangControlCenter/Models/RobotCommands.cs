@@ -74,7 +74,7 @@ namespace LeHoangControlCenter.Models
         public double? Theta { get; set; }
 
         [JsonPropertyName("maxDistance")]
-        public double MaxDistance { get; set; } = 1.5;
+        public double MaxDistance { get; set; } = 1.0;
 
         [JsonPropertyName("timeoutSeconds")]
         public int TimeoutSeconds { get; set; } = 60;

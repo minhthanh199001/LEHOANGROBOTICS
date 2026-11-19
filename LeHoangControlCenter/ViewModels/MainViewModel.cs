@@ -1832,12 +1832,22 @@ namespace LeHoangControlCenter.ViewModels
         {
             var target = config ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
             string insidePoint = target?.InsideCabinPoint ?? "";
-            if (string.IsNullOrEmpty(insidePoint))
+            
+            // Dynamic resolution: check current MapStations for any elevator cabin point
+            var station = (!string.IsNullOrEmpty(insidePoint) ? MapStations.FirstOrDefault(s => s.Name.Equals(insidePoint, StringComparison.OrdinalIgnoreCase)) : null)
+                       ?? MapStations.FirstOrDefault(s => s.Name.IndexOf("Trong", StringComparison.OrdinalIgnoreCase) >= 0 && 
+                                                         (s.Name.IndexOf("Thang", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("TM", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("Cabin", StringComparison.OrdinalIgnoreCase) >= 0))
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("TrongThangMay_T1", StringComparison.OrdinalIgnoreCase))
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("TrongThangMay_T2", StringComparison.OrdinalIgnoreCase));
+
+            if (station != null)
+            {
+                insidePoint = station.Name;
+            }
+            else if (string.IsNullOrEmpty(insidePoint))
             {
                 insidePoint = CurrentMap.Contains("2") ? "TrongThangMay_T2" : "TrongThangMay_T1";
             }
-
-            var station = MapStations.FirstOrDefault(s => s.Name.Equals(insidePoint, StringComparison.OrdinalIgnoreCase));
 
             AddLog($"🛗 [VÀO THANG MÁY] Robot đang di chuyển vào trong buồng thang máy: '{insidePoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
             await _robotService.SendCommandAsync(new NavigateCommand
@@ -1845,7 +1855,7 @@ namespace LeHoangControlCenter.ViewModels
                 Destination = insidePoint,
                 X = station?.X,
                 Y = station?.Y,
-                MaxDistance = 1.2,
+                MaxDistance = 0.25,
                 TimeoutSeconds = 45
             });
         }
@@ -1855,12 +1865,22 @@ namespace LeHoangControlCenter.ViewModels
         {
             var target = config ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
             string exitPoint = target?.OutsideWaitingPoint ?? "";
-            if (string.IsNullOrEmpty(exitPoint))
+            
+            // Dynamic resolution: check current MapStations for waiting / hall point
+            var station = (!string.IsNullOrEmpty(exitPoint) ? MapStations.FirstOrDefault(s => s.Name.Equals(exitPoint, StringComparison.OrdinalIgnoreCase)) : null)
+                       ?? MapStations.FirstOrDefault(s => s.Name.IndexOf("Cho", StringComparison.OrdinalIgnoreCase) >= 0 && 
+                                                         (s.Name.IndexOf("Thang", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("TM", StringComparison.OrdinalIgnoreCase) >= 0))
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("ChoThangMay_T1", StringComparison.OrdinalIgnoreCase))
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("ChoThangMay_T2", StringComparison.OrdinalIgnoreCase));
+
+            if (station != null)
+            {
+                exitPoint = station.Name;
+            }
+            else if (string.IsNullOrEmpty(exitPoint))
             {
                 exitPoint = CurrentMap.Contains("2") ? "ChoThangMay_T2" : "ChoThangMay_T1";
             }
-
-            var station = MapStations.FirstOrDefault(s => s.Name.Equals(exitPoint, StringComparison.OrdinalIgnoreCase));
 
             AddLog($"🚪 [THOÁT THANG MÁY] Robot đang lăn bánh ra điểm chờ ngoài sảnh: '{exitPoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
             await _robotService.SendCommandAsync(new NavigateCommand
@@ -1868,7 +1888,7 @@ namespace LeHoangControlCenter.ViewModels
                 Destination = exitPoint,
                 X = station?.X,
                 Y = station?.Y,
-                MaxDistance = 1.5,
+                MaxDistance = 0.35,
                 TimeoutSeconds = 45
             });
         }
@@ -2054,12 +2074,17 @@ namespace LeHoangControlCenter.ViewModels
             TargetDestination = dest;
             AddLog($"[ĐIỀU HƯỚNG] Gửi lệnh di chuyển tới: '{dest}'" + (x.HasValue ? $" (X={x:F2}m, Y={y:F2}m)" : ""));
 
+            bool isCabin = dest.IndexOf("trong", StringComparison.OrdinalIgnoreCase) >= 0 && (dest.IndexOf("thang", StringComparison.OrdinalIgnoreCase) >= 0 || dest.IndexOf("tm", StringComparison.OrdinalIgnoreCase) >= 0 || dest.IndexOf("cabin", StringComparison.OrdinalIgnoreCase) >= 0);
+            bool isElevatorExit = dest.IndexOf("cho", StringComparison.OrdinalIgnoreCase) >= 0 && (dest.IndexOf("thang", StringComparison.OrdinalIgnoreCase) >= 0 || dest.IndexOf("tm", StringComparison.OrdinalIgnoreCase) >= 0);
+            double maxDist = isCabin ? 0.25 : (isElevatorExit ? 0.35 : 1.0);
+
             var cmd = new NavigateCommand
             {
                 Destination = dest,
                 X = x,
                 Y = y,
-                MapName = CurrentMap
+                MapName = CurrentMap,
+                MaxDistance = maxDist
             };
             await _robotService.SendCommandAsync(cmd);
         }

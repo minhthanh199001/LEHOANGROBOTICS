@@ -301,9 +301,21 @@ public class RobotCommandHandler {
         }
     }
 
+    private boolean isElevatorCabin(String destination) {
+        if (TextUtils.isEmpty(destination)) return false;
+        String lower = destination.toLowerCase();
+        return (lower.contains("trong") || lower.contains("cabin")) && (lower.contains("thang") || lower.contains("tm") || lower.contains("cabin"));
+    }
+
+    private boolean isElevatorExit(String destination) {
+        if (TextUtils.isEmpty(destination)) return false;
+        String lower = destination.toLowerCase();
+        return lower.contains("cho") && (lower.contains("thang") || lower.contains("tm"));
+    }
+
     private void handleNavigate(final WebSocket client, final String msgId, JsonObject json) {
         final String destination = json.has("destination") ? json.get("destination").getAsString() : "";
-        final double maxDistance = json.has("maxDistance") ? json.get("maxDistance").getAsDouble() : 1.5;
+        final double maxDistance = json.has("maxDistance") ? json.get("maxDistance").getAsDouble() : 1.0;
         final long timeoutMs = json.has("timeoutSeconds") ? json.get("timeoutSeconds").getAsLong() * 1000 : 60000;
 
         Float parseX = null;
@@ -319,16 +331,32 @@ public class RobotCommandHandler {
             try { parseTheta = json.get("theta").getAsFloat(); } catch (Exception ignored) {}
         }
 
+        // Auto-resolve coordinates from current map places if missing
+        if ((parseX == null || parseY == null) && !TextUtils.isEmpty(destination)) {
+            String currentMap = RobotMapManager.getCurrentMapName();
+            JsonObject p = RobotMapManager.getPlaceByName(currentMap, destination);
+            if (p != null && p.has("x") && p.has("y")) {
+                parseX = p.get("x").getAsFloat();
+                parseY = p.get("y").getAsFloat();
+                if (p.has("theta")) parseTheta = p.get("theta").getAsFloat();
+                Log.i(TAG, "Resolved coordinates for '" + destination + "' from active map: (" + parseX + ", " + parseY + ")");
+            }
+        }
+
         final Float x = parseX;
         final Float y = parseY;
         final Float theta = parseTheta;
+
+        final boolean isCabin = isElevatorCabin(destination);
+        final boolean isExit = isElevatorExit(destination);
+        final double effMaxDist = isCabin ? Math.min(maxDistance, 0.25) : (isExit ? Math.min(maxDistance, 0.35) : maxDistance);
 
         if (TextUtils.isEmpty(destination) && (x == null || y == null)) {
             sendResult(client, msgId, "CMD_NAVIGATE", false, -1, "Destination or coordinates required");
             return;
         }
 
-        Log.i(TAG, "Executing NAVIGATE to: " + destination + (x != null ? " (" + x + ", " + y + ")" : ""));
+        Log.i(TAG, "Executing NAVIGATE to: " + destination + (x != null ? " (" + x + ", " + y + ")" : "") + ", maxDist=" + effMaxDist);
         disarmSafetyWatchdog();
 
         // 1. Check if target is Charging Dock
@@ -366,7 +394,7 @@ public class RobotCommandHandler {
                     // Fallback to navigating to Charging Point coordinates if auto-charge fails!
                     if (x != null && y != null) {
                         Log.i(TAG, "AutoCharge failed. Falling back to coordinates (" + x + ", " + y + ")...");
-                        navigateByPose(client, msgId, destination, x, y, theta, 1.2, timeoutMs);
+                        navigateByPose(client, msgId, destination, x, y, theta, 1.0, timeoutMs);
                     } else {
                         String currentMap = RobotMapManager.getCurrentMapName();
                         JsonObject cp = RobotMapManager.getPlaceByName(currentMap, "Charging Point");
@@ -374,7 +402,7 @@ public class RobotCommandHandler {
                         if (cp != null && cp.has("x") && cp.has("y")) {
                             float cx = cp.get("x").getAsFloat();
                             float cy = cp.get("y").getAsFloat();
-                            navigateByPose(client, msgId, destination, cx, cy, 0f, 1.2, timeoutMs);
+                            navigateByPose(client, msgId, destination, cx, cy, 0f, 1.0, timeoutMs);
                         } else {
                             sendResult(client, msgId, "CMD_NAVIGATE", false, errorCode, errorString);
                         }
@@ -388,7 +416,7 @@ public class RobotCommandHandler {
         ensureLeftChargingPileIfNeeded(new Runnable() {
             @Override
             public void run() {
-                executeNavigationInternal(client, msgId, destination, x, y, theta, maxDistance, timeoutMs);
+                executeNavigationInternal(client, msgId, destination, x, y, theta, effMaxDist, timeoutMs);
             }
         });
     }
@@ -398,6 +426,16 @@ public class RobotCommandHandler {
             RobotApi.getInstance().stopNavigation(0);
             RobotApi.getInstance().stopAutoChargeAction(0, true);
         } catch (Throwable ignored) {}
+
+        boolean isCabin = isElevatorCabin(destination);
+        boolean isExit = isElevatorExit(destination);
+
+        // Elevator cabin entrance or exit: prioritize narrow-passage navigation with 25cm obstacle margin
+        if ((isCabin || isExit) && x != null && y != null) {
+            Log.i(TAG, "Elevator navigation requested. Using narrow-passage navigation into/out of cabin (door clearance 25cm)...");
+            navigateByPoseNarrowPassage(client, msgId, destination, x, y, theta, maxDistance, 0.25, timeoutMs);
+            return;
+        }
 
         boolean isCustomCoord = TextUtils.isEmpty(destination) 
                 || destination.startsWith("Điểm (") 
@@ -468,6 +506,47 @@ public class RobotCommandHandler {
         });
     }
 
+    private void navigateByPoseNarrowPassage(final WebSocket client, final String msgId, final String destination, final float x, final float y, final Float theta, final double maxDist, final double obsDist, final long timeoutMs) {
+        try {
+            RobotApi.getInstance().stopNavigation(0);
+            RobotApi.getInstance().stopAutoChargeAction(0, true);
+        } catch (Throwable ignored) {}
+
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Pose pose = new Pose(x, y, theta != null ? theta : 0f, destination != null ? destination : "");
+                pose.setNoDirectionalParking(true);
+                pose.setIgnoreDistance(true);
+                pose.setSafeDistance(1);
+                Log.i(TAG, "Navigating to Elevator / Narrow Passage via Pose: " + pose + ", maxDist=" + maxDist + ", obsDist=" + obsDist);
+                try {
+                    int ret = RobotApi.getInstance().startNavigation(0, pose, maxDist, obsDist, 0.0, timeoutMs, new ActionListener() {
+                        @Override
+                        public void onResult(int status, String responseString) throws RemoteException {
+                            Log.i(TAG, "Narrow Pose Navigate onResult: status=" + status + ", resp=" + responseString);
+                            boolean success = (status == Definition.RESULT_OK && !"false".equalsIgnoreCase(responseString));
+                            sendResult(client, msgId, "CMD_NAVIGATE", success, status, responseString);
+                        }
+
+                        @Override
+                        public void onError(int errorCode, String errorString) throws RemoteException {
+                            Log.e(TAG, "Narrow Pose Navigate onError: code=" + errorCode + ", err=" + errorString);
+                            navigateByPose(client, msgId, destination, x, y, theta, maxDist, timeoutMs);
+                        }
+                    });
+                    if (ret < 0) {
+                        Log.w(TAG, "Narrow Pose Navigate returned error code: " + ret + ". Falling back to standard pose nav...");
+                        navigateByPose(client, msgId, destination, x, y, theta, maxDist, timeoutMs);
+                    }
+                } catch (Throwable t) {
+                    Log.e(TAG, "Narrow Pose Navigate exception: " + t.getMessage(), t);
+                    navigateByPose(client, msgId, destination, x, y, theta, maxDist, timeoutMs);
+                }
+            }
+        }, 150);
+    }
+
     private void navigateByPose(final WebSocket client, final String msgId, final String destination, final float x, final float y, final Float theta, final double maxDist, final long timeoutMs) {
         try {
             RobotApi.getInstance().stopNavigation(0);
@@ -481,7 +560,8 @@ public class RobotCommandHandler {
                 Pose pose = new Pose(x, y, theta != null ? theta : 0f, destination != null ? destination : "");
                 pose.setNoDirectionalParking(true); // Don't spin in place to align angle!
                 pose.setIgnoreDistance(true);
-                Log.i(TAG, "Navigating via Pose (no directional parking): " + pose.toString());
+                pose.setSafeDistance(1);
+                Log.i(TAG, "Navigating via Pose (no directional parking): " + pose.toString() + ", maxDist=" + maxDist);
                 try {
                     int ret = RobotApi.getInstance().startNavigation(0, pose, maxDist, timeoutMs, new ActionListener() {
                         @Override
