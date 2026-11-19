@@ -1144,10 +1144,19 @@ namespace LeHoangControlCenter.ViewModels
                 // 2. Merge places from robot (authoritative) ONLY if they legitimately belong to this floor
                 if (data.Places != null && data.Places.Count > 0)
                 {
+                    // Universal elevator & common stations that can legitimately exist on all floors
+                    var commonMultiFloorPoints = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "TrongThangMay", "ChoThangMay", "Stand-by Point", "Charging Point", "Charging Pole", "Positioning Point"
+                    };
+
                     // Detect points that uniquely belong to other floors in saved_stations.json
                     var otherFloorsPoints = allSaved
                         .Where(kvp => NormalizeMapKey(kvp.Key) != NormalizeMapKey(data.CurrentMap))
                         .SelectMany(kvp => kvp.Value.Select(st => st.Name))
+                        .Where(name => !commonMultiFloorPoints.Contains(name) &&
+                                       !name.StartsWith("TrongThang", StringComparison.OrdinalIgnoreCase) &&
+                                       !name.StartsWith("ChoThang", StringComparison.OrdinalIgnoreCase))
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                     foreach (var p in data.Places)
@@ -1689,7 +1698,7 @@ namespace LeHoangControlCenter.ViewModels
 
             if (_pendingElevatorMode == PendingElevatorMode.WaitingPoint)
             {
-                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{DetectFloorNumberForMap(CurrentMap)}";
+                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "ChoThangMay";
                 _pendingElevatorMode = PendingElevatorMode.None;
                 IsAddPointMode = false;
                 IsStationMakerExpanded = true;
@@ -1698,7 +1707,7 @@ namespace LeHoangControlCenter.ViewModels
             }
             else if (_pendingElevatorMode == PendingElevatorMode.InsidePoint)
             {
-                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{DetectFloorNumberForMap(CurrentMap)}";
+                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "TrongThangMay";
                 _pendingElevatorMode = PendingElevatorMode.None;
                 IsAddPointMode = false;
                 IsStationMakerExpanded = true;
@@ -2120,7 +2129,7 @@ namespace LeHoangControlCenter.ViewModels
             string floorNum = DetectFloorNumberForMap(CurrentMap);
             string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "TrongThangMay";
 
-            // If coordinates were already picked via "Chấm trên map"
+            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
             {
                 string? pointName = CyberInputDialog.Show(
                     "🛗 TẠO ĐIỂM TRONG THANG MÁY (TỪ XA)",

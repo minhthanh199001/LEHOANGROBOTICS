@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -127,36 +128,49 @@ namespace LeHoangControlCenter.Models
         public List<MapPlaceItem> Places { get; set; } = new();
     }
 
-    public class MapPlaceItem
+    public partial class MapPlaceItem : ObservableObject
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
+        [ObservableProperty]
+        [property: JsonPropertyName("name")]
+        private string _name = string.Empty;
 
-        [JsonPropertyName("x")]
-        public double X { get; set; }
+        [ObservableProperty]
+        [property: JsonPropertyName("x")]
+        private double _x;
 
-        [JsonPropertyName("y")]
-        public double Y { get; set; }
+        [ObservableProperty]
+        [property: JsonPropertyName("y")]
+        private double _y;
 
-        [JsonPropertyName("theta")]
-        public double Theta { get; set; } = 0.0;
+        [ObservableProperty]
+        [property: JsonPropertyName("theta")]
+        private double _theta = 0.0;
 
-        public double CanvasX { get; set; } = 0.0;
-        public double CanvasY { get; set; } = 0.0;
+        [ObservableProperty]
+        private double _canvasX = 0.0;
 
+        [ObservableProperty]
+        private double _canvasY = 0.0;
+
+        private string? _customIcon;
         public string Icon
         {
             get
             {
+                if (!string.IsNullOrEmpty(_customIcon)) return _customIcon;
                 if (string.IsNullOrEmpty(Name)) return "📍";
                 string n = Name.ToLowerInvariant();
-                if (n.Contains("trongthang") || n.Contains("cabin")) return "🛗";
-                if (n.Contains("chothang") || n.Contains("sanh") || n.Contains("waiting")) return "🚪";
+                if (n.Contains("trong") && (n.Contains("thang") || n.Contains("tm") || n.Contains("cabin"))) return "🛗";
+                if (n.Contains("cho") && (n.Contains("thang") || n.Contains("tm") || n.Contains("sanh"))) return "🚪";
                 if (n.Contains("charg") || n.Contains("sac")) return "⚡";
-                if (n.Contains("stand-by") || n.Contains("cho")) return "⏸️";
+                if (n.Contains("stand-by") || n.Contains("cho") || n.Contains("chờ")) return "⏸️";
                 return "📍";
             }
-            set { }
+            set
+            {
+                _customIcon = value;
+                OnPropertyChanged(nameof(Icon));
+            }
         }
 
         public string BadgeColor
@@ -165,8 +179,8 @@ namespace LeHoangControlCenter.Models
             {
                 if (string.IsNullOrEmpty(Name)) return "#00E5FF";
                 string n = Name.ToLowerInvariant();
-                if (n.Contains("trongthang") || n.Contains("cabin")) return "#10B981"; // Emerald
-                if (n.Contains("chothang") || n.Contains("sanh") || n.Contains("waiting")) return "#38BDF8"; // Sky
+                if (n.Contains("trong") && (n.Contains("thang") || n.Contains("tm") || n.Contains("cabin"))) return "#10B981"; // Emerald
+                if (n.Contains("cho") && (n.Contains("thang") || n.Contains("tm") || n.Contains("sanh"))) return "#38BDF8"; // Sky
                 if (n.Contains("charg") || n.Contains("sac")) return "#F59E0B"; // Amber
                 return "#00E5FF"; // Cyan
             }
@@ -178,11 +192,18 @@ namespace LeHoangControlCenter.Models
             {
                 if (string.IsNullOrEmpty(Name)) return "Trạm";
                 string n = Name.ToLowerInvariant();
-                if (n.Contains("trongthang") || n.Contains("cabin")) return "🛗 Cabin";
-                if (n.Contains("chothang") || n.Contains("sanh") || n.Contains("waiting")) return "🚪 Chờ sảnh";
+                if (n.Contains("trong") && (n.Contains("thang") || n.Contains("tm") || n.Contains("cabin"))) return "🛗 Cabin";
+                if (n.Contains("cho") && (n.Contains("thang") || n.Contains("tm") || n.Contains("sanh"))) return "🚪 Chờ sảnh";
                 if (n.Contains("charg") || n.Contains("sac")) return "⚡ Sạc";
                 return "Điểm";
             }
+        }
+
+        partial void OnNameChanged(string value)
+        {
+            OnPropertyChanged(nameof(Icon));
+            OnPropertyChanged(nameof(BadgeColor));
+            OnPropertyChanged(nameof(TypeBadge));
         }
     }
 }

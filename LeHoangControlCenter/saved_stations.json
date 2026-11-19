@@ -355,9 +355,15 @@
       "Theta": 0
     },
     {
+      "Name": "ChoThangMay",
+      "X": -1.38,
+      "Y": -2.87,
+      "Theta": 0
+    },
+    {
       "Name": "TrongThangMay",
-      "X": -0.51,
-      "Y": 0.2,
+      "X": -3.41,
+      "Y": -2.10,
       "Theta": 0
     }
   ],
