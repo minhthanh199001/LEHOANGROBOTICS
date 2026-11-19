@@ -138,6 +138,9 @@ namespace LeHoangControlCenter.Models
         [JsonPropertyName("y")]
         public double Y { get; set; }
 
+        [JsonPropertyName("theta")]
+        public double Theta { get; set; } = 0.0;
+
         public double CanvasX { get; set; } = 0.0;
         public double CanvasY { get; set; } = 0.0;
 

@@ -687,6 +687,14 @@ public class RobotCommandHandler {
 
                     // Notify local app UI (DeliveryFragment) to immediately reload stations for the new map
                     RobotMapManager.notifyMapPlacesChanged(mapName);
+
+                    // Delay 1200ms then auto-relocalize to best reference point on this map
+                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            attemptAutoRelocalizeOnMap(mapName);
+                        }
+                    }, 1200);
                 }
             }
         });
@@ -734,38 +742,54 @@ public class RobotCommandHandler {
 
     private void handleSetLocation(final WebSocket client, final String msgId, JsonObject json) {
         final String placeName = json.has("placeName") ? json.get("placeName").getAsString() : "";
-        Log.i(TAG, "Executing SET_LOCATION: " + placeName);
+        Float x = json.has("x") && !json.get("x").isJsonNull() ? json.get("x").getAsFloat() : null;
+        Float y = json.has("y") && !json.get("y").isJsonNull() ? json.get("y").getAsFloat() : null;
+        Float theta = json.has("theta") && !json.get("theta").isJsonNull() ? json.get("theta").getAsFloat() : 0f;
 
-        if (TextUtils.isEmpty(placeName)) {
+        Log.i(TAG, "Executing SET_LOCATION: " + placeName + " (X=" + x + ", Y=" + y + ")");
+
+        if (TextUtils.isEmpty(placeName) && (x == null || y == null)) {
             sendResult(client, msgId, "CMD_SET_LOCATION", false, -1, "Place name is empty");
             return;
         }
 
         try {
-            // Cố gắng lấy tọa độ từ RobotMapManager để nạp kèm nếu có
-            try {
-                String currentMap = RobotMapManager.getCurrentMapName();
+            String currentMap = RobotMapManager.getCurrentMapName();
+            if (x == null || y == null) {
                 JsonObject place = RobotMapManager.getPlaceByName(currentMap, placeName);
                 if (place != null) {
-                    float px = (float) place.get("x").getAsDouble();
-                    float py = (float) place.get("y").getAsDouble();
-                    float pth = (float) place.get("theta").getAsDouble();
-                    org.json.JSONObject p = new org.json.JSONObject();
-                    p.put(Definition.JSON_NAVI_POSITION_X, px);
-                    p.put(Definition.JSON_NAVI_POSITION_Y, py);
-                    p.put(Definition.JSON_NAVI_POSITION_THETA, pth);
-                    RobotApi.getInstance().setPoseEstimate(0, p.toString(), null);
+                    x = (float) place.get("x").getAsDouble();
+                    y = (float) place.get("y").getAsDouble();
+                    if (place.has("theta")) theta = (float) place.get("theta").getAsDouble();
                 }
-            } catch (Throwable ignored) {}
+            }
 
-            RobotApi.getInstance().setLocation(0, placeName, new CommandListener() {
-                @Override
-                public void onResult(int result, String message) {
-                    boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
-                    Log.i(TAG, "setLocation onResult: " + result + ", msg=" + message);
-                    sendResult(client, msgId, "CMD_SET_LOCATION", ok, result, message);
+            if (x != null && y != null) {
+                final float fx = x;
+                final float fy = y;
+                final float fth = theta != null ? theta : 0f;
+                final String flabel = !TextUtils.isEmpty(placeName) ? placeName : "Điểm chọn";
+
+                if (RobotPosePersistenceManager.getInstance() != null) {
+                    RobotPosePersistenceManager.getInstance().applyPoseEstimate(fx, fy, fth, flabel, new RobotPosePersistenceManager.RelocalizeCallback() {
+                        @Override
+                        public void onResult(boolean success, String message) {
+                            sendResult(client, msgId, "CMD_SET_LOCATION", success, success ? 0 : -1,
+                                    success ? "Đã định vị thành công tại '" + flabel + "'" : "Lỗi: " + message);
+                        }
+                    });
+                } else {
+                    applyDirectPoseAndEstimate(client, msgId, fx, fy, fth, flabel);
                 }
-            });
+            } else {
+                RobotApi.getInstance().setLocation(0, placeName, new CommandListener() {
+                    @Override
+                    public void onResult(int result, String message) {
+                        boolean ok = (result == Definition.RESULT_OK || "succeed".equalsIgnoreCase(message));
+                        sendResult(client, msgId, "CMD_SET_LOCATION", ok, result, message);
+                    }
+                });
+            }
         } catch (Throwable t) {
             Log.e(TAG, "setLocation exception: " + t.getMessage(), t);
             sendResult(client, msgId, "CMD_SET_LOCATION", false, -1, t.getMessage());
@@ -869,48 +893,196 @@ public class RobotCommandHandler {
                 // Notify local app UI (DeliveryFragment) to immediately reload stations for the new map
                 RobotMapManager.notifyMapPlacesChanged(mapName);
 
-                // 2. Delay 600ms for SLAM system to finish loading map into memory
+                // 2. Delay 1500ms for SLAM system to finish loading map into memory
                 new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        // 3. Relocalize either by place name or coordinates
-                        if (!TextUtils.isEmpty(placeName)) {
-                            Log.i(TAG, "Relocalizing on new floor via place: " + placeName);
+                        Float targetX = x;
+                        Float targetY = y;
+                        Float targetTheta = theta != null ? theta : 0f;
+                        String targetLabel = placeName;
+
+                        // 3. If coordinates are missing, resolve from place.json of this map!
+                        if ((targetX == null || targetY == null) && !TextUtils.isEmpty(placeName)) {
+                            JsonObject p = RobotMapManager.getPlaceByName(mapName, placeName);
+                            if (p != null) {
+                                targetX = (float) p.get("x").getAsDouble();
+                                targetY = (float) p.get("y").getAsDouble();
+                                if (p.has("theta")) targetTheta = (float) p.get("theta").getAsDouble();
+                                Log.i(TAG, "Resolved coordinates from place.json for '" + placeName + "': (" + targetX + ", " + targetY + ")");
+                            }
+                        }
+
+                        // 4. Fallback search for any elevator/charging point on targetMap if still null
+                        if (targetX == null || targetY == null) {
+                            JsonObject p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay");
+                            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay");
+                            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "Charging Point");
+                            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "Stand-by Point");
+                            if (p != null) {
+                                targetX = (float) p.get("x").getAsDouble();
+                                targetY = (float) p.get("y").getAsDouble();
+                                if (p.has("theta")) targetTheta = (float) p.get("theta").getAsDouble();
+                                if (TextUtils.isEmpty(targetLabel) && p.has("name")) {
+                                    targetLabel = p.get("name").getAsString();
+                                }
+                            }
+                        }
+
+                        // 5. Apply multi-layer localization
+                        if (targetX != null && targetY != null) {
+                            final float fx = targetX;
+                            final float fy = targetY;
+                            final float fth = targetTheta;
+                            final String flabel = !TextUtils.isEmpty(targetLabel) ? targetLabel : "Điểm chuyển tầng";
+
+                            Log.i(TAG, "Applying robust pose estimate: " + flabel + " (" + fx + ", " + fy + ", θ=" + fth + ")");
+                            if (RobotPosePersistenceManager.getInstance() != null) {
+                                RobotPosePersistenceManager.getInstance().applyPoseEstimate(fx, fy, fth, flabel, new RobotPosePersistenceManager.RelocalizeCallback() {
+                                    @Override
+                                    public void onResult(boolean success, String message) {
+                                        Log.i(TAG, "applyPoseEstimate completed: success=" + success + ", msg=" + message);
+                                        sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", success, success ? 0 : -1,
+                                                success ? "Chuyển map và định vị tại " + flabel + " thành công" : "Định vị thất bại: " + message);
+                                        checkLocalizationAndLaserScanFallback();
+                                    }
+                                });
+                            } else {
+                                applyDirectPoseAndEstimate(client, msgId, fx, fy, fth, flabel);
+                                checkLocalizationAndLaserScanFallback();
+                            }
+                        } else if (!TextUtils.isEmpty(placeName)) {
+                            // Named place only
                             RobotApi.getInstance().setLocation(0, placeName, new CommandListener() {
                                 @Override
                                 public void onResult(int res, String msg) {
                                     boolean locOk = (res == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msg));
                                     sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", locOk, res,
-                                            locOk ? "Chuyển tầng và định vị tại " + placeName + " thành công" : "Chuyển map xong nhưng lỗi định vị: " + msg);
+                                            locOk ? "Chuyển map và đặt vị trí tại " + placeName + " thành công" : msg);
+                                    checkLocalizationAndLaserScanFallback();
                                 }
                             });
-                        } else if (x != null && y != null) {
-                            Log.i(TAG, "Relocalizing on new floor via pose: (" + x + ", " + y + ", " + theta + ")");
-                            try {
-                                org.json.JSONObject params = new org.json.JSONObject();
-                                params.put(Definition.JSON_NAVI_POSITION_X, x);
-                                params.put(Definition.JSON_NAVI_POSITION_Y, y);
-                                params.put(Definition.JSON_NAVI_POSITION_THETA, theta != null ? theta : 0f);
-
-                                RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
-                                    @Override
-                                    public void onResult(int res, String msg) {
-                                        boolean locOk = (res == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msg));
-                                        sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", locOk, res,
-                                                locOk ? "Chuyển tầng và định vị tọa độ thành công" : "Chuyển map xong nhưng lỗi định vị: " + msg);
-                                    }
-                                });
-                            } catch (Throwable t) {
-                                sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", false, -1, t.getMessage());
-                            }
                         } else {
-                            // No initial place/pose specified, map switched
-                            sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", true, 0, "Chuyển bản đồ sang " + mapName + " thành công (Cần định vị thêm)");
+                            sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", true, 0, "Chuyển bản đồ thành công (Đang tự dò vị trí)");
+                            checkLocalizationAndLaserScanFallback();
                         }
                     }
-                }, 600);
+                }, 1500);
             }
         });
+    }
+
+    private void attemptAutoRelocalizeOnMap(final String mapName) {
+        try {
+            JsonObject p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay");
+            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay");
+            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "Charging Point");
+            if (p == null) p = RobotMapManager.getPlaceByName(mapName, "Stand-by Point");
+            if (p == null) {
+                JsonObject mapData = RobotMapManager.buildMapDataJson(mapName);
+                if (mapData != null && mapData.has("places")) {
+                    com.google.gson.JsonArray arr = mapData.getAsJsonArray("places");
+                    if (arr != null && arr.size() > 0) {
+                        p = arr.get(0).getAsJsonObject();
+                    }
+                }
+            }
+
+            if (p != null) {
+                final float x = (float) p.get("x").getAsDouble();
+                final float y = (float) p.get("y").getAsDouble();
+                final float th = p.has("theta") ? (float) p.get("theta").getAsDouble() : 0f;
+                final String name = p.has("name") ? p.get("name").getAsString() : "Điểm neo";
+                Log.i(TAG, "Auto-relocalizing after SWITCH_MAP to station: " + name + " (" + x + ", " + y + ")");
+                if (RobotPosePersistenceManager.getInstance() != null) {
+                    RobotPosePersistenceManager.getInstance().applyPoseEstimate(x, y, th, name, new RobotPosePersistenceManager.RelocalizeCallback() {
+                        @Override
+                        public void onResult(boolean success, String message) {
+                            Log.i(TAG, "auto-relocalize on SWITCH_MAP: " + success + ", " + message);
+                            checkLocalizationAndLaserScanFallback();
+                        }
+                    });
+                } else {
+                    applyDirectPoseAndEstimate(null, null, x, y, th, name);
+                    checkLocalizationAndLaserScanFallback();
+                }
+            } else {
+                checkLocalizationAndLaserScanFallback();
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "attemptAutoRelocalizeOnMap error: " + t.getMessage());
+            checkLocalizationAndLaserScanFallback();
+        }
+    }
+
+    private void checkLocalizationAndLaserScanFallback() {
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (RobotApi.getInstance().isApiConnectedService()) {
+                        RobotApi.getInstance().isRobotEstimate(0, new CommandListener() {
+                            @Override
+                            public void onResult(int res, String msg) {
+                                if (!"true".equalsIgnoreCase(msg)) {
+                                    Log.w(TAG, "Robot still unestimated after map switch. Triggering resetEstimate 360 scan...");
+                                    try {
+                                        RobotApi.getInstance().resetEstimate(0, 3, null);
+                                    } catch (Throwable ignored) {}
+                                } else {
+                                    Log.i(TAG, "Robot successfully estimated on new map!");
+                                }
+                            }
+                        });
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }, 1200);
+    }
+
+    private void applyDirectPoseAndEstimate(final WebSocket client, final String msgId, final float x, final float y, final float theta, final String label) {
+        try {
+            if (!TextUtils.isEmpty(label)) {
+                try {
+                    RobotApi.getInstance().setLocation(0, label, null);
+                } catch (Throwable ignored) {}
+            }
+
+            final org.json.JSONObject params = new org.json.JSONObject();
+            params.put(Definition.JSON_NAVI_POSITION_X, x);
+            params.put(Definition.JSON_NAVI_POSITION_Y, y);
+            params.put(Definition.JSON_NAVI_POSITION_THETA, theta);
+
+            RobotApi.getInstance().setPoseEstimate(0, params.toString(), new CommandListener() {
+                @Override
+                public void onResult(int res, String msg) {
+                    boolean ok = (res == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msg));
+                    if (ok) {
+                        if (client != null && msgId != null) {
+                            sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", true, 0, "Đã định vị tại " + label);
+                        }
+                    } else {
+                        try {
+                            RobotApi.getInstance().setForceEstimate(0, params.toString(), new CommandListener() {
+                                @Override
+                                public void onResult(int resF, String msgF) {
+                                    boolean okF = (resF == Definition.RESULT_OK || "succeed".equalsIgnoreCase(msgF));
+                                    if (client != null && msgId != null) {
+                                        sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", okF, resF, "ForceEstimate: " + msgF);
+                                    }
+                                }
+                            });
+                        } catch (Throwable t) {
+                            if (client != null && msgId != null) {
+                                sendResult(client, msgId, "CMD_SWITCH_MAP_AND_RELOCALIZE", false, -1, t.getMessage());
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "applyDirectPoseAndEstimate error: " + t.getMessage());
+        }
     }
 
     private void handleCharge(final WebSocket client, final String msgId, JsonObject json) {

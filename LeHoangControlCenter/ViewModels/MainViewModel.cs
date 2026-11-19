@@ -1356,8 +1356,35 @@ namespace LeHoangControlCenter.ViewModels
         {
             if (string.IsNullOrEmpty(SelectedMap)) return;
             AddLog($"[CHUYỂN BẢN ĐỒ] Đang đổi sang bản đồ: {SelectedMap}...");
-            await _robotService.SendCommandAsync(new SwitchMapCommand { MapName = SelectedMap });
+
+            // Look up best anchor/relocalization station on the target map
+            var allSaved = LoadAllSavedStations();
+            var targetStations = FindStationsForMap(allSaved, SelectedMap);
+
+            var anchorStation = targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
+                             ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
+                             ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
+                             ?? targetStations?.FirstOrDefault();
+
+            if (anchorStation != null)
+            {
+                AddLog($"🏢 [CHUYỂN MAP & ĐỊNH VỊ] Đang chuyển sang '{SelectedMap}' và tự động neo vị trí tại '{anchorStation.Name}' (X={anchorStation.X:F2}m, Y={anchorStation.Y:F2}m)...");
+                await _robotService.SendCommandAsync(new SwitchMapAndRelocalizeCommand
+                {
+                    MapName = SelectedMap,
+                    PlaceName = anchorStation.Name,
+                    X = anchorStation.X,
+                    Y = anchorStation.Y,
+                    Theta = anchorStation.Theta
+                });
+            }
+            else
+            {
+                await _robotService.SendCommandAsync(new SwitchMapCommand { MapName = SelectedMap });
+            }
+
             await _robotService.SendCommandAsync(new GetMapDataCommand { MapName = SelectedMap });
+            SwitchToMapLocal(SelectedMap);
         }
 
         [RelayCommand]
@@ -1415,12 +1442,49 @@ namespace LeHoangControlCenter.ViewModels
             }
 
             string placeName = "";
-            if (param is MapPlaceItem place) placeName = place.Name;
-            else if (param is string s) placeName = s;
+            double? posX = null;
+            double? posY = null;
+            double? posTheta = null;
+
+            if (param is MapPlaceItem place)
+            {
+                placeName = place.Name;
+                posX = place.X;
+                posY = place.Y;
+                posTheta = place.Theta;
+            }
+            else if (param is string s)
+            {
+                placeName = s;
+                var st = MapStations.FirstOrDefault(stn => stn.Name.Equals(s, StringComparison.OrdinalIgnoreCase));
+                if (st != null)
+                {
+                    posX = st.X;
+                    posY = st.Y;
+                    posTheta = st.Theta;
+                }
+            }
 
             if (string.IsNullOrEmpty(placeName)) return;
-            AddLog($"[ĐỊNH VỊ] Đang đặt vị trí robot theo điểm trạm: '{placeName}'...");
-            await _robotService.SendCommandAsync(new SetLocationCommand { PlaceName = placeName });
+
+            AddLog($"[ĐỊNH VỊ] Đang đặt vị trí robot theo điểm trạm: '{placeName}'" + (posX != null ? $" (X={posX:F2}m, Y={posY:F2}m)" : "") + "...");
+            await _robotService.SendCommandAsync(new SetLocationCommand
+            {
+                PlaceName = placeName,
+                X = posX,
+                Y = posY,
+                Theta = posTheta
+            });
+
+            if (posX != null && posY != null)
+            {
+                await _robotService.SendCommandAsync(new SetPoseEstimateCommand
+                {
+                    X = posX.Value,
+                    Y = posY.Value,
+                    Theta = (posTheta ?? 0) * Math.PI / 180.0
+                });
+            }
         }
 
         [RelayCommand]
@@ -2355,15 +2419,24 @@ namespace LeHoangControlCenter.ViewModels
                 return;
             }
 
-            AddLog($"🏢 [ĐI THANG MÁY] Bắt đầu điều phối đến {targetConfig.FloorLabel} (Số tầng: {targetConfig.FloorNumber}) -> Bản đồ: '{targetConfig.MapName}', Điểm định vị buồng thang: '{targetConfig.InsideCabinPoint}'...");
+            var allSaved = LoadAllSavedStations();
+            var targetStations = FindStationsForMap(allSaved, targetConfig.MapName);
+            var cabinSt = targetStations?.FirstOrDefault(s => s.Name.Equals(targetConfig.InsideCabinPoint, StringComparison.OrdinalIgnoreCase))
+                       ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)));
+
+            double? ex = targetConfig.ElevatorX ?? cabinSt?.X;
+            double? ey = targetConfig.ElevatorY ?? cabinSt?.Y;
+            double? eth = targetConfig.ElevatorTheta ?? cabinSt?.Theta;
+
+            AddLog($"🏢 [ĐI THANG MÁY] Bắt đầu điều phối đến {targetConfig.FloorLabel} (Số tầng: {targetConfig.FloorNumber}) -> Bản đồ: '{targetConfig.MapName}', Điểm định vị buồng thang: '{targetConfig.InsideCabinPoint}'" + (ex != null ? $" (X={ex:F2}m, Y={ey:F2}m)" : "") + "...");
 
             await _robotService.SendCommandAsync(new SwitchMapAndRelocalizeCommand
             {
                 MapName = targetConfig.MapName,
                 PlaceName = !string.IsNullOrEmpty(targetConfig.InsideCabinPoint) ? targetConfig.InsideCabinPoint : null,
-                X = targetConfig.ElevatorX,
-                Y = targetConfig.ElevatorY,
-                Theta = targetConfig.ElevatorTheta
+                X = ex,
+                Y = ey,
+                Theta = eth
             });
         }
 
@@ -2384,11 +2457,23 @@ namespace LeHoangControlCenter.ViewModels
                 else if (lower.Contains("2") || lower.Contains("t2") || lower.Contains("111015")) elevatorPlace = "TrongThangMay_T2";
             }
 
-            AddLog($"🏢 [ĐI THANG MÁY] Bắt đầu chuyển sang bản đồ '{targetMap}' và định vị tự động...");
+            var allSaved = LoadAllSavedStations();
+            var targetStations = FindStationsForMap(allSaved, targetMap);
+            var cabinSt = targetStations?.FirstOrDefault(s => s.Name.Equals(elevatorPlace, StringComparison.OrdinalIgnoreCase))
+                       ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)));
+
+            double? ex = matchedConfig?.ElevatorX ?? cabinSt?.X;
+            double? ey = matchedConfig?.ElevatorY ?? cabinSt?.Y;
+            double? eth = matchedConfig?.ElevatorTheta ?? cabinSt?.Theta;
+
+            AddLog($"🏢 [ĐI THANG MÁY] Bắt đầu chuyển sang bản đồ '{targetMap}' và định vị tự động tại '{elevatorPlace}'" + (ex != null ? $" (X={ex:F2}m, Y={ey:F2}m)" : "") + "...");
             await _robotService.SendCommandAsync(new SwitchMapAndRelocalizeCommand
             {
                 MapName = targetMap,
-                PlaceName = !string.IsNullOrEmpty(elevatorPlace) ? elevatorPlace : null
+                PlaceName = !string.IsNullOrEmpty(elevatorPlace) ? elevatorPlace : null,
+                X = ex,
+                Y = ey,
+                Theta = eth
             });
         }
 
@@ -2501,18 +2586,30 @@ namespace LeHoangControlCenter.ViewModels
                 string targetMap = MissionTargetFloor?.MapName ?? "";
                 string targetCabinPoint = MissionTargetFloor?.InsideCabinPoint ?? $"TrongThangMay_T{MissionTargetFloor?.FloorNumber}";
 
+                var allSaved = LoadAllSavedStations();
+                var matchedStations = FindStationsForMap(allSaved, targetMap);
+                var cabinStation = matchedStations?.FirstOrDefault(s => s.Name.Equals(targetCabinPoint, StringComparison.OrdinalIgnoreCase))
+                                ?? matchedStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)));
+
+                double? posX = cabinStation?.X ?? MissionTargetFloor?.ElevatorX;
+                double? posY = cabinStation?.Y ?? MissionTargetFloor?.ElevatorY;
+                double? posTheta = cabinStation?.Theta ?? MissionTargetFloor?.ElevatorTheta;
+
                 MissionState = MultiFloorMissionState.Step3_SwitchingMapAndRelocalizing;
                 MissionProgressPercent = 55;
-                MissionCurrentStepText = $"[Bước 3/5]: Đã tới {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị buồng cabin...";
+                MissionCurrentStepText = $"[Bước 3/5]: Đã tới {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị buồng cabin: '{targetCabinPoint}'...";
                 MissionNextActionText = "🚪 CỬA TẦNG ĐÍCH ĐÃ MỞ ➔ BƯỚC RA SẢNH";
 
-                AddLog($"🏢 [KỊCH BẢN ĐA TẦNG - BƯỚC 3/5] Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị tại '{targetCabinPoint}'...");
+                AddLog($"🏢 [KỊCH BẢN ĐA TẦNG - BƯỚC 3/5] Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị tại '{targetCabinPoint}'" + (posX != null ? $" (X={posX:F2}m, Y={posY:F2}m)" : "") + "...");
                 _ = SpeakAsync($"Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Robot đang chuyển bản đồ và định vị lại.");
 
                 await _robotService.SendCommandAsync(new SwitchMapAndRelocalizeCommand
                 {
                     MapName = targetMap,
-                    PlaceName = !string.IsNullOrEmpty(targetCabinPoint) ? targetCabinPoint : null
+                    PlaceName = !string.IsNullOrEmpty(targetCabinPoint) ? targetCabinPoint : null,
+                    X = posX,
+                    Y = posY,
+                    Theta = posTheta
                 });
 
                 if (!string.IsNullOrEmpty(targetMap))
