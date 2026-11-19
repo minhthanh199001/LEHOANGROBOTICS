@@ -14,6 +14,7 @@ services:
       - PORT=5050
       - ASPNETCORE_URLS=http://0.0.0.0:5050
       - DATABASE_PATH=/app/data/cloud_fleet.db
+      - GREETING_ADMIN_KEY=${GREETING_ADMIN_KEY:-}
     volumes:
       # Persistent SQLite database across container upgrades
       - lehoang_cloud_data:/app/data

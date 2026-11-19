@@ -26,6 +26,9 @@ __pycache__/
 *stderr.txt
 *stdout.txt
 scratch/
+.local/
+OPEN AI API KEY*.txt
+*.dpapi
 extracted_docx/
 .vscode/
 

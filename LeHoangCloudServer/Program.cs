@@ -10,6 +10,13 @@ builder.WebHost.UseUrls(defaultUrl);
 
 // 1. Core Services
 builder.Services.AddSingleton<CloudDatabaseService>();
+builder.Services.AddSingleton<GreetingService>();
+builder.Services.AddSingleton<GreetingLanAccess>();
+// Reuse one transcription worker per server to bound uploads and API usage.
+builder.Services.AddSingleton<GreetingSpeechService>();
+builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(15) });
+builder.Services.AddSingleton<MicroArrayTelemetry>();
+builder.Services.AddHostedService(services => services.GetRequiredService<MicroArrayTelemetry>());
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 

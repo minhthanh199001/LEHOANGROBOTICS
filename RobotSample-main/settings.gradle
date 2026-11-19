@@ -1,2 +1,2 @@
 rootProject.name='RobotSample'
-include ':app', ':cloudmobile'
+include ':app', ':cloudmobile', ':greetingbot'
