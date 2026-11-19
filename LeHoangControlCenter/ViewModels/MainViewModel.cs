@@ -2396,8 +2396,13 @@ namespace LeHoangControlCenter.ViewModels
         // MULTI-FLOOR MISSION RUNNER IMPLEMENTATION
         // ==========================================
         [RelayCommand]
-        public async Task StartMultiFloorMissionCommand()
+        public async Task StartMultiFloorMissionAsync()
         {
+            if (FloorConfigs.Count == 0)
+            {
+                LoadFloorConfigs();
+            }
+
             if (FloorConfigs.Count == 0)
             {
                 AddLog("⚠️ [CẢNH BÁO] Chưa có cấu hình tầng nào! Vui lòng bấm '⚙️ Cài đặt tầng' để thêm cấu hình.");
