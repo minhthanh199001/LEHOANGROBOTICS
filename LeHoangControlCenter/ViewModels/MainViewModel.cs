@@ -1392,6 +1392,7 @@ namespace LeHoangControlCenter.ViewModels
             var allSaved = LoadAllSavedStations();
             var targetStations = FindStationsForMap(allSaved, SelectedMap);
 
+            var anchorStation = targetStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
@@ -2350,10 +2351,12 @@ namespace LeHoangControlCenter.ViewModels
                             }
                             if (string.IsNullOrEmpty(item.OutsideWaitingPoint))
                             {
+                                item.OutsideWaitingPoint = "ChoThangMay";
                             }
                             FloorConfigs.Add(item);
                         }
                         return;
+                    }
                 }
             }
             catch (Exception ex)
@@ -2374,6 +2377,8 @@ namespace LeHoangControlCenter.ViewModels
             FloorConfigs.Add(new FloorMapConfig
             {
                 FloorNumber = "2",
+                FloorLabel = "Tầng 2",
+                MapName = "2-0916091752",
                 InsideCabinPoint = "TrongThangMay",
                 OutsideWaitingPoint = "ChoThangMay"
             });
@@ -2382,6 +2387,8 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public void ToggleFloorConfig()
         {
+            IsFloorConfigExpanded = !IsFloorConfigExpanded;
+        }
 
         [RelayCommand]
         public void AddFloorConfig()
@@ -2402,6 +2409,8 @@ namespace LeHoangControlCenter.ViewModels
 
         [RelayCommand]
         public void RemoveFloorConfig(FloorMapConfig? config)
+        {
+            if (config != null && FloorConfigs.Contains(config))
             {
                 string label = config.FloorLabel;
                 FloorConfigs.Remove(config);
@@ -2471,6 +2480,7 @@ namespace LeHoangControlCenter.ViewModels
                 MaxDistance = 0.25,
                 TimeoutSeconds = 45
             });
+        }
 
         [RelayCommand]
         public async Task ExitElevatorToHallAsync(FloorMapConfig? config = null)
