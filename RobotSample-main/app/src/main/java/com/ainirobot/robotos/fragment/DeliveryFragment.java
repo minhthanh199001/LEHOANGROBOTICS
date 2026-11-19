@@ -39,6 +39,7 @@ import androidx.fragment.app.Fragment;
 
 import com.ainirobot.coreservice.client.Definition;
 import com.ainirobot.coreservice.client.RobotApi;
+import com.ainirobot.coreservice.client.actionbean.Pose;
 import com.ainirobot.coreservice.client.listener.ActionListener;
 import com.ainirobot.coreservice.client.listener.CommandListener;
 import com.ainirobot.coreservice.client.robotsetting.RobotSettingApi;
@@ -3313,21 +3314,29 @@ public class DeliveryFragment extends Fragment {
 
     private String resolveCabinPoint(String mapName) {
         JsonObject p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay");
-        if (p != null) return "TrongThangMay";
-        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T1");
-        if (p != null) return "TrongThangMay_T1";
+        if (p != null && p.has("name")) return p.get("name").getAsString();
         p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T2");
-        if (p != null) return "TrongThangMay_T2";
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T1");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "TrongTM");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "TrongTha");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
         return "TrongThangMay";
     }
 
     private String resolveHallPoint(String mapName) {
         JsonObject p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay");
-        if (p != null) return "ChoThangMay";
-        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T1");
-        if (p != null) return "ChoThangMay_T1";
+        if (p != null && p.has("name")) return p.get("name").getAsString();
         p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T2");
-        if (p != null) return "ChoThangMay_T2";
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T1");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "ChoTM");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
+        p = RobotMapManager.getPlaceByName(mapName, "ChoThan");
+        if (p != null && p.has("name")) return p.get("name").getAsString();
         return "ChoThangMay";
     }
 
@@ -3515,7 +3524,7 @@ public class DeliveryFragment extends Fragment {
         TTSPlayer.playVietnameseText("Robot bắt đầu nhiệm vụ liên tầng. Đang di chuyển đến sảnh chờ thang máy.", null);
         Log.i(TAG, "MultiFloorMission: Step 1 navigating to " + sourceHall);
 
-        navigateToElevatorPoint(sourceHall, new Runnable() {
+        navigateToElevatorPoint(sourceMap, sourceHall, new Runnable() {
             @Override
             public void run() {
                 mElevatorMissionStep = ElevatorMissionStep.STEP_1_ARRIVED_HALL;
@@ -3542,7 +3551,7 @@ public class DeliveryFragment extends Fragment {
             TTSPlayer.playVietnameseText("Cửa thang máy đã mở. Robot đang tiến vào trong buồng thang máy.", null);
             Log.i(TAG, "MultiFloorMission: Step 2 navigating to " + mMissionCabinStation);
 
-            navigateToElevatorPoint(mMissionCabinStation, new Runnable() {
+            navigateToElevatorPoint(mMissionSourceMap, mMissionCabinStation, new Runnable() {
                 @Override
                 public void run() {
                     mElevatorMissionStep = ElevatorMissionStep.STEP_2_IN_CABIN;
@@ -3636,7 +3645,7 @@ public class DeliveryFragment extends Fragment {
             TTSPlayer.playVietnameseText("Cửa thang máy đã mở. Robot đang lăn bánh ra ngoài sảnh.", null);
             Log.i(TAG, "MultiFloorMission: Step 4 navigating to " + mMissionTargetHallStation);
 
-            navigateToElevatorPoint(mMissionTargetHallStation, new Runnable() {
+            navigateToElevatorPoint(mMissionTargetMap, mMissionTargetHallStation, new Runnable() {
                 @Override
                 public void run() {
                     mElevatorMissionStep = ElevatorMissionStep.STEP_4_ARRIVED_TARGET_HALL;
@@ -3661,7 +3670,7 @@ public class DeliveryFragment extends Fragment {
             TTSPlayer.playVietnameseText("Robot đang di chuyển đến bàn " + mMissionTargetStation + " để giao món.", null);
             Log.i(TAG, "MultiFloorMission: Step 5 navigating to " + mMissionTargetStation);
 
-            navigateToElevatorPoint(mMissionTargetStation, new Runnable() {
+            navigateToElevatorPoint(mMissionTargetMap, mMissionTargetStation, new Runnable() {
                 @Override
                 public void run() {
                     mElevatorMissionStep = ElevatorMissionStep.COMPLETED;
@@ -3743,48 +3752,138 @@ public class DeliveryFragment extends Fragment {
         Toast.makeText(getContext(), "🛑 Đã hủy nhiệm vụ liên tầng!", Toast.LENGTH_SHORT).show();
     }
 
-    private void navigateToElevatorPoint(final String dest, final Runnable onArrival) {
+    private void navigateToElevatorPoint(final String mapName, final String destName, final Runnable onArrival) {
         try {
             if (!RobotApi.getInstance().isApiConnectedService()) {
                 Toast.makeText(getContext(), "CoreService chưa kết nối!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            float spd = (mSpeedFast > 0.1f) ? mSpeedFast : 0.6f;
-            RobotApi.getInstance().startNavigation(0, dest, 1.2, (double) spd, 90 * 1000, new ActionListener() {
-                @Override
-                public void onResult(int status, String responseString) throws RemoteException {
-                    Log.i(TAG, "navigateToElevatorPoint (" + dest + ") onResult: " + status + ", " + responseString);
-                    if (status == Definition.RESULT_OK || "succeed".equalsIgnoreCase(responseString)) {
-                        mHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (onArrival != null) {
-                                    onArrival.run();
-                                }
-                            }
-                        });
-                    }
-                }
 
-                @Override
-                public void onError(int errorCode, String errorString) throws RemoteException {
-                    Log.e(TAG, "navigateToElevatorPoint (" + dest + ") onError: " + errorCode + ", " + errorString);
+            final String activeMap = !TextUtils.isEmpty(mapName) ? mapName : mCurrentMap;
+            JsonObject p = RobotMapManager.getPlaceByName(activeMap, destName);
+            if (p == null) {
+                // Fallback alias lookup
+                if (destName.toLowerCase().contains("cho")) {
+                    p = RobotMapManager.getPlaceByName(activeMap, "ChoThangMay_T2");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoThangMay_T1");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoTM");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "ChoThan");
+                } else if (destName.toLowerCase().contains("trong")) {
+                    p = RobotMapManager.getPlaceByName(activeMap, "TrongThangMay_T2");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongThangMay_T1");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongTM");
+                    if (p == null) p = RobotMapManager.getPlaceByName(activeMap, "TrongTha");
+                }
+            }
+
+            final String actualDest = (p != null && p.has("name")) ? p.get("name").getAsString() : destName;
+            final Float posX = (p != null && p.has("x")) ? p.get("x").getAsFloat() : null;
+            final Float posY = (p != null && p.has("y")) ? p.get("y").getAsFloat() : null;
+            final Float posTheta = (p != null && p.has("theta")) ? p.get("theta").getAsFloat() : 0.0f;
+
+            // 1. Proximity check: If robot is ALREADY at/near destination (<0.45m), complete immediately!
+            if (posX != null && posY != null && RobotPosePersistenceManager.getInstance() != null) {
+                float curX = RobotPosePersistenceManager.getInstance().getLastX();
+                float curY = RobotPosePersistenceManager.getInstance().getLastY();
+                double dist = Math.hypot(curX - posX, curY - posY);
+                if (dist < 0.45) {
+                    Log.i(TAG, "navigateToElevatorPoint: Robot is ALREADY at " + actualDest + " (dist=" + dist + "m < 0.45m). Advancing immediately!");
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(getContext(), "Lỗi di chuyển tới " + dest + " (" + errorCode + "): " + errorString, Toast.LENGTH_LONG).show();
-                            TTSPlayer.playVietnameseText("Không thể di chuyển đến " + dest + ", vui lòng kiểm tra vật cản.", null);
+                            if (onArrival != null) onArrival.run();
                         }
                     });
+                    return;
                 }
+            }
 
-                @Override
-                public void onStatusUpdate(int status, String data) throws RemoteException {
-                }
-            });
+            // 2. Register mapping pose to CoreService SLAM so local planner knows the target
+            if (posX != null && posY != null) {
+                try {
+                    Pose beanPose = new Pose(posX, posY, posTheta != null ? posTheta : 0f, actualDest);
+                    RobotApi.getInstance().saveMappingPose(0, beanPose, null);
+                } catch (Throwable ignored) {}
+            }
+
+            // 3. Pose navigation with narrow passage clearance (obsDist=0.25m)
+            boolean isElevatorTarget = destName.toLowerCase().contains("thang") || destName.toLowerCase().contains("cabin");
+            double maxDist = isElevatorTarget ? 0.35 : 1.2;
+            double obsDist = 0.25; // Narrow doorway clearance (25cm)
+
+            if (posX != null && posY != null) {
+                Pose navPose = new Pose(posX, posY, posTheta != null ? posTheta : 0f, actualDest);
+                navPose.setNoDirectionalParking(true);
+                navPose.setIgnoreDistance(true);
+                navPose.setSafeDistance(1); // 1 = narrow passage mode
+
+                Log.i(TAG, "navigateToElevatorPoint via Narrow Pose: " + navPose + ", maxDist=" + maxDist + ", obsDist=" + obsDist);
+                int ret = RobotApi.getInstance().startNavigation(0, navPose, maxDist, obsDist, 0.0, 90 * 1000, new ActionListener() {
+                    @Override
+                    public void onResult(int status, String responseString) throws RemoteException {
+                        Log.i(TAG, "navigateToElevatorPoint (" + actualDest + ") onResult: " + status + ", " + responseString);
+                        if (status == Definition.RESULT_OK || "succeed".equalsIgnoreCase(responseString)) {
+                            mHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (onArrival != null) onArrival.run();
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onError(int errorCode, String errorString) throws RemoteException {
+                        Log.e(TAG, "navigateToElevatorPoint Pose onError: " + errorCode + ", " + errorString + ". Fallback to named navigation...");
+                        fallbackNamedNavigation(actualDest, onArrival);
+                    }
+
+                    @Override
+                    public void onStatusUpdate(int status, String data) throws RemoteException {}
+                });
+
+                if (ret >= 0) return;
+            }
+
+            // Fallback: Named navigation
+            fallbackNamedNavigation(actualDest, onArrival);
+
         } catch (Throwable t) {
             Log.e(TAG, "navigateToElevatorPoint error: " + t.getMessage());
         }
+    }
+
+    private void fallbackNamedNavigation(final String dest, final Runnable onArrival) {
+        float spd = (mSpeedFast > 0.1f) ? mSpeedFast : 0.6f;
+        RobotApi.getInstance().startNavigation(0, dest, 1.2, (double) spd, 90 * 1000, new ActionListener() {
+            @Override
+            public void onResult(int status, String responseString) throws RemoteException {
+                Log.i(TAG, "fallbackNamedNavigation (" + dest + ") onResult: " + status + ", " + responseString);
+                if (status == Definition.RESULT_OK || "succeed".equalsIgnoreCase(responseString)) {
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (onArrival != null) onArrival.run();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(int errorCode, String errorString) throws RemoteException {
+                Log.e(TAG, "fallbackNamedNavigation (" + dest + ") onError: " + errorCode + ", " + errorString);
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getContext(), "Lỗi di chuyển tới " + dest + " (" + errorCode + "): " + errorString, Toast.LENGTH_LONG).show();
+                        TTSPlayer.playVietnameseText("Không thể di chuyển đến " + dest + ", vui lòng kiểm tra lại điểm trên bản đồ.", null);
+                    }
+                });
+            }
+
+            @Override
+            public void onStatusUpdate(int status, String data) throws RemoteException {}
+        });
     }
 
     @Override

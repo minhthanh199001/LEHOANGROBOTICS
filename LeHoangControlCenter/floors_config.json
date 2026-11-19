@@ -1,22 +1,22 @@
 [
   {
-    "elevatorPoint": "TrongThangMay_T2",
+    "elevatorPoint": "TrongThangMay",
     "floorNumber": "2",
     "floorLabel": "T\u1EA7ng 2",
     "mapName": "T2-1118154828",
-    "insideCabinPoint": "TrongThangMay_T2",
-    "outsideWaitingPoint": "ChoThangMay_T2",
+    "insideCabinPoint": "TrongThangMay",
+    "outsideWaitingPoint": "ChoThangMay",
     "elevatorX": null,
     "elevatorY": null,
     "elevatorTheta": null
   },
   {
-    "elevatorPoint": "TrongThangMay_TG",
+    "elevatorPoint": "TrongThangMay",
     "floorNumber": "T\u1EA7ng G",
     "floorLabel": "T\u1EA7ng G",
     "mapName": "TG-1119082909",
-    "insideCabinPoint": "TrongThangMay_TG",
-    "outsideWaitingPoint": "ChoThangMay_TG",
+    "insideCabinPoint": "TrongThangMay",
+    "outsideWaitingPoint": "ChoThangMay",
     "elevatorX": null,
     "elevatorY": null,
     "elevatorTheta": null

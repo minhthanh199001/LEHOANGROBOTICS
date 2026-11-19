@@ -1392,7 +1392,6 @@ namespace LeHoangControlCenter.ViewModels
             var allSaved = LoadAllSavedStations();
             var targetStations = FindStationsForMap(allSaved, SelectedMap);
 
-            var anchorStation = targetStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
@@ -1459,7 +1458,6 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     // Ưu tiên: TrongThangMay -> Charging Point -> Stand-by Point -> trạm đầu tiên
                     anchor = targetStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
-                          ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
                           ?? targetStations?.FirstOrDefault();
@@ -2079,7 +2077,6 @@ namespace LeHoangControlCenter.ViewModels
             string floorNum = DetectFloorNumberForMap(CurrentMap);
             string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "ChoThangMay";
 
-            // If coordinates were already picked via "Chấm trên map"
             if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
             {
                 string? pointName = CyberInputDialog.Show(
@@ -2123,7 +2120,6 @@ namespace LeHoangControlCenter.ViewModels
             string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "TrongThangMay";
 
             // If coordinates were already picked via "Chấm trên map"
-            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
             {
                 string? pointName = CyberInputDialog.Show(
                     "🛗 TẠO ĐIỂM TRONG THANG MÁY (TỪ XA)",
@@ -2354,12 +2350,10 @@ namespace LeHoangControlCenter.ViewModels
                             }
                             if (string.IsNullOrEmpty(item.OutsideWaitingPoint))
                             {
-                                item.OutsideWaitingPoint = "ChoThangMay";
                             }
                             FloorConfigs.Add(item);
                         }
                         return;
-                    }
                 }
             }
             catch (Exception ex)
@@ -2380,8 +2374,6 @@ namespace LeHoangControlCenter.ViewModels
             FloorConfigs.Add(new FloorMapConfig
             {
                 FloorNumber = "2",
-                FloorLabel = "Tầng 2",
-                MapName = "2-0916091752",
                 InsideCabinPoint = "TrongThangMay",
                 OutsideWaitingPoint = "ChoThangMay"
             });
@@ -2390,8 +2382,6 @@ namespace LeHoangControlCenter.ViewModels
         [RelayCommand]
         public void ToggleFloorConfig()
         {
-            IsFloorConfigExpanded = !IsFloorConfigExpanded;
-        }
 
         [RelayCommand]
         public void AddFloorConfig()
@@ -2412,8 +2402,6 @@ namespace LeHoangControlCenter.ViewModels
 
         [RelayCommand]
         public void RemoveFloorConfig(FloorMapConfig? config)
-        {
-            if (config != null && FloorConfigs.Contains(config))
             {
                 string label = config.FloorLabel;
                 FloorConfigs.Remove(config);
@@ -2483,7 +2471,6 @@ namespace LeHoangControlCenter.ViewModels
                 MaxDistance = 0.25,
                 TimeoutSeconds = 45
             });
-        }
 
         [RelayCommand]
         public async Task ExitElevatorToHallAsync(FloorMapConfig? config = null)
@@ -2518,7 +2505,6 @@ namespace LeHoangControlCenter.ViewModels
                 TimeoutSeconds = 45
             });
         }
-
         [RelayCommand]
         public async Task DispatchElevatorToFloorAsync(object? param = null)
         {
@@ -2685,7 +2671,6 @@ namespace LeHoangControlCenter.ViewModels
             var st = MapStations.FirstOrDefault(s => s.Name.Equals(hallPoint, StringComparison.OrdinalIgnoreCase));
             await _robotService.SendCommandAsync(new NavigateCommand
             {
-                Destination = hallPoint,
                 X = st?.X,
                 Y = st?.Y,
                 MaxDistance = 0.35,
@@ -2716,7 +2701,6 @@ namespace LeHoangControlCenter.ViewModels
                 {
                     Destination = cabinPoint,
                     X = st?.X,
-                    Y = st?.Y,
                     MaxDistance = 0.25,
                     TimeoutSeconds = 45
                 });
@@ -2741,7 +2725,6 @@ namespace LeHoangControlCenter.ViewModels
 
                 MissionState = MultiFloorMissionState.Step3_SwitchingMapAndRelocalizing;
                 MissionProgressPercent = 55;
-                MissionCurrentStepText = $"[Bước 3/5]: Đã tới {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị buồng cabin: '{targetCabinPoint}'...";
                 MissionNextActionText = "🚪 CỬA TẦNG ĐÍCH ĐÃ MỞ ➔ BƯỚC RA SẢNH";
 
                 AddLog($"🏢 [KỊCH BẢN ĐA TẦNG - BƯỚC 3/5] Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị tại '{targetCabinPoint}'" + (posX != null ? $" (X={posX:F2}m, Y={posY:F2}m)" : "") + "...");
@@ -2783,7 +2766,6 @@ namespace LeHoangControlCenter.ViewModels
                     X = st?.X,
                     Y = st?.Y,
                     MaxDistance = 0.35,
-                    TimeoutSeconds = 45
                 });
             }
             else if (MissionState == MultiFloorMissionState.Step4_ExitingCabinToHall || MissionState == MultiFloorMissionState.Step4_ArrivedAtTargetHall)
