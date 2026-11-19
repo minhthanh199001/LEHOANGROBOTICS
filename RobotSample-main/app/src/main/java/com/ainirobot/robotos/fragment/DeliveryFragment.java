@@ -1,22 +1,26 @@
 package com.ainirobot.robotos.fragment;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.drawable.ColorDrawable;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -292,6 +296,45 @@ public class DeliveryFragment extends Fragment {
     private boolean mIsEstimateValid = false;
     private Runnable mLocalizationCheckerRunnable;
 
+    // Multi-Floor Elevator Mission Runner (Nhiệm vụ Thang Máy Liên Tầng)
+    private TextView mBtnQuickElevatorMission;
+    private RelativeLayout mBtnMenuElevatorTest;
+
+    private enum ElevatorMissionStep {
+        IDLE,
+        STEP_1_GOING_TO_HALL,
+        STEP_1_ARRIVED_HALL,
+        STEP_2_ENTERING_CABIN,
+        STEP_2_IN_CABIN,
+        STEP_3_SWITCHING_MAP_AND_RELOCALIZING,
+        STEP_4_EXITING_CABIN_TO_HALL,
+        STEP_4_ARRIVED_TARGET_HALL,
+        STEP_5_GOING_TO_DESTINATION,
+        COMPLETED
+    }
+
+    private ElevatorMissionStep mElevatorMissionStep = ElevatorMissionStep.IDLE;
+    private Dialog mElevatorMissionDialog = null;
+    private String mMissionSourceMap = "";
+    private String mMissionTargetMap = "";
+    private String mMissionTargetStation = "";
+    private String mMissionSourceHallStation = "ChoThangMay";
+    private String mMissionCabinStation = "TrongThangMay";
+    private String mMissionTargetHallStation = "ChoThangMay";
+
+    // Elevator Mission Dialog View References
+    private TextView mMissionTvRoute;
+    private TextView mMissionTvStepBadge;
+    private TextView mMissionTvStatusTitle;
+    private TextView mMissionTvStatusDetail;
+    private TextView mMissionTvStep1;
+    private TextView mMissionTvStep2;
+    private TextView mMissionTvStep3;
+    private TextView mMissionTvStep4;
+    private TextView mMissionTvStep5;
+    private Button mMissionBtnAction;
+    private Button mMissionBtnAbort;
+
     public static DeliveryFragment newInstance() {
         return new DeliveryFragment();
     }
@@ -402,6 +445,16 @@ public class DeliveryFragment extends Fragment {
         mTvClockTime = root.findViewById(R.id.tv_clock_time);
         mTvBatteryPill = root.findViewById(R.id.tv_battery_pill);
         mBtnRefreshStations = root.findViewById(R.id.btn_refresh_stations);
+        mBtnQuickElevatorMission = root.findViewById(R.id.btn_quick_elevator_mission);
+
+        if (mBtnQuickElevatorMission != null) {
+            mBtnQuickElevatorMission.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showMultiFloorMissionSetupDialog();
+                }
+            });
+        }
 
         if (mBtnRefreshStations != null) {
             mBtnRefreshStations.setOnClickListener(new View.OnClickListener() {
@@ -444,6 +497,7 @@ public class DeliveryFragment extends Fragment {
         mBtnDrawerPower = root.findViewById(R.id.btn_drawer_power);
         mBtnDrawerClose = root.findViewById(R.id.btn_drawer_close);
         mBtnMenuReturnHome = root.findViewById(R.id.btn_menu_return_home);
+        mBtnMenuElevatorTest = root.findViewById(R.id.btn_menu_elevator_test);
         mBtnMenuRelocalize = root.findViewById(R.id.btn_menu_relocalize);
         mBtnMenuSwitchMode = root.findViewById(R.id.btn_menu_switch_mode);
         mBtnMenuSettings = root.findViewById(R.id.btn_menu_settings);
@@ -740,6 +794,16 @@ public class DeliveryFragment extends Fragment {
                 navigateRobotTo(home);
             }
         });
+
+        if (mBtnMenuElevatorTest != null) {
+            mBtnMenuElevatorTest.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    closeLeftDrawer();
+                    showMultiFloorMissionSetupDialog();
+                }
+            });
+        }
 
         if (mBtnMenuRelocalize != null) {
             mBtnMenuRelocalize.setOnClickListener(new View.OnClickListener() {
@@ -1605,6 +1669,7 @@ public class DeliveryFragment extends Fragment {
         List<String> options = new ArrayList<>();
         options.add("⚡ 1-Chạm: Định vị tại Trạm Sạc");
         options.add("🏠 1-Chạm: Định vị tại Điểm Chờ ");
+        options.add("🛗 1-Chạm: Định vị trong Cabin (TrongThangMay)");
         if (RobotPosePersistenceManager.getInstance() != null
                 && RobotPosePersistenceManager.getInstance().hasSavedPose()) {
             options.add("💾 Khôi phục vị trí lưu gần nhất ("
@@ -1624,6 +1689,8 @@ public class DeliveryFragment extends Fragment {
                             relocalizeToChargingDock();
                         } else if (chosen.contains("Điểm Chờ")) {
                             relocalizeToStandbyPoint();
+                        } else if (chosen.contains("Cabin") || chosen.contains("TrongThangMay")) {
+                            relocalizeToElevatorCabin();
                         } else if (chosen.contains("Khôi phục vị trí lưu")) {
                             relocalizeToLastSavedPose();
                         } else if (chosen.contains("Chọn điểm bất kỳ")) {
@@ -1635,6 +1702,22 @@ public class DeliveryFragment extends Fragment {
                 })
                 .setNegativeButton("Đóng", null)
                 .show();
+    }
+
+    private void relocalizeToElevatorCabin() {
+        JsonObject place = RobotMapManager.getPlaceByName(mCurrentMap, "TrongThangMay");
+        if (place == null) place = RobotMapManager.getPlaceByName(mCurrentMap, "TrongThangMay_T1");
+        if (place == null) place = RobotMapManager.getPlaceByName(mCurrentMap, "TrongThangMay_T2");
+
+        if (place != null) {
+            float x = place.get("x").getAsFloat();
+            float y = place.get("y").getAsFloat();
+            float theta = place.has("theta") ? place.get("theta").getAsFloat() : 0.0f;
+            relocalizeRobotTo(x, y, theta, "TrongThangMay");
+        } else {
+            Toast.makeText(getContext(), "Chưa có điểm 'TrongThangMay' trên bản đồ này!", Toast.LENGTH_SHORT).show();
+            TTSPlayer.playVietnameseText("Chưa có điểm trong thang máy", null);
+        }
     }
 
     private void relocalizeToChargingDock() {
@@ -3213,9 +3296,504 @@ public class DeliveryFragment extends Fragment {
         }
     }
 
+    // =========================================================================
+    // MULTI-FLOOR ELEVATOR MISSION RUNNER (KỊCH BẢN GIAO HÀNG ĐA TẦNG / THANG MÁY)
+    // =========================================================================
+
+    private String getFriendlyFloorLabel(String mapName) {
+        if (TextUtils.isEmpty(mapName)) return "Tầng 1";
+        String lower = mapName.toLowerCase();
+        if (lower.contains("tg") || lower.contains("g-") || lower.contains("ground")) return "Tầng G";
+        if (lower.contains("t1") || lower.contains("tang 1") || lower.contains("tầng 1") || lower.contains("mt1")) return "Tầng 1";
+        if (lower.contains("t2") || lower.contains("tang 2") || lower.contains("tầng 2") || lower.contains("2-")) return "Tầng 2";
+        if (lower.contains("t3") || lower.contains("tang 3") || lower.contains("tầng 3") || lower.contains("3-")) return "Tầng 3";
+        if (lower.contains("t4") || lower.contains("tang 4") || lower.contains("tầng 4") || lower.contains("4-")) return "Tầng 4";
+        return mapName;
+    }
+
+    private String resolveCabinPoint(String mapName) {
+        JsonObject p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay");
+        if (p != null) return "TrongThangMay";
+        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T1");
+        if (p != null) return "TrongThangMay_T1";
+        p = RobotMapManager.getPlaceByName(mapName, "TrongThangMay_T2");
+        if (p != null) return "TrongThangMay_T2";
+        return "TrongThangMay";
+    }
+
+    private String resolveHallPoint(String mapName) {
+        JsonObject p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay");
+        if (p != null) return "ChoThangMay";
+        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T1");
+        if (p != null) return "ChoThangMay_T1";
+        p = RobotMapManager.getPlaceByName(mapName, "ChoThangMay_T2");
+        if (p != null) return "ChoThangMay_T2";
+        return "ChoThangMay";
+    }
+
+    private void showMultiFloorMissionSetupDialog() {
+        if (getContext() == null) return;
+
+        final String sourceMap = !TextUtils.isEmpty(mCurrentMap) ? mCurrentMap : RobotMapManager.getCurrentMapName();
+        final List<String> availableMaps = RobotMapManager.getAvailableMapList();
+
+        if (availableMaps.isEmpty()) {
+            Toast.makeText(getContext(), "Không tìm thấy danh sách bản đồ!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 1. Choose Target Floor
+        final List<String> targetFloorOptions = new ArrayList<>();
+        final List<String> targetMapKeys = new ArrayList<>();
+        for (String m : availableMaps) {
+            targetFloorOptions.add("🏢 " + getFriendlyFloorLabel(m) + " (" + m + ")");
+            targetMapKeys.add(m);
+        }
+
+        final CharSequence[] floorItems = targetFloorOptions.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("🚀 CHỌN TẦNG ĐÍCH ĐẾN:")
+                .setItems(floorItems, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        final String targetMap = targetMapKeys.get(which);
+                        onTargetFloorSelectedForMission(sourceMap, targetMap);
+                    }
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private void onTargetFloorSelectedForMission(final String sourceMap, final String targetMap) {
+        if (getContext() == null) return;
+
+        // Query places on target map
+        JsonObject targetMapData = RobotMapManager.buildMapDataJson(targetMap);
+        JsonArray places = targetMapData != null && targetMapData.has("places") ? targetMapData.getAsJsonArray("places") : new JsonArray();
+        final List<String> targetTables = new ArrayList<>();
+
+        for (int i = 0; i < places.size(); i++) {
+            JsonObject obj = places.get(i).getAsJsonObject();
+            String name = obj.has("name") ? obj.get("name").getAsString() : "";
+            if (TextUtils.isEmpty(name)) continue;
+            String lower = name.toLowerCase();
+            if (!lower.contains("thang") && !lower.contains("cabin") && !lower.contains("charg")
+                    && !lower.contains("stand") && !lower.contains("sạc") && !lower.contains("chờ") && !lower.contains("position")) {
+                targetTables.add(name);
+            }
+        }
+
+        if (targetTables.isEmpty()) {
+            for (int i = 0; i < places.size(); i++) {
+                JsonObject obj = places.get(i).getAsJsonObject();
+                String name = obj.has("name") ? obj.get("name").getAsString() : "";
+                if (!TextUtils.isEmpty(name)) targetTables.add(name);
+            }
+        }
+
+        if (targetTables.isEmpty()) {
+            targetTables.add("Ban1");
+            targetTables.add("Ban2");
+        }
+
+        final CharSequence[] tableItems = new CharSequence[targetTables.size()];
+        for (int i = 0; i < targetTables.size(); i++) {
+            tableItems[i] = "🍽️ " + targetTables.get(i);
+        }
+
+        new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("🍽️ CHỌN BÀN GIAO MÓN TẠI " + getFriendlyFloorLabel(targetMap) + ":")
+                .setItems(tableItems, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String targetStation = targetTables.get(which);
+                        confirmAndLaunchMultiFloorMission(sourceMap, targetMap, targetStation);
+                    }
+                })
+                .setNegativeButton("Quay lại", null)
+                .show();
+    }
+
+    private void confirmAndLaunchMultiFloorMission(final String sourceMap, final String targetMap, final String targetStation) {
+        if (getContext() == null) return;
+
+        final String sourceHall = resolveHallPoint(sourceMap);
+        final String cabinPoint = resolveCabinPoint(sourceMap);
+        final String targetHall = resolveHallPoint(targetMap);
+
+        String msg = "LỘ TRÌNH THỬ NGHIỆM ĐI THANG MÁY:\n\n"
+                + "📍 Tầng xuất phát: " + getFriendlyFloorLabel(sourceMap) + "\n"
+                + "   • Điểm chờ sảnh: " + sourceHall + "\n"
+                + "   • Điểm vào cabin: " + cabinPoint + "\n\n"
+                + "🎯 Tầng đích: " + getFriendlyFloorLabel(targetMap) + "\n"
+                + "   • Neo vị trí cabin: " + cabinPoint + " (Dùng chung cho mọi tầng - Khóa tức thì)\n"
+                + "   • Điểm ra sảnh: " + targetHall + "\n"
+                + "   • Bàn giao món: " + targetStation + "\n\n"
+                + "Robot sẽ tự động dẫn đường và hướng dẫn từng bước trên màn hình khi cửa thang đóng/mở.";
+
+        new AlertDialog.Builder(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("🚀 XÁC NHẬN KỊCH BẢN LIÊN TẦNG")
+                .setMessage(msg)
+                .setPositiveButton("🚀 BẮT ĐẦU CHẠY", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startMultiFloorMission(sourceMap, targetMap, targetStation, sourceHall, cabinPoint, targetHall);
+                    }
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private void startMultiFloorMission(final String sourceMap, final String targetMap, final String targetStation,
+                                        final String sourceHall, final String cabinPoint, final String targetHall) {
+        if (getContext() == null) return;
+
+        mMissionSourceMap = sourceMap;
+        mMissionTargetMap = targetMap;
+        mMissionTargetStation = targetStation;
+        mMissionSourceHallStation = sourceHall;
+        mMissionCabinStation = cabinPoint;
+        mMissionTargetHallStation = targetHall;
+
+        if (mElevatorMissionDialog != null && mElevatorMissionDialog.isShowing()) {
+            try { mElevatorMissionDialog.dismiss(); } catch (Throwable ignored) {}
+        }
+
+        mElevatorMissionDialog = new Dialog(getContext(), AlertDialog.THEME_DEVICE_DEFAULT_DARK);
+        mElevatorMissionDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        mElevatorMissionDialog.setContentView(R.layout.dialog_multi_floor_mission);
+        mElevatorMissionDialog.setCancelable(false);
+        if (mElevatorMissionDialog.getWindow() != null) {
+            mElevatorMissionDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // Bind dialog views
+        mMissionTvRoute = mElevatorMissionDialog.findViewById(R.id.tv_mission_route);
+        mMissionTvStepBadge = mElevatorMissionDialog.findViewById(R.id.tv_mission_step_badge);
+        mMissionTvStatusTitle = mElevatorMissionDialog.findViewById(R.id.tv_mission_status_title);
+        mMissionTvStatusDetail = mElevatorMissionDialog.findViewById(R.id.tv_mission_status_detail);
+        mMissionTvStep1 = mElevatorMissionDialog.findViewById(R.id.tv_step_1_pill);
+        mMissionTvStep2 = mElevatorMissionDialog.findViewById(R.id.tv_step_2_pill);
+        mMissionTvStep3 = mElevatorMissionDialog.findViewById(R.id.tv_step_3_pill);
+        mMissionTvStep4 = mElevatorMissionDialog.findViewById(R.id.tv_step_4_pill);
+        mMissionTvStep5 = mElevatorMissionDialog.findViewById(R.id.tv_step_5_pill);
+        mMissionBtnAction = mElevatorMissionDialog.findViewById(R.id.btn_mission_action);
+        mMissionBtnAbort = mElevatorMissionDialog.findViewById(R.id.btn_mission_abort);
+
+        if (mMissionTvRoute != null) {
+            mMissionTvRoute.setText("Lộ trình: " + getFriendlyFloorLabel(sourceMap) + " ➔ " + getFriendlyFloorLabel(targetMap) + " (Bàn " + targetStation + ")");
+        }
+
+        if (mMissionBtnAction != null) {
+            mMissionBtnAction.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onMissionActionButtonClicked();
+                }
+            });
+        }
+
+        if (mMissionBtnAbort != null) {
+            mMissionBtnAbort.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    abortElevatorMission();
+                }
+            });
+        }
+
+        mElevatorMissionDialog.show();
+
+        // Start Step 1
+        mElevatorMissionStep = ElevatorMissionStep.STEP_1_GOING_TO_HALL;
+        updateMissionStepUI(1,
+                "Robot đang di chuyển đến sảnh chờ: '" + sourceHall + "'...",
+                "Vui lòng quan sát robot di chuyển ra vị trí sảnh thang máy.",
+                false,
+                "ĐANG DI CHUYỂN RA SẢNH...");
+
+        TTSPlayer.playVietnameseText("Robot bắt đầu nhiệm vụ liên tầng. Đang di chuyển đến sảnh chờ thang máy.", null);
+        Log.i(TAG, "MultiFloorMission: Step 1 navigating to " + sourceHall);
+
+        navigateToElevatorPoint(sourceHall, new Runnable() {
+            @Override
+            public void run() {
+                mElevatorMissionStep = ElevatorMissionStep.STEP_1_ARRIVED_HALL;
+                updateMissionStepUI(1,
+                        "Đã tới sảnh chờ thang máy!",
+                        "Mở cửa buồng thang máy và bấm nút bên dưới để robot tiến vào cabin.",
+                        true,
+                        "🛗 CỬA THANG ĐÃ MỞ ➔ CHO ROBOT VÀO CABIN");
+                TTSPlayer.playVietnameseText("Đã tới sảnh chờ thang máy. Vui lòng mở cửa buồng thang và cho robot vào trong.", null);
+            }
+        });
+    }
+
+    private void onMissionActionButtonClicked() {
+        if (mElevatorMissionStep == ElevatorMissionStep.STEP_1_ARRIVED_HALL) {
+            // Advance to Step 2: Enter Cabin
+            mElevatorMissionStep = ElevatorMissionStep.STEP_2_ENTERING_CABIN;
+            updateMissionStepUI(2,
+                    "Robot đang tiến vào trong buồng thang máy: '" + mMissionCabinStation + "'...",
+                    "Vui lòng giữ cửa thang mở để robot đi vào an toàn.",
+                    false,
+                    "ĐANG TIẾN VÀO BUỒNG CABIN...");
+
+            TTSPlayer.playVietnameseText("Cửa thang máy đã mở. Robot đang tiến vào trong buồng thang máy.", null);
+            Log.i(TAG, "MultiFloorMission: Step 2 navigating to " + mMissionCabinStation);
+
+            navigateToElevatorPoint(mMissionCabinStation, new Runnable() {
+                @Override
+                public void run() {
+                    mElevatorMissionStep = ElevatorMissionStep.STEP_2_IN_CABIN;
+                    String targetFloor = getFriendlyFloorLabel(mMissionTargetMap);
+                    updateMissionStepUI(2,
+                            "Robot đã vào trong buồng cabin an toàn!",
+                            "Hãy bấm chọn " + targetFloor + " trên bảng điều khiển thang máy. Khi thang tới tầng, bấm nút bên dưới.",
+                            true,
+                            "🏢 THANG ĐÃ ĐẾN " + targetFloor + " ➔ ĐỔI MAP & ĐỊNH VỊ");
+                    TTSPlayer.playVietnameseText("Robot đã an toàn trong buồng thang máy. Vui lòng điều khiển thang lên " + targetFloor + ".", null);
+                }
+            });
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_2_IN_CABIN) {
+            // Advance to Step 3: Switch Map & Instant Relocalize
+            mElevatorMissionStep = ElevatorMissionStep.STEP_3_SWITCHING_MAP_AND_RELOCALIZING;
+            final String targetFloor = getFriendlyFloorLabel(mMissionTargetMap);
+            updateMissionStepUI(3,
+                    "Đang đổi sang bản đồ '" + mMissionTargetMap + "'...",
+                    "Hệ thống đang nạp bản đồ tầng đích và neo vị trí tức thì (ForceEstimate).",
+                    false,
+                    "ĐANG ĐỔI BẢN ĐỒ & KHÓA VỊ TRÍ...");
+
+            TTSPlayer.playVietnameseText("Thang máy đã đến " + targetFloor + ". Đang đổi bản đồ và tự động định vị lại.", null);
+            Log.i(TAG, "MultiFloorMission: Step 3 switching map to " + mMissionTargetMap);
+
+            RobotMapManager.switchMap(mMissionTargetMap, new CommandListener() {
+                @Override
+                public void onResult(int result, String message) {
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mCurrentMap = mMissionTargetMap;
+                            checkAndSyncCurrentMap(true);
+
+                            // Find TrongThangMay on target map
+                            JsonObject p = RobotMapManager.getPlaceByName(mMissionTargetMap, mMissionCabinStation);
+                            if (p == null) {
+                                p = RobotMapManager.getPlaceByName(mMissionTargetMap, "TrongThangMay");
+                            }
+                            if (p != null) {
+                                float x = p.get("x").getAsFloat();
+                                float y = p.get("y").getAsFloat();
+                                float theta = p.has("theta") ? p.get("theta").getAsFloat() : 0.0f;
+
+                                if (RobotPosePersistenceManager.getInstance() != null) {
+                                    RobotPosePersistenceManager.getInstance().applyPoseEstimate(x, y, theta, mMissionCabinStation,
+                                            new RobotPosePersistenceManager.RelocalizeCallback() {
+                                                @Override
+                                                public void onResult(final boolean success, final String msg) {
+                                                    mHandler.post(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            updateLocalizationBadge(true);
+                                                            updateMissionStepUI(3,
+                                                                    "Đã đổi sang " + targetFloor + " & Khóa vị trí tức thì!",
+                                                                    "Cửa thang máy tầng đích đã mở, bấm nút bên dưới để robot bước ra sảnh.",
+                                                                    true,
+                                                                    "🚪 CỬA TẦNG ĐÍCH ĐÃ MỞ ➔ CHO ROBOT RA SẢNH");
+                                                            TTSPlayer.playVietnameseText("Đã đổi sang " + targetFloor + " và định vị tức thì thành công. Cửa thang mở, vui lòng cho robot ra ngoài sảnh.", null);
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                    return;
+                                }
+                            }
+
+                            // Fallback if no cabin coords found
+                            updateLocalizationBadge(true);
+                            updateMissionStepUI(3,
+                                    "Đã đổi sang " + targetFloor + "!",
+                                    "Cửa thang máy tầng đích đã mở, bấm nút bên dưới để robot bước ra sảnh.",
+                                    true,
+                                    "🚪 CỬA TẦNG ĐÍCH ĐÃ MỞ ➔ CHO ROBOT RA SẢNH");
+                            TTSPlayer.playVietnameseText("Đã đổi sang " + targetFloor + ". Cửa thang mở, vui lòng cho robot ra ngoài sảnh.", null);
+                        }
+                    }, 1200);
+                }
+            });
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_3_SWITCHING_MAP_AND_RELOCALIZING) {
+            // Advance to Step 4: Exit Cabin to Target Hall
+            mElevatorMissionStep = ElevatorMissionStep.STEP_4_EXITING_CABIN_TO_HALL;
+            updateMissionStepUI(4,
+                    "Robot đang lăn bánh ra ngoài sảnh: '" + mMissionTargetHallStation + "'...",
+                    "Vui lòng quan sát robot ra khỏi cabin thang máy an toàn.",
+                    false,
+                    "ĐANG LĂN BÁNH RA NGOÀI SẢNH...");
+
+            TTSPlayer.playVietnameseText("Cửa thang máy đã mở. Robot đang lăn bánh ra ngoài sảnh.", null);
+            Log.i(TAG, "MultiFloorMission: Step 4 navigating to " + mMissionTargetHallStation);
+
+            navigateToElevatorPoint(mMissionTargetHallStation, new Runnable() {
+                @Override
+                public void run() {
+                    mElevatorMissionStep = ElevatorMissionStep.STEP_4_ARRIVED_TARGET_HALL;
+                    updateMissionStepUI(4,
+                            "Robot đã ra ngoài sảnh tầng đích an toàn!",
+                            "Bấm nút bên dưới để robot di chuyển đến bàn '" + mMissionTargetStation + "' phục vụ khách.",
+                            true,
+                            "🍽️ BẮT ĐẦU GIAO MÓN TỚI BÀN: " + mMissionTargetStation);
+                    TTSPlayer.playVietnameseText("Đã ra sảnh an toàn. Bấm bắt đầu giao món tới bàn để tiếp tục.", null);
+                }
+            });
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.STEP_4_ARRIVED_TARGET_HALL) {
+            // Advance to Step 5: Deliver to Table
+            mElevatorMissionStep = ElevatorMissionStep.STEP_5_GOING_TO_DESTINATION;
+            updateMissionStepUI(5,
+                    "Robot đang di chuyển đến bàn: '" + mMissionTargetStation + "'...",
+                    "Robot đang tự động giao món tới bàn phục vụ khách hàng.",
+                    false,
+                    "ĐANG GIAO MÓN TỚI BÀN...");
+
+            TTSPlayer.playVietnameseText("Robot đang di chuyển đến bàn " + mMissionTargetStation + " để giao món.", null);
+            Log.i(TAG, "MultiFloorMission: Step 5 navigating to " + mMissionTargetStation);
+
+            navigateToElevatorPoint(mMissionTargetStation, new Runnable() {
+                @Override
+                public void run() {
+                    mElevatorMissionStep = ElevatorMissionStep.COMPLETED;
+                    String targetFloor = getFriendlyFloorLabel(mMissionTargetMap);
+                    updateMissionStepUI(5,
+                            "🎉 HOÀN THÀNH XUẤT SẮC!",
+                            "Robot đã giao món thành công đến bàn '" + mMissionTargetStation + "' tại " + targetFloor + "!",
+                            true,
+                            "🎉 HOÀN TẤT & ĐÓNG");
+                    TTSPlayer.playVietnameseText("Xin chào quý khách, món ăn đã được giao tới bàn " + mMissionTargetStation + ". Chúc quý khách ngon miệng!", null);
+                }
+            });
+        }
+        else if (mElevatorMissionStep == ElevatorMissionStep.COMPLETED) {
+            // Close mission dialog
+            if (mElevatorMissionDialog != null) {
+                try { mElevatorMissionDialog.dismiss(); } catch (Throwable ignored) {}
+                mElevatorMissionDialog = null;
+            }
+            mElevatorMissionStep = ElevatorMissionStep.IDLE;
+            Toast.makeText(getContext(), "🎉 Nhiệm vụ đi thang máy liên tầng đã hoàn thành!", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void updateMissionStepUI(int stepIndex, String title, String detail, boolean actionEnabled, String actionText) {
+        if (mMissionTvStepBadge != null) {
+            mMissionTvStepBadge.setText("BƯỚC " + stepIndex + "/5");
+        }
+        if (mMissionTvStatusTitle != null) {
+            mMissionTvStatusTitle.setText(title);
+        }
+        if (mMissionTvStatusDetail != null) {
+            mMissionTvStatusDetail.setText(detail);
+        }
+        if (mMissionBtnAction != null) {
+            mMissionBtnAction.setText(actionText);
+            mMissionBtnAction.setEnabled(actionEnabled);
+            mMissionBtnAction.setAlpha(actionEnabled ? 1.0f : 0.6f);
+        }
+
+        // Update 5 pills style
+        updateStepPill(mMissionTvStep1, stepIndex == 1, stepIndex > 1);
+        updateStepPill(mMissionTvStep2, stepIndex == 2, stepIndex > 2);
+        updateStepPill(mMissionTvStep3, stepIndex == 3, stepIndex > 3);
+        updateStepPill(mMissionTvStep4, stepIndex == 4, stepIndex > 4);
+        updateStepPill(mMissionTvStep5, stepIndex == 5, false);
+    }
+
+    private void updateStepPill(TextView pill, boolean isActive, boolean isCompleted) {
+        if (pill == null) return;
+        if (isActive) {
+            pill.setBackgroundResource(R.drawable.bg_btn_table_selected);
+            pill.setTextColor(Color.WHITE);
+            pill.setTypeface(null, Typeface.BOLD);
+        } else if (isCompleted) {
+            pill.setBackgroundResource(R.drawable.bg_badge_emerald);
+            pill.setTextColor(Color.parseColor("#065F46"));
+            pill.setTypeface(null, Typeface.NORMAL);
+        } else {
+            pill.setBackgroundResource(R.drawable.bg_station_glass_button);
+            pill.setTextColor(Color.parseColor("#94A3B8"));
+            pill.setTypeface(null, Typeface.NORMAL);
+        }
+    }
+
+    private void abortElevatorMission() {
+        try {
+            if (RobotApi.getInstance().isApiConnectedService()) {
+                RobotApi.getInstance().stopNavigation(0);
+            }
+        } catch (Throwable ignored) {}
+
+        TTSPlayer.playVietnameseText("Đã hủy nhiệm vụ đi thang máy.", null);
+        mElevatorMissionStep = ElevatorMissionStep.IDLE;
+        if (mElevatorMissionDialog != null) {
+            try { mElevatorMissionDialog.dismiss(); } catch (Throwable ignored) {}
+            mElevatorMissionDialog = null;
+        }
+        Toast.makeText(getContext(), "🛑 Đã hủy nhiệm vụ liên tầng!", Toast.LENGTH_SHORT).show();
+    }
+
+    private void navigateToElevatorPoint(final String dest, final Runnable onArrival) {
+        try {
+            if (!RobotApi.getInstance().isApiConnectedService()) {
+                Toast.makeText(getContext(), "CoreService chưa kết nối!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            float spd = (mSpeedFast > 0.1f) ? mSpeedFast : 0.6f;
+            RobotApi.getInstance().startNavigation(0, dest, 1.2, (double) spd, 90 * 1000, new ActionListener() {
+                @Override
+                public void onResult(int status, String responseString) throws RemoteException {
+                    Log.i(TAG, "navigateToElevatorPoint (" + dest + ") onResult: " + status + ", " + responseString);
+                    if (status == Definition.RESULT_OK || "succeed".equalsIgnoreCase(responseString)) {
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (onArrival != null) {
+                                    onArrival.run();
+                                }
+                            }
+                        });
+                    }
+                }
+
+                @Override
+                public void onError(int errorCode, String errorString) throws RemoteException {
+                    Log.e(TAG, "navigateToElevatorPoint (" + dest + ") onError: " + errorCode + ", " + errorString);
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getContext(), "Lỗi di chuyển tới " + dest + " (" + errorCode + "): " + errorString, Toast.LENGTH_LONG).show();
+                            TTSPlayer.playVietnameseText("Không thể di chuyển đến " + dest + ", vui lòng kiểm tra vật cản.", null);
+                        }
+                    });
+                }
+
+                @Override
+                public void onStatusUpdate(int status, String data) throws RemoteException {
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "navigateToElevatorPoint error: " + t.getMessage());
+        }
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (mElevatorMissionDialog != null) {
+            try { mElevatorMissionDialog.dismiss(); } catch (Throwable ignored) {}
+            mElevatorMissionDialog = null;
+        }
         RobotMapManager.removeOnMapPlacesChangedListener(mMapPlacesListener);
         if (mBatteryReceiver != null) {
             try {

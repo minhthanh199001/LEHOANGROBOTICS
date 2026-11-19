@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_cyber"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:id="@+id/tv_mission_dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🚀 NHIỆM VỤ ĐI THANG MÁY LIÊN TẦNG"
+            android:textColor="#38BDF8"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_mission_route"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tv_mission_dialog_title"
+            android:layout_marginTop="3dp"
+            android:text="Lộ trình: Tầng xuất phát ➔ Tầng đích"
+            android:textColor="#94A3B8"
+            android:textSize="12sp" />
+    </RelativeLayout>
+
+    <!-- 5 Steps Indicators -->
+    <LinearLayout
+        android:id="@+id/ll_step_indicators"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tv_step_1_pill"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_table_selected"
+            android:gravity="center"
+            android:text="1. Sảnh chờ"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tv_step_2_pill"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_station_glass_button"
+            android:gravity="center"
+            android:text="2. Vào Cabin"
+            android:textColor="#94A3B8"
+            android:textSize="10sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tv_step_3_pill"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_station_glass_button"
+            android:gravity="center"
+            android:text="3. Đổi Map"
+            android:textColor="#94A3B8"
+            android:textSize="10sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tv_step_4_pill"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_station_glass_button"
+            android:gravity="center"
+            android:text="4. Ra Sảnh"
+            android:textColor="#94A3B8"
+            android:textSize="10sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tv_step_5_pill"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_station_glass_button"
+            android:gravity="center"
+            android:text="5. Giao Bàn"
+            android:textColor="#94A3B8"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Status Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_card_frosted_container"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tv_mission_step_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_cyan"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="BƯỚC 1/5"
+            android:textColor="#0369A1"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_mission_status_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Robot đang di chuyển đến điểm chờ sảnh..."
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_mission_status_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Quan sát robot di chuyển ra vị trí sảnh thang máy."
+            android:textColor="#BAE6FD"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Primary Action Button -->
+        <Button
+            android:id="@+id/btn_mission_action"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_btn_delivery_fast"
+            android:text="🛗 CỬA THANG ĐÃ MỞ ➔ CHO ROBOT VÀO CABIN"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Abort Mission Button -->
+        <Button
+            android:id="@+id/btn_mission_abort"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_btn_secondary"
+            android:text="⛔ HỦY NHIỆM VỤ"
+            android:textColor="#FCA5A5"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

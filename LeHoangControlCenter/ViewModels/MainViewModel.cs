@@ -1392,7 +1392,8 @@ namespace LeHoangControlCenter.ViewModels
             var allSaved = LoadAllSavedStations();
             var targetStations = FindStationsForMap(allSaved, SelectedMap);
 
-            var anchorStation = targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
+            var anchorStation = targetStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
+                             ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
                              ?? targetStations?.FirstOrDefault();
@@ -1457,7 +1458,8 @@ namespace LeHoangControlCenter.ViewModels
                 if (anchor == null)
                 {
                     // Ưu tiên: TrongThangMay -> Charging Point -> Stand-by Point -> trạm đầu tiên
-                    anchor = targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
+                    anchor = targetStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
+                          ?? targetStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Charging", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Sạc", StringComparison.OrdinalIgnoreCase))
                           ?? targetStations?.FirstOrDefault(s => s.Name.Contains("Stand-by", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Chờ", StringComparison.OrdinalIgnoreCase))
                           ?? targetStations?.FirstOrDefault();
@@ -2075,7 +2077,7 @@ namespace LeHoangControlCenter.ViewModels
         public async Task CreateWaitingElevatorPointAsync()
         {
             string floorNum = DetectFloorNumberForMap(CurrentMap);
-            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{floorNum}";
+            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "ChoThangMay";
 
             // If coordinates were already picked via "Chấm trên map"
             if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
@@ -2118,7 +2120,7 @@ namespace LeHoangControlCenter.ViewModels
         public async Task CreateInsideElevatorPointAsync()
         {
             string floorNum = DetectFloorNumberForMap(CurrentMap);
-            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{floorNum}";
+            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : "TrongThangMay";
 
             // If coordinates were already picked via "Chấm trên map"
             if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
@@ -2348,11 +2350,11 @@ namespace LeHoangControlCenter.ViewModels
 
                             if (string.IsNullOrEmpty(item.InsideCabinPoint))
                             {
-                                item.InsideCabinPoint = !string.IsNullOrEmpty(item.ElevatorPoint) ? item.ElevatorPoint : $"TrongThangMay_T{item.FloorNumber}";
+                                item.InsideCabinPoint = !string.IsNullOrEmpty(item.ElevatorPoint) ? item.ElevatorPoint : "TrongThangMay";
                             }
                             if (string.IsNullOrEmpty(item.OutsideWaitingPoint))
                             {
-                                item.OutsideWaitingPoint = $"ChoThangMay_T{item.FloorNumber}";
+                                item.OutsideWaitingPoint = "ChoThangMay";
                             }
                             FloorConfigs.Add(item);
                         }
@@ -2372,16 +2374,16 @@ namespace LeHoangControlCenter.ViewModels
                 FloorNumber = "1",
                 FloorLabel = "Tầng 1",
                 MapName = "MT1map-0721090621",
-                InsideCabinPoint = "TrongThangMay_T1",
-                OutsideWaitingPoint = "ChoThangMay_T1"
+                InsideCabinPoint = "TrongThangMay",
+                OutsideWaitingPoint = "ChoThangMay"
             });
             FloorConfigs.Add(new FloorMapConfig
             {
                 FloorNumber = "2",
                 FloorLabel = "Tầng 2",
                 MapName = "2-0916091752",
-                InsideCabinPoint = "TrongThangMay_T2",
-                OutsideWaitingPoint = "ChoThangMay_T2"
+                InsideCabinPoint = "TrongThangMay",
+                OutsideWaitingPoint = "ChoThangMay"
             });
         }
 
@@ -2400,8 +2402,8 @@ namespace LeHoangControlCenter.ViewModels
                 FloorNumber = next.ToString(),
                 FloorLabel = $"Tầng {next}",
                 MapName = AvailableMaps.FirstOrDefault() ?? "",
-                InsideCabinPoint = $"TrongThangMay_T{next}",
-                OutsideWaitingPoint = $"ChoThangMay_T{next}"
+                InsideCabinPoint = "TrongThangMay",
+                OutsideWaitingPoint = "ChoThangMay"
             };
             FloorConfigs.Add(cfg);
             SaveFloorConfigs();
@@ -2457,6 +2459,7 @@ namespace LeHoangControlCenter.ViewModels
             
             // Dynamic resolution: check current MapStations for any elevator cabin point
             var station = (!string.IsNullOrEmpty(insidePoint) ? MapStations.FirstOrDefault(s => s.Name.Equals(insidePoint, StringComparison.OrdinalIgnoreCase)) : null)
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
                        ?? MapStations.FirstOrDefault(s => s.Name.IndexOf("Trong", StringComparison.OrdinalIgnoreCase) >= 0 && 
                                                          (s.Name.IndexOf("Thang", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("TM", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("Cabin", StringComparison.OrdinalIgnoreCase) >= 0))
                        ?? MapStations.FirstOrDefault(s => s.Name.Equals("TrongThangMay_T1", StringComparison.OrdinalIgnoreCase))
@@ -2468,7 +2471,7 @@ namespace LeHoangControlCenter.ViewModels
             }
             else if (string.IsNullOrEmpty(insidePoint))
             {
-                insidePoint = CurrentMap.Contains("2") ? "TrongThangMay_T2" : "TrongThangMay_T1";
+                insidePoint = "TrongThangMay";
             }
 
             AddLog($"🛗 [VÀO THANG MÁY] Robot đang di chuyển vào trong buồng thang máy: '{insidePoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
@@ -2490,6 +2493,7 @@ namespace LeHoangControlCenter.ViewModels
             
             // Dynamic resolution: check current MapStations for waiting / hall point
             var station = (!string.IsNullOrEmpty(exitPoint) ? MapStations.FirstOrDefault(s => s.Name.Equals(exitPoint, StringComparison.OrdinalIgnoreCase)) : null)
+                       ?? MapStations.FirstOrDefault(s => s.Name.Equals("ChoThangMay", StringComparison.OrdinalIgnoreCase))
                        ?? MapStations.FirstOrDefault(s => s.Name.IndexOf("Cho", StringComparison.OrdinalIgnoreCase) >= 0 && 
                                                          (s.Name.IndexOf("Thang", StringComparison.OrdinalIgnoreCase) >= 0 || s.Name.IndexOf("TM", StringComparison.OrdinalIgnoreCase) >= 0))
                        ?? MapStations.FirstOrDefault(s => s.Name.Equals("ChoThangMay_T1", StringComparison.OrdinalIgnoreCase))
@@ -2501,7 +2505,7 @@ namespace LeHoangControlCenter.ViewModels
             }
             else if (string.IsNullOrEmpty(exitPoint))
             {
-                exitPoint = CurrentMap.Contains("2") ? "ChoThangMay_T2" : "ChoThangMay_T1";
+                exitPoint = "ChoThangMay";
             }
 
             AddLog($"🚪 [THOÁT THANG MÁY] Robot đang lăn bánh ra điểm chờ ngoài sảnh: '{exitPoint}'" + (station != null ? $" (X={station.X:F2}m, Y={station.Y:F2}m)" : "") + "...");
@@ -2667,7 +2671,7 @@ namespace LeHoangControlCenter.ViewModels
 
             string hallPoint = !string.IsNullOrEmpty(sourceFloor.OutsideWaitingPoint) 
                 ? sourceFloor.OutsideWaitingPoint 
-                : $"ChoThangMay_T{sourceFloor.FloorNumber}";
+                : (MapStations.Any(s => s.Name.Equals("ChoThangMay", StringComparison.OrdinalIgnoreCase)) ? "ChoThangMay" : $"ChoThangMay_T{sourceFloor.FloorNumber}");
 
             MissionState = MultiFloorMissionState.Step1_GoingToCurrentHall;
             MissionProgressPercent = 15;
@@ -2697,7 +2701,7 @@ namespace LeHoangControlCenter.ViewModels
                 // Advance to Step 2: Enter Cabin
                 string cabinPoint = !string.IsNullOrEmpty(MissionSourceFloor?.InsideCabinPoint) 
                     ? MissionSourceFloor.InsideCabinPoint 
-                    : $"TrongThangMay_T{MissionSourceFloor?.FloorNumber ?? DetectFloorNumberForMap(CurrentMap)}";
+                    : (MapStations.Any(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase)) ? "TrongThangMay" : $"TrongThangMay_T{MissionSourceFloor?.FloorNumber ?? DetectFloorNumberForMap(CurrentMap)}");
 
                 MissionState = MultiFloorMissionState.Step2_EnteringCabin;
                 MissionProgressPercent = 35;
@@ -2721,11 +2725,14 @@ namespace LeHoangControlCenter.ViewModels
             {
                 // Advance to Step 3: Switch Map & Relocalize on Target Floor
                 string targetMap = MissionTargetFloor?.MapName ?? "";
-                string targetCabinPoint = MissionTargetFloor?.InsideCabinPoint ?? $"TrongThangMay_T{MissionTargetFloor?.FloorNumber}";
+                string targetCabinPoint = !string.IsNullOrEmpty(MissionTargetFloor?.InsideCabinPoint) 
+                    ? MissionTargetFloor.InsideCabinPoint 
+                    : "TrongThangMay";
 
                 var allSaved = LoadAllSavedStations();
                 var matchedStations = FindStationsForMap(allSaved, targetMap);
                 var cabinStation = matchedStations?.FirstOrDefault(s => s.Name.Equals(targetCabinPoint, StringComparison.OrdinalIgnoreCase))
+                                ?? matchedStations?.FirstOrDefault(s => s.Name.Equals("TrongThangMay", StringComparison.OrdinalIgnoreCase))
                                 ?? matchedStations?.FirstOrDefault(s => s.Name.Contains("TrongThangMay", StringComparison.OrdinalIgnoreCase) || (s.Name.Contains("Trong", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Thang", StringComparison.OrdinalIgnoreCase)));
 
                 double? posX = cabinStation?.X ?? MissionTargetFloor?.ElevatorX;
@@ -2759,7 +2766,7 @@ namespace LeHoangControlCenter.ViewModels
                 // Advance to Step 4: Exit Cabin to Target Hall
                 string targetHallPoint = !string.IsNullOrEmpty(MissionTargetFloor?.OutsideWaitingPoint)
                     ? MissionTargetFloor.OutsideWaitingPoint
-                    : $"ChoThangMay_T{MissionTargetFloor?.FloorNumber}";
+                    : "ChoThangMay";
 
                 MissionState = MultiFloorMissionState.Step4_ExitingCabinToHall;
                 MissionProgressPercent = 75;

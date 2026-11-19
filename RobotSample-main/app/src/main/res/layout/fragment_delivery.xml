@@ -410,6 +410,22 @@
                     android:background="@drawable/bg_tray_badge"
                     android:clickable="true"
                     android:focusable="true" />
+
+                <!-- Quick Elevator Mission Button -->
+                <TextView
+                    android:id="@+id/btn_quick_elevator_mission"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🚀 Đi Thang Máy"
+                    android:textColor="#FDE047"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_tray_badge"
+                    android:clickable="true"
+                    android:focusable="true" />
             </LinearLayout>
 
             <!-- Stations Scrollable Grid -->
@@ -2095,6 +2111,46 @@
                     android:text="Gửi robot về vị trí ban đầu"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Menu Item 1.2: Thử nghiệm Đi Thang Máy (Liên tầng) -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_elevator_test"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_drawer_item"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/ic_elevator_test"
+                    android:layout_width="28dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="🚀"
+                    android:textSize="20sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/ic_elevator_test"
+                    android:layout_centerVertical="true"
+                    android:text="Nhiệm vụ Đi Thang Máy (Liên tầng)"
+                    android:textColor="#FDE047"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="#FDE047"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
             </RelativeLayout>
 

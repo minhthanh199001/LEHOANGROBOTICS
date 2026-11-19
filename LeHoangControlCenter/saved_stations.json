@@ -361,6 +361,18 @@
       "Theta": 0
     },
     {
+      "Name": "ChoThangMay",
+      "X": -1.38,
+      "Y": -2.87,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongThangMay",
+      "X": -3.49,
+      "Y": -2.09,
+      "Theta": 0
+    },
+    {
       "Name": "TrongThangMay_T2",
       "X": -3.49,
       "Y": -2.09,
@@ -387,6 +399,12 @@
       "Theta": 0
     },
     {
+      "Name": "ChoThangMay",
+      "X": 0.48,
+      "Y": -3.19,
+      "Theta": 0
+    },
+    {
       "Name": "ChoThangMay_TG",
       "X": 0.48,
       "Y": -3.19,
@@ -396,6 +414,12 @@
       "Name": "C\u1EF1c s\u1EA1c1",
       "X": 2.54,
       "Y": -3.62,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongThangMay",
+      "X": -1.73,
+      "Y": -3.18,
       "Theta": 0
     },
     {
