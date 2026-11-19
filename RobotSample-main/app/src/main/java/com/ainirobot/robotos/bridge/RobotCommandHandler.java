@@ -1104,8 +1104,12 @@ public class RobotCommandHandler {
                 RobotMapManager.normalizeMapName(activeMap).equalsIgnoreCase(RobotMapManager.normalizeMapName(targetMap));
 
         if (isActiveMap) {
-            // 2. Delete from CoreService SLAM only if this is the active map
+            // 2. Delete from CoreService SLAM / navigation (call both removeLocation and deleteMappingPose)
             try {
+                try {
+                    RobotApi.getInstance().removeLocation(0, name, null);
+                } catch (Throwable ignored) {}
+
                 RobotApi.getInstance().deleteMappingPose(0, name, new CommandListener() {
                     @Override
                     public void onResult(int result, String message) {

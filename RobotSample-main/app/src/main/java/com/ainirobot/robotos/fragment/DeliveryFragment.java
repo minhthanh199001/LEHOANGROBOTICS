@@ -1175,8 +1175,12 @@ public class DeliveryFragment extends Fragment {
         // 3. Loại trừ các điểm kỹ thuật hệ thống (thang máy, positioning...)
         if (lower.contains("chotm") || lower.contains("trongtm") ||
                 lower.contains("chờ thang") || lower.contains("trong thang") ||
-                lower.contains("positioning") || lower.contains("locate point") ||
-                lower.contains("elevator")) {
+                lower.contains("chothang") || lower.contains("trongthang") ||
+                lower.contains("thangmay") || lower.contains("thang máy") ||
+                lower.contains("chờ tm") || lower.contains("trong tm") ||
+                lower.contains("position") || lower.contains("positioning") ||
+                lower.contains("cột định vị") || lower.contains("cot dinh vi") ||
+                lower.contains("locate point") || lower.contains("elevator")) {
             return false;
         }
 

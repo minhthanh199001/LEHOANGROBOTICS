@@ -438,6 +438,7 @@ namespace LeHoangControlCenter.ViewModels
         public double MapMaxY { get; set; } = 13.0;
 
         // Collections
+        private readonly HashSet<string> _deletedStationTombstones = new(StringComparer.OrdinalIgnoreCase);
         public ObservableCollection<FloorMapConfig> FloorConfigs { get; } = new();
         public ObservableCollection<string> AvailableMaps { get; } = new();
         public ObservableCollection<MapPlaceItem> MapStations { get; } = new();
@@ -1038,6 +1039,12 @@ namespace LeHoangControlCenter.ViewModels
 
                     foreach (var p in data.Places)
                     {
+                        // Skip if this place was explicitly deleted by user
+                        if (_deletedStationTombstones.Contains(p.Name))
+                        {
+                            continue;
+                        }
+
                         // If this place is uniquely registered on ANOTHER floor and NOT originally part of this map's local stations, discard!
                         if (otherFloorsPoints.Contains(p.Name) && (matchedLocal == null || !matchedLocal.Any(s => s.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase))))
                         {
@@ -1569,6 +1576,7 @@ namespace LeHoangControlCenter.ViewModels
 
         private void AddOrUpdateMapStation(string name, double x, double y)
         {
+            _deletedStationTombstones.Remove(name);
             var existing = MapStations.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
@@ -1704,8 +1712,24 @@ namespace LeHoangControlCenter.ViewModels
                 }
             }
 
-            double x = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceX : Math.Round(PoseX, 2);
-            double y = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceY : Math.Round(PoseY, 2);
+            var existingPoint = MapStations.FirstOrDefault(p => p.Name.Equals(pointName, StringComparison.OrdinalIgnoreCase));
+            double x;
+            double y;
+            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
+            {
+                x = NewPlaceX;
+                y = NewPlaceY;
+            }
+            else if (existingPoint != null)
+            {
+                x = existingPoint.X;
+                y = existingPoint.Y;
+            }
+            else
+            {
+                x = Math.Round(PoseX, 2);
+                y = Math.Round(PoseY, 2);
+            }
             double theta = PoseTheta * Math.PI / 180.0;
 
             // 1. Instantly update MapStations
@@ -1779,8 +1803,24 @@ namespace LeHoangControlCenter.ViewModels
                 }
             }
 
-            double x = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceX : Math.Round(PoseX, 2);
-            double y = (NewPlaceX != 0.0 || NewPlaceY != 0.0) ? NewPlaceY : Math.Round(PoseY, 2);
+            var existingPoint = MapStations.FirstOrDefault(p => p.Name.Equals(pointName, StringComparison.OrdinalIgnoreCase));
+            double x;
+            double y;
+            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
+            {
+                x = NewPlaceX;
+                y = NewPlaceY;
+            }
+            else if (existingPoint != null)
+            {
+                x = existingPoint.X;
+                y = existingPoint.Y;
+            }
+            else
+            {
+                x = Math.Round(PoseX, 2);
+                y = Math.Round(PoseY, 2);
+            }
             double theta = PoseTheta * Math.PI / 180.0;
 
             // 1. Instantly update MapStations
@@ -1958,6 +1998,8 @@ namespace LeHoangControlCenter.ViewModels
                                          MessageBoxButton.YesNo, 
                                          MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
+
+            _deletedStationTombstones.Add(placeName);
 
             // 1. Immediately remove from local MapStations
             if (toRemove != null)

@@ -362,14 +362,8 @@
     },
     {
       "Name": "TrongThangMay_T2",
-      "X": -0.8,
-      "Y": 0.31,
-      "Theta": 0
-    },
-    {
-      "Name": "Positioning Point",
-      "X": -1.08,
-      "Y": -2.86,
+      "X": -3.57,
+      "Y": -2.08,
       "Theta": 0
     }
   ],
@@ -382,8 +376,8 @@
     },
     {
       "Name": "Stand-by Point",
-      "X": 0.73,
-      "Y": -1.07,
+      "X": -0.04,
+      "Y": 0.08,
       "Theta": 0
     },
     {
@@ -402,12 +396,6 @@
       "Name": "C\u1EF1c s\u1EA1c1",
       "X": 2.54,
       "Y": -3.62,
-      "Theta": 0
-    },
-    {
-      "Name": "TrongThangMay_TG",
-      "X": -4.54,
-      "Y": -3.06,
       "Theta": 0
     }
   ]

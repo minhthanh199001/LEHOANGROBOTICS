@@ -455,7 +455,8 @@ public class RobotMapManager {
                         existingName = item.optString("name", "");
                     }
                 }
-                if (placeName.equalsIgnoreCase(existingName)) {
+                if (placeName.trim().equalsIgnoreCase(existingName.trim()) ||
+                    normalizeMapName(placeName).equalsIgnoreCase(normalizeMapName(existingName))) {
                     found = true;
                     continue; // Skip this one to delete
                 }
