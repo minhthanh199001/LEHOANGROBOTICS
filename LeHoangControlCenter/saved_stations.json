@@ -359,6 +359,12 @@
       "X": -1.38,
       "Y": -2.87,
       "Theta": 0
+    },
+    {
+      "Name": "TrongThangMay_T2",
+      "X": -3.34,
+      "Y": -2.23,
+      "Theta": 0
     }
   ],
   "TG-1119082909": [
@@ -390,6 +396,12 @@
       "Name": "C\u1EF1c s\u1EA1c1",
       "X": 2.54,
       "Y": -3.62,
+      "Theta": 0
+    },
+    {
+      "Name": "TrongThangMay_TG",
+      "X": -1.73,
+      "Y": -3.18,
       "Theta": 0
     }
   ]

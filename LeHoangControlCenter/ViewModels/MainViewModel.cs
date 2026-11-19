@@ -216,6 +216,57 @@ namespace LeHoangControlCenter.ViewModels
 
         public string AddPointModeText => IsAddPointMode ? "🎯 HỦY CHẤM MAP" : "🎯 Chấm trên map";
 
+        // ==========================================
+        // MULTI-FLOOR MISSION RUNNER (GIAO HÀNG ĐA TẦNG)
+        // ==========================================
+        public enum MultiFloorMissionState
+        {
+            Idle,
+            Step1_GoingToCurrentHall,
+            Step1_ArrivedAtCurrentHall,
+            Step2_EnteringCabin,
+            Step2_InCabinWaitingElevator,
+            Step3_SwitchingMapAndRelocalizing,
+            Step4_ExitingCabinToHall,
+            Step4_ArrivedAtTargetHall,
+            Step5_GoingToDestinationTable,
+            Completed,
+            Aborted
+        }
+
+        [ObservableProperty]
+        private MultiFloorMissionState _missionState = MultiFloorMissionState.Idle;
+
+        [ObservableProperty]
+        private string _missionCurrentStepText = "";
+
+        [ObservableProperty]
+        private string _missionNextActionText = "";
+
+        [ObservableProperty]
+        private int _missionProgressPercent = 0;
+
+        [ObservableProperty]
+        private FloorMapConfig? _missionSourceFloor;
+
+        [ObservableProperty]
+        private FloorMapConfig? _missionTargetFloor;
+
+        [ObservableProperty]
+        private string _missionTargetStation = "";
+
+        public bool IsMultiFloorMissionActive => MissionState != MultiFloorMissionState.Idle &&
+                                                 MissionState != MultiFloorMissionState.Completed &&
+                                                 MissionState != MultiFloorMissionState.Aborted;
+
+        public Visibility MultiFloorMissionHudVisibility => IsMultiFloorMissionActive ? Visibility.Visible : Visibility.Collapsed;
+
+        partial void OnMissionStateChanged(MultiFloorMissionState value)
+        {
+            OnPropertyChanged(nameof(IsMultiFloorMissionActive));
+            OnPropertyChanged(nameof(MultiFloorMissionHudVisibility));
+        }
+
         partial void OnIsStationMakerExpandedChanged(bool value)
         {
             OnPropertyChanged(nameof(StationMakerToggleText));
@@ -840,6 +891,9 @@ namespace LeHoangControlCenter.ViewModels
                     while (heading > 180.0) heading -= 360.0;
                     while (heading <= -180.0) heading += 360.0;
                     RobotHeadingDegrees = Math.Round(heading, 1);
+
+                    // Check multi-floor mission checkpoint arrival
+                    CheckMissionArrival(telemetry.Pose.X, telemetry.Pose.Y);
 
                     CanvasRobotLeft = WorldToCanvasX(telemetry.Pose.X);
                     CanvasRobotTop = WorldToCanvasY(telemetry.Pose.Y);
@@ -2336,6 +2390,244 @@ namespace LeHoangControlCenter.ViewModels
                 MapName = targetMap,
                 PlaceName = !string.IsNullOrEmpty(elevatorPlace) ? elevatorPlace : null
             });
+        }
+
+        // ==========================================
+        // MULTI-FLOOR MISSION RUNNER IMPLEMENTATION
+        // ==========================================
+        [RelayCommand]
+        public async Task StartMultiFloorMissionCommand()
+        {
+            if (FloorConfigs.Count == 0)
+            {
+                AddLog("⚠️ [CẢNH BÁO] Chưa có cấu hình tầng nào! Vui lòng bấm '⚙️ Cài đặt tầng' để thêm cấu hình.");
+                IsFloorConfigExpanded = true;
+                return;
+            }
+
+            // 1. Identify current source floor
+            var curFloor = FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase))
+                        ?? FloorConfigs.FirstOrDefault(f => NormalizeMapKey(f.MapName) == NormalizeMapKey(CurrentMap))
+                        ?? FloorConfigs.FirstOrDefault(f => f.FloorNumber == DetectFloorNumberForMap(CurrentMap));
+
+            // 2. Load all saved stations
+            var allSaved = LoadAllSavedStations();
+
+            // 3. Open Setup Dialog
+            var setupResult = CyberMultiFloorMissionSetupDialog.Show(curFloor, FloorConfigs.ToList(), allSaved);
+            if (!setupResult.IsConfirmed || setupResult.TargetFloor == null)
+            {
+                return; // Cancelled
+            }
+
+            var sourceFloor = curFloor ?? new FloorMapConfig
+            {
+                FloorNumber = DetectFloorNumberForMap(CurrentMap),
+                FloorLabel = $"Tầng {DetectFloorNumberForMap(CurrentMap)}",
+                MapName = CurrentMap,
+                OutsideWaitingPoint = $"ChoThangMay_T{DetectFloorNumberForMap(CurrentMap)}",
+                InsideCabinPoint = $"TrongThangMay_T{DetectFloorNumberForMap(CurrentMap)}"
+            };
+
+            await LaunchMultiFloorMissionAsync(sourceFloor, setupResult.TargetFloor, setupResult.TargetStationName);
+        }
+
+        public async Task LaunchMultiFloorMissionAsync(FloorMapConfig sourceFloor, FloorMapConfig targetFloor, string targetStation)
+        {
+            MissionSourceFloor = sourceFloor;
+            MissionTargetFloor = targetFloor;
+            MissionTargetStation = targetStation;
+
+            string hallPoint = !string.IsNullOrEmpty(sourceFloor.OutsideWaitingPoint) 
+                ? sourceFloor.OutsideWaitingPoint 
+                : $"ChoThangMay_T{sourceFloor.FloorNumber}";
+
+            MissionState = MultiFloorMissionState.Step1_GoingToCurrentHall;
+            MissionProgressPercent = 15;
+            MissionCurrentStepText = $"[Bước 1/5]: Đang di chuyển đến điểm chờ sảnh: '{hallPoint}'...";
+            MissionNextActionText = "🛗 CỬA THANG ĐÃ MỞ ➔ CHO ROBOT VÀO CABIN";
+
+            AddLog($"🚀 [KỊCH BẢN ĐA TẦNG] BẮT ĐẦU! Lộ trình: {sourceFloor.FloorLabel} ➔ {targetFloor.FloorLabel} (Bàn '{targetStation}').");
+            AddLog($"📍 [BƯỚC 1/5] Robot đang di chuyển đến sảnh chờ: '{hallPoint}'...");
+            _ = SpeakAsync("Robot bắt đầu nhiệm vụ giao hàng đa tầng. Đang di chuyển đến sảnh thang máy.");
+
+            var st = MapStations.FirstOrDefault(s => s.Name.Equals(hallPoint, StringComparison.OrdinalIgnoreCase));
+            await _robotService.SendCommandAsync(new NavigateCommand
+            {
+                Destination = hallPoint,
+                X = st?.X,
+                Y = st?.Y,
+                MaxDistance = 0.35,
+                TimeoutSeconds = 60
+            });
+        }
+
+        [RelayCommand]
+        public async Task AdvanceMultiFloorMissionStepAsync()
+        {
+            if (MissionState == MultiFloorMissionState.Step1_GoingToCurrentHall || MissionState == MultiFloorMissionState.Step1_ArrivedAtCurrentHall)
+            {
+                // Advance to Step 2: Enter Cabin
+                string cabinPoint = !string.IsNullOrEmpty(MissionSourceFloor?.InsideCabinPoint) 
+                    ? MissionSourceFloor.InsideCabinPoint 
+                    : $"TrongThangMay_T{MissionSourceFloor?.FloorNumber ?? DetectFloorNumberForMap(CurrentMap)}";
+
+                MissionState = MultiFloorMissionState.Step2_EnteringCabin;
+                MissionProgressPercent = 35;
+                MissionCurrentStepText = $"[Bước 2/5]: Robot đang đi vào buồng thang máy: '{cabinPoint}'...";
+                MissionNextActionText = $"🏢 THANG ĐÃ ĐẾN {MissionTargetFloor?.FloorLabel ?? "TẦNG ĐÍCH"} ➔ ĐỔI MAP & ĐỊNH VỊ";
+
+                AddLog($"🛗 [KỊCH BẢN ĐA TẦNG - BƯỚC 2/5] Cửa thang máy đã mở. Robot đang tiến vào trong cabin '{cabinPoint}'...");
+                _ = SpeakAsync("Cửa thang máy đã mở. Robot đang tiến vào trong buồng thang máy.");
+
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(cabinPoint, StringComparison.OrdinalIgnoreCase));
+                await _robotService.SendCommandAsync(new NavigateCommand
+                {
+                    Destination = cabinPoint,
+                    X = st?.X,
+                    Y = st?.Y,
+                    MaxDistance = 0.25,
+                    TimeoutSeconds = 45
+                });
+            }
+            else if (MissionState == MultiFloorMissionState.Step2_EnteringCabin || MissionState == MultiFloorMissionState.Step2_InCabinWaitingElevator)
+            {
+                // Advance to Step 3: Switch Map & Relocalize on Target Floor
+                string targetMap = MissionTargetFloor?.MapName ?? "";
+                string targetCabinPoint = MissionTargetFloor?.InsideCabinPoint ?? $"TrongThangMay_T{MissionTargetFloor?.FloorNumber}";
+
+                MissionState = MultiFloorMissionState.Step3_SwitchingMapAndRelocalizing;
+                MissionProgressPercent = 55;
+                MissionCurrentStepText = $"[Bước 3/5]: Đã tới {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị buồng cabin...";
+                MissionNextActionText = "🚪 CỬA TẦNG ĐÍCH ĐÃ MỞ ➔ BƯỚC RA SẢNH";
+
+                AddLog($"🏢 [KỊCH BẢN ĐA TẦNG - BƯỚC 3/5] Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Đang chuyển map sang '{targetMap}' và định vị tại '{targetCabinPoint}'...");
+                _ = SpeakAsync($"Thang máy đã đến {MissionTargetFloor?.FloorLabel}. Robot đang chuyển bản đồ và định vị lại.");
+
+                await _robotService.SendCommandAsync(new SwitchMapAndRelocalizeCommand
+                {
+                    MapName = targetMap,
+                    PlaceName = !string.IsNullOrEmpty(targetCabinPoint) ? targetCabinPoint : null
+                });
+
+                if (!string.IsNullOrEmpty(targetMap))
+                {
+                    SwitchToMapLocal(targetMap);
+                }
+            }
+            else if (MissionState == MultiFloorMissionState.Step3_SwitchingMapAndRelocalizing)
+            {
+                // Advance to Step 4: Exit Cabin to Target Hall
+                string targetHallPoint = !string.IsNullOrEmpty(MissionTargetFloor?.OutsideWaitingPoint)
+                    ? MissionTargetFloor.OutsideWaitingPoint
+                    : $"ChoThangMay_T{MissionTargetFloor?.FloorNumber}";
+
+                MissionState = MultiFloorMissionState.Step4_ExitingCabinToHall;
+                MissionProgressPercent = 75;
+                MissionCurrentStepText = $"[Bước 4/5]: Cửa mở, robot đang lăn bánh ra ngoài sảnh: '{targetHallPoint}'...";
+                MissionNextActionText = $"🍽️ BẮT ĐẦU GIAO MÓN TỚI BÀN: '{MissionTargetStation}'";
+
+                AddLog($"🚪 [KỊCH BẢN ĐA TẦNG - BƯỚC 4/5] Cửa thang tầng đích đã mở. Robot đang lăn bánh ra điểm chờ ngoài sảnh '{targetHallPoint}'...");
+                _ = SpeakAsync("Cửa thang máy đã mở. Robot đang lăn bánh ra ngoài sảnh.");
+
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(targetHallPoint, StringComparison.OrdinalIgnoreCase));
+                await _robotService.SendCommandAsync(new NavigateCommand
+                {
+                    Destination = targetHallPoint,
+                    X = st?.X,
+                    Y = st?.Y,
+                    MaxDistance = 0.35,
+                    TimeoutSeconds = 45
+                });
+            }
+            else if (MissionState == MultiFloorMissionState.Step4_ExitingCabinToHall || MissionState == MultiFloorMissionState.Step4_ArrivedAtTargetHall)
+            {
+                // Advance to Step 5: Navigate to Table
+                string table = MissionTargetStation;
+                MissionState = MultiFloorMissionState.Step5_GoingToDestinationTable;
+                MissionProgressPercent = 90;
+                MissionCurrentStepText = $"[Bước 5/5]: Robot đang di chuyển đến bàn phục vụ: '{table}'...";
+                MissionNextActionText = "✅ XÁC NHẬN HOÀN THÀNH NHIỆM VỤ";
+
+                AddLog($"🍱 [KỊCH BẢN ĐA TẦNG - BƯỚC 5/5] Robot đang di chuyển tới bàn ăn '{table}' trên {MissionTargetFloor?.FloorLabel} để phục vụ khách...");
+                _ = SpeakAsync($"Robot đang di chuyển đến bàn {table} để giao món.");
+
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(table, StringComparison.OrdinalIgnoreCase));
+                await _robotService.SendCommandAsync(new NavigateCommand
+                {
+                    Destination = table,
+                    X = st?.X,
+                    Y = st?.Y,
+                    MaxDistance = 0.5,
+                    TimeoutSeconds = 90
+                });
+            }
+            else if (MissionState == MultiFloorMissionState.Step5_GoingToDestinationTable)
+            {
+                // Complete
+                MissionState = MultiFloorMissionState.Completed;
+                MissionProgressPercent = 100;
+                MissionCurrentStepText = $"🎉 HOÀN THÀNH! Đã giao món thành công đến bàn '{MissionTargetStation}' tại {MissionTargetFloor?.FloorLabel}!";
+                MissionNextActionText = "ĐÓNG KỊCH BẢN";
+
+                AddLog($"🎉 [KỊCH BẢN ĐA TẦNG] HOÀN TẤT THÀNH CÔNG! Robot đã giao món thành công đến bàn '{MissionTargetStation}' tại {MissionTargetFloor?.FloorLabel}.");
+                _ = SpeakAsync($"Xin chào quý khách, món ăn đã được giao tới bàn {MissionTargetStation}. Chúc quý khách ngon miệng!");
+            }
+            else if (MissionState == MultiFloorMissionState.Completed)
+            {
+                MissionState = MultiFloorMissionState.Idle;
+            }
+        }
+
+        [RelayCommand]
+        public async Task AbortMultiFloorMissionAsync()
+        {
+            MissionState = MultiFloorMissionState.Aborted;
+            MissionProgressPercent = 0;
+            MissionCurrentStepText = "🛑 Kịch bản giao hàng đa tầng đã bị hủy bởi người điều khiển.";
+            AddLog("🛑 [KỊCH BẢN ĐA TẦNG] Người điều khiển đã bấm HỦY kịch bản.");
+            await StopNavigateAsync();
+            await Task.Delay(2500);
+            MissionState = MultiFloorMissionState.Idle;
+        }
+
+        private void CheckMissionArrival(double curX, double curY)
+        {
+            if (!IsMultiFloorMissionActive) return;
+
+            if (MissionState == MultiFloorMissionState.Step1_GoingToCurrentHall)
+            {
+                string hall = MissionSourceFloor?.OutsideWaitingPoint ?? "";
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(hall, StringComparison.OrdinalIgnoreCase));
+                if (st != null && Math.Sqrt(Math.Pow(curX - st.X, 2) + Math.Pow(curY - st.Y, 2)) < 0.45)
+                {
+                    MissionState = MultiFloorMissionState.Step1_ArrivedAtCurrentHall;
+                    MissionProgressPercent = 25;
+                    MissionCurrentStepText = $"[Bước 1/5]: Đã tới sảnh chờ '{hall}'! Hãy mở cửa thang máy và bấm [CHO VÀO CABIN]";
+                }
+            }
+            else if (MissionState == MultiFloorMissionState.Step2_EnteringCabin)
+            {
+                string cabin = MissionSourceFloor?.InsideCabinPoint ?? "";
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(cabin, StringComparison.OrdinalIgnoreCase));
+                if (st != null && Math.Sqrt(Math.Pow(curX - st.X, 2) + Math.Pow(curY - st.Y, 2)) < 0.35)
+                {
+                    MissionState = MultiFloorMissionState.Step2_InCabinWaitingElevator;
+                    MissionProgressPercent = 45;
+                    MissionCurrentStepText = $"[Bước 2/5]: Đã vào buồng cabin! Cho thang máy chạy đến {MissionTargetFloor?.FloorLabel} và bấm [THANG ĐÃ ĐẾN TẦNG ĐÍCH]";
+                }
+            }
+            else if (MissionState == MultiFloorMissionState.Step4_ExitingCabinToHall)
+            {
+                string targetHall = MissionTargetFloor?.OutsideWaitingPoint ?? "";
+                var st = MapStations.FirstOrDefault(s => s.Name.Equals(targetHall, StringComparison.OrdinalIgnoreCase));
+                if (st != null && Math.Sqrt(Math.Pow(curX - st.X, 2) + Math.Pow(curY - st.Y, 2)) < 0.45)
+                {
+                    MissionState = MultiFloorMissionState.Step4_ArrivedAtTargetHall;
+                    MissionProgressPercent = 85;
+                    MissionCurrentStepText = $"[Bước 4/5]: Đã ra sảnh an toàn! Bấm [GIAO MÓN TỚI BÀN '{MissionTargetStation}'] để tiếp tục.";
+                }
+            }
         }
 
         [RelayCommand]

@@ -11,12 +11,12 @@
     "elevatorTheta": null
   },
   {
-    "floorNumber": "G",
-    "floorLabel": "Tầng G",
+    "elevatorPoint": "TrongThangMay_TG",
+    "floorNumber": "T\u1EA7ng G",
+    "floorLabel": "T\u1EA7ng G",
     "mapName": "TG-1119082909",
     "insideCabinPoint": "TrongThangMay_TG",
     "outsideWaitingPoint": "ChoThangMay_TG",
-    "elevatorPoint": "TrongThangMay_TG",
     "elevatorX": null,
     "elevatorY": null,
     "elevatorTheta": null
