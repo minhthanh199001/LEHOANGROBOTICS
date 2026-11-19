@@ -2247,37 +2247,14 @@
 
 
                             <!-- Transformable Map Layer (Zoom & Pan applied to this Canvas) -->
-
-
-
                             <Canvas x:Name="MapTransformCanvas" HorizontalAlignment="Center" VerticalAlignment="Center"
-
-
-
+                                    RenderTransformOrigin="0.5,0.5"
                                     Width="{Binding MapDisplayWidth}" Height="{Binding MapDisplayHeight}">
-
-
-
                                 <Canvas.RenderTransform>
-
-
-
                                     <TransformGroup>
-
-
-
-                                        <ScaleTransform x:Name="MapScaleTransform" ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="150" CenterY="220" />
-
-
-
+                                        <ScaleTransform x:Name="MapScaleTransform" ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" />
                                         <TranslateTransform x:Name="MapTranslateTransform" X="{Binding MapPanX}" Y="{Binding MapPanY}" />
-
-
-
                                     </TransformGroup>
-
-
-
                                 </Canvas.RenderTransform>
 
 
@@ -3743,37 +3720,14 @@
 
 
                             <!-- Transform Canvas -->
-
-
-
                             <Canvas x:Name="MapStudioTransformCanvas" HorizontalAlignment="Center" VerticalAlignment="Center"
-
-
-
+                                    RenderTransformOrigin="0.5,0.5"
                                     Width="{Binding MapDisplayWidth}" Height="{Binding MapDisplayHeight}">
-
-
-
                                 <Canvas.RenderTransform>
-
-
-
                                     <TransformGroup>
-
-
-
-                                        <ScaleTransform ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" CenterX="150" CenterY="220" />
-
-
-
+                                        <ScaleTransform ScaleX="{Binding MapZoom}" ScaleY="{Binding MapZoom}" />
                                         <TranslateTransform X="{Binding MapPanX}" Y="{Binding MapPanY}" />
-
-
-
                                     </TransformGroup>
-
-
-
                                 </Canvas.RenderTransform>
 
 
@@ -4152,11 +4106,17 @@
 
                             </Canvas>
 
-
-
-
-
-
+                            <!-- Top Floating Banner when in Map Point Picking Mode -->
+                            <Border Visibility="{Binding AddPointModeBannerVisibility}" 
+                                    Background="#E6D97706" BorderBrush="#FBBF24" BorderThickness="1.5"
+                                    CornerRadius="8" Padding="14,8" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0" Panel.ZIndex="100">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🎯 " FontSize="14" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding AddPointModeBannerText}" Foreground="White" FontWeight="Bold" FontSize="12.5" VerticalAlignment="Center" />
+                                    <Button Command="{Binding ToggleAddPointModeCommand}" Content="✖ HỦY" Margin="12,0,0,0" Padding="6,2" 
+                                            Background="#92400E" Foreground="White" BorderThickness="0" FontSize="10.5" FontWeight="Bold" Cursor="Hand" />
+                                </StackPanel>
+                            </Border>
 
                             <!-- Bottom Floating Status & Telemetry Bar -->
 

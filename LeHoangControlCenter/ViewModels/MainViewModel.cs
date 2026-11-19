@@ -190,6 +190,28 @@ namespace LeHoangControlCenter.ViewModels
         [ObservableProperty]
         private bool _isAddPointMode = false;
 
+        public enum PendingElevatorMode
+        {
+            None,
+            WaitingPoint,
+            InsidePoint
+        }
+        private PendingElevatorMode _pendingElevatorMode = PendingElevatorMode.None;
+
+        public Visibility AddPointModeBannerVisibility => IsAddPointMode ? Visibility.Visible : Visibility.Collapsed;
+
+        public string AddPointModeBannerText
+        {
+            get
+            {
+                if (_pendingElevatorMode == PendingElevatorMode.WaitingPoint)
+                    return $"ĐANG CHỌN ĐIỂM CHỜ THANG MÁY TỪ XA ({NewPlaceName}): Bấm vào vị trí ngoài sảnh trên bản đồ!";
+                if (_pendingElevatorMode == PendingElevatorMode.InsidePoint)
+                    return $"ĐANG CHỌN ĐIỂM TRONG THANG MÁY TỪ XA ({NewPlaceName}): Bấm vào vị trí buồng cabin trên bản đồ!";
+                return "CHẾ ĐỘ CHẤM TRÊN MAP: Bấm vào vị trí bất kỳ trên bản đồ để lấy tọa độ tạo điểm mới!";
+            }
+        }
+
         public string StationMakerToggleText => IsStationMakerExpanded ? "▲ Thu gọn" : "➕ Mở tạo điểm";
 
         public string AddPointModeText => IsAddPointMode ? "🎯 HỦY CHẤM MAP" : "🎯 Chấm trên map";
@@ -202,9 +224,15 @@ namespace LeHoangControlCenter.ViewModels
         partial void OnIsAddPointModeChanged(bool value)
         {
             OnPropertyChanged(nameof(AddPointModeText));
+            OnPropertyChanged(nameof(AddPointModeBannerVisibility));
+            OnPropertyChanged(nameof(AddPointModeBannerText));
             if (value)
             {
                 IsRelocalizeMode = false;
+            }
+            else
+            {
+                _pendingElevatorMode = PendingElevatorMode.None;
             }
         }
 
@@ -1375,13 +1403,14 @@ namespace LeHoangControlCenter.ViewModels
             }
             else
             {
+                _pendingElevatorMode = PendingElevatorMode.None;
                 AddLog("🎯 [TẠO ĐIỂM] Đã tắt chế độ 'Chấm trên map'.");
             }
         }
 
-        public void CreatePointAtCanvas(double canvasX, double canvasY)
+        public (double worldX, double worldY) CanvasToWorld(double canvasX, double canvasY)
         {
-            if (MapDisplayWidth <= 0 || MapDisplayHeight <= 0) return;
+            if (MapDisplayWidth <= 0 || MapDisplayHeight <= 0) return (0.0, 0.0);
 
             double normX = Math.Clamp(canvasX / MapDisplayWidth, 0.0, 1.0);
             double normY = Math.Clamp(canvasY / MapDisplayHeight, 0.0, 1.0);
@@ -1392,8 +1421,34 @@ namespace LeHoangControlCenter.ViewModels
             double worldX = Math.Round(MapMinX + normX * spanX, 2);
             double worldY = Math.Round(MapMaxY - normY * spanY, 2);
 
+            return (worldX, worldY);
+        }
+
+        public void CreatePointAtCanvas(double canvasX, double canvasY)
+        {
+            var (worldX, worldY) = CanvasToWorld(canvasX, canvasY);
+
             NewPlaceX = worldX;
             NewPlaceY = worldY;
+
+            if (_pendingElevatorMode == PendingElevatorMode.WaitingPoint)
+            {
+                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{DetectFloorNumberForMap(CurrentMap)}";
+                _pendingElevatorMode = PendingElevatorMode.None;
+                IsAddPointMode = false;
+                IsStationMakerExpanded = true;
+                _ = SaveAndApplyElevatorPointAsync(pName, worldX, worldY, isInside: false);
+                return;
+            }
+            else if (_pendingElevatorMode == PendingElevatorMode.InsidePoint)
+            {
+                string pName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{DetectFloorNumberForMap(CurrentMap)}";
+                _pendingElevatorMode = PendingElevatorMode.None;
+                IsAddPointMode = false;
+                IsStationMakerExpanded = true;
+                _ = SaveAndApplyElevatorPointAsync(pName, worldX, worldY, isInside: true);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(NewPlaceName))
             {
@@ -1574,16 +1629,19 @@ namespace LeHoangControlCenter.ViewModels
             }
         }
 
-        private void AddOrUpdateMapStation(string name, double x, double y)
+        private void AddOrUpdateMapStation(string name, double x, double y, string? customIcon = null)
         {
             _deletedStationTombstones.Remove(name);
             var existing = MapStations.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            string icon = customIcon ?? ((name.ToLowerInvariant().Contains("charge") || name.ToLowerInvariant().Contains("sạc")) ? "⚡" : 
+                          (name.ToLowerInvariant().Contains("thang") ? (name.ToLowerInvariant().Contains("trong") ? "🛗" : "🚪") : "📍"));
             if (existing != null)
             {
                 existing.X = x;
                 existing.Y = y;
                 existing.CanvasX = WorldToCanvasX(x);
                 existing.CanvasY = WorldToCanvasY(y);
+                existing.Icon = icon;
             }
             else
             {
@@ -1594,11 +1652,10 @@ namespace LeHoangControlCenter.ViewModels
                     Y = y,
                     CanvasX = WorldToCanvasX(x),
                     CanvasY = WorldToCanvasY(y),
-                    Icon = (name.ToLowerInvariant().Contains("charge") || name.ToLowerInvariant().Contains("sạc")) ? "⚡" : "📍"
+                    Icon = icon
                 });
             }
             SaveCurrentMapStationsToDisk();
-            UpdateAvailableStationNames();
             UpdateAvailableStationNames();
         }
 
@@ -1691,77 +1748,52 @@ namespace LeHoangControlCenter.ViewModels
             return "1";
         }
 
-        [RelayCommand]
-        public async Task CreateWaitingElevatorPointAsync()
+        public async Task SaveAndApplyElevatorPointAsync(string pointName, double x, double y, bool isInside)
         {
             string floorNum = DetectFloorNumberForMap(CurrentMap);
-            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{floorNum}";
-
-            // If user did not manually type a custom name in NewPlaceName, prompt to confirm/edit
-            string? pointName = defaultName;
-            if (string.IsNullOrWhiteSpace(NewPlaceName))
-            {
-                pointName = CyberInputDialog.Show(
-                    "🚪 TẠO ĐIỂM CHỜ THANG MÁY",
-                    $"Xác nhận hoặc sửa tên điểm chờ thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
-                    defaultName);
-
-                if (string.IsNullOrWhiteSpace(pointName))
-                {
-                    return; // User cancelled
-                }
-            }
-
-            var existingPoint = MapStations.FirstOrDefault(p => p.Name.Equals(pointName, StringComparison.OrdinalIgnoreCase));
-            double x;
-            double y;
-            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
-            {
-                x = NewPlaceX;
-                y = NewPlaceY;
-            }
-            else if (existingPoint != null)
-            {
-                x = existingPoint.X;
-                y = existingPoint.Y;
-            }
-            else
-            {
-                x = Math.Round(PoseX, 2);
-                y = Math.Round(PoseY, 2);
-            }
             double theta = PoseTheta * Math.PI / 180.0;
 
-            // 1. Instantly update MapStations
-            AddOrUpdateMapStation(pointName, x, y);
+            // 1. Instantly update MapStations with appropriate icon
+            string icon = isInside ? "🛗" : "🚪";
+            AddOrUpdateMapStation(pointName, x, y, icon);
 
-            // 2. Update FloorConfigs: bind OutsideWaitingPoint AND MapName
+            // 2. Update FloorConfigs: bind OutsideWaitingPoint or InsideCabinPoint AND MapName
             var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum)
                         ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
             if (floorCfg != null)
             {
-                floorCfg.OutsideWaitingPoint = pointName;
+                if (isInside)
+                {
+                    floorCfg.InsideCabinPoint = pointName;
+                    AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã gán '{pointName}' vào ô 'Điểm trong cabin' của {floorCfg.FloorLabel}.");
+                }
+                else
+                {
+                    floorCfg.OutsideWaitingPoint = pointName;
+                    AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã gán '{pointName}' vào ô 'Điểm chờ ngoài sảnh' của {floorCfg.FloorLabel}.");
+                }
                 if (string.IsNullOrEmpty(floorCfg.MapName)) floorCfg.MapName = CurrentMap;
                 SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm chờ ngoài sảnh' của {floorCfg.FloorLabel}.");
             }
             else
             {
-                // Auto create floor config if none exists for this floor
                 var newCfg = new FloorMapConfig
                 {
                     FloorNumber = floorNum,
                     FloorLabel = $"Tầng {floorNum}",
                     MapName = CurrentMap,
-                    OutsideWaitingPoint = pointName,
-                    InsideCabinPoint = $"TrongThangMay_T{floorNum}"
+                    OutsideWaitingPoint = isInside ? $"ChoThangMay_T{floorNum}" : pointName,
+                    InsideCabinPoint = isInside ? pointName : $"TrongThangMay_T{floorNum}"
                 };
                 FloorConfigs.Add(newCfg);
                 SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động tạo cấu hình Tầng {floorNum} (Bản đồ: '{CurrentMap}') và gán '{pointName}'.");
+                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tạo cấu hình Tầng {floorNum} (Bản đồ: '{CurrentMap}') và gán '{pointName}'.");
             }
 
-            AddLog($"🚪 [THANG MÁY] Đã tạo 'Điểm Chờ thang máy' Tầng {floorNum}: '{pointName}' tại ({x:F2}m, {y:F2}m).");
+            SaveCurrentMapStationsToDisk();
+
+            string typeStr = isInside ? "Trong thang máy" : "Chờ thang máy";
+            AddLog($"{(isInside ? "🛗" : "🚪")} [THANG MÁY TỪ XA] Đã lưu điểm {typeStr} '{pointName}' tại ({x:F2}m, {y:F2}m) trên bản đồ '{CurrentMap}'.");
 
             if (_robotService.IsConnected)
             {
@@ -1776,10 +1808,55 @@ namespace LeHoangControlCenter.ViewModels
             }
             else
             {
-                AddLog("ℹ️ [LƯU Ý] Chưa kết nối tới Robot. Điểm đã lưu cục bộ trên giao diện.");
+                AddLog("ℹ️ [LƯU Ý] Chưa kết nối tới Robot. Điểm đã lưu cục bộ trên giao diện và sẵn sàng hoạt động.");
             }
 
             NewPlaceName = "";
+            NewPlaceX = 0;
+            NewPlaceY = 0;
+        }
+
+        [RelayCommand]
+        public async Task CreateWaitingElevatorPointAsync()
+        {
+            string floorNum = DetectFloorNumberForMap(CurrentMap);
+            string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"ChoThangMay_T{floorNum}";
+
+            // If coordinates were already picked via "Chấm trên map"
+            if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
+            {
+                string? pointName = CyberInputDialog.Show(
+                    "🚪 TẠO ĐIỂM CHỜ THANG MÁY (TỪ XA)",
+                    $"Đã chọn tọa độ trên bản đồ: ({NewPlaceX:F2}m, {NewPlaceY:F2}m)\nXác nhận hoặc sửa tên điểm chờ thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
+                    defaultName);
+
+                if (string.IsNullOrWhiteSpace(pointName)) return;
+                await SaveAndApplyElevatorPointAsync(pointName, NewPlaceX, NewPlaceY, isInside: false);
+                return;
+            }
+
+            // Interactive Remote Picking dialog:
+            var result = CyberElevatorSourceDialog.Show(
+                "🚪 THIẾT LẬP ĐIỂM CHỜ THANG MÁY (TỪ XA)",
+                $"Bản đồ: {CurrentMap}  |  Tầng: {floorNum}  |  Chọn cách lấy tọa độ không cần đẩy Robot:",
+                defaultName,
+                PoseX,
+                PoseY);
+
+            if (result.Choice == ElevatorSourceChoice.Cancel) return;
+
+            if (result.Choice == ElevatorSourceChoice.ClickOnMap)
+            {
+                _pendingElevatorMode = PendingElevatorMode.WaitingPoint;
+                NewPlaceName = result.PointName;
+                IsAddPointMode = true;
+                IsStationMakerExpanded = true;
+                AddLog($"🎯 [CHỜ THANG MÁY TỪ XA] Hãy click vào vị trí chờ thang máy ngoài sảnh trên bản đồ để đặt điểm '{result.PointName}'!");
+            }
+            else if (result.Choice == ElevatorSourceChoice.RobotPose || result.Choice == ElevatorSourceChoice.ManualCoords)
+            {
+                await SaveAndApplyElevatorPointAsync(result.PointName, result.X, result.Y, isInside: false);
+            }
         }
 
         [RelayCommand]
@@ -1788,88 +1865,41 @@ namespace LeHoangControlCenter.ViewModels
             string floorNum = DetectFloorNumberForMap(CurrentMap);
             string defaultName = !string.IsNullOrWhiteSpace(NewPlaceName) ? NewPlaceName.Trim() : $"TrongThangMay_T{floorNum}";
 
-            // If user did not manually type a custom name in NewPlaceName, prompt to confirm/edit
-            string? pointName = defaultName;
-            if (string.IsNullOrWhiteSpace(NewPlaceName))
-            {
-                pointName = CyberInputDialog.Show(
-                    "🛗 TẠO ĐIỂM TRONG THANG MÁY",
-                    $"Xác nhận hoặc sửa tên điểm trong buồng thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
-                    defaultName);
-
-                if (string.IsNullOrWhiteSpace(pointName))
-                {
-                    return; // User cancelled
-                }
-            }
-
-            var existingPoint = MapStations.FirstOrDefault(p => p.Name.Equals(pointName, StringComparison.OrdinalIgnoreCase));
-            double x;
-            double y;
+            // If coordinates were already picked via "Chấm trên map"
             if (NewPlaceX != 0.0 || NewPlaceY != 0.0)
             {
-                x = NewPlaceX;
-                y = NewPlaceY;
-            }
-            else if (existingPoint != null)
-            {
-                x = existingPoint.X;
-                y = existingPoint.Y;
-            }
-            else
-            {
-                x = Math.Round(PoseX, 2);
-                y = Math.Round(PoseY, 2);
-            }
-            double theta = PoseTheta * Math.PI / 180.0;
+                string? pointName = CyberInputDialog.Show(
+                    "🛗 TẠO ĐIỂM TRONG THANG MÁY (TỪ XA)",
+                    $"Đã chọn tọa độ trên bản đồ: ({NewPlaceX:F2}m, {NewPlaceY:F2}m)\nXác nhận hoặc sửa tên điểm buồng cabin thang máy cho bản đồ '{CurrentMap}' (Tầng {floorNum}):",
+                    defaultName);
 
-            // 1. Instantly update MapStations
-            AddOrUpdateMapStation(pointName, x, y);
-
-            // 2. Update FloorConfigs: bind InsideCabinPoint AND MapName
-            var floorCfg = FloorConfigs.FirstOrDefault(f => f.FloorNumber == floorNum)
-                        ?? FloorConfigs.FirstOrDefault(f => string.Equals(f.MapName, CurrentMap, StringComparison.OrdinalIgnoreCase));
-            if (floorCfg != null)
-            {
-                floorCfg.InsideCabinPoint = pointName;
-                if (string.IsNullOrEmpty(floorCfg.MapName)) floorCfg.MapName = CurrentMap;
-                SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động gán '{pointName}' vào ô 'Điểm trong cabin' của {floorCfg.FloorLabel}.");
-            }
-            else
-            {
-                var newCfg = new FloorMapConfig
-                {
-                    FloorNumber = floorNum,
-                    FloorLabel = $"Tầng {floorNum}",
-                    MapName = CurrentMap,
-                    OutsideWaitingPoint = $"ChoThangMay_T{floorNum}",
-                    InsideCabinPoint = pointName
-                };
-                FloorConfigs.Add(newCfg);
-                SaveFloorConfigs();
-                AddLog($"⚙️ [CẤU HÌNH THANG MÁY] Đã tự động tạo cấu hình Tầng {floorNum} (Bản đồ: '{CurrentMap}') và gán '{pointName}'.");
+                if (string.IsNullOrWhiteSpace(pointName)) return;
+                await SaveAndApplyElevatorPointAsync(pointName, NewPlaceX, NewPlaceY, isInside: true);
+                return;
             }
 
-            AddLog($"🛗 [THANG MÁY] Đã tạo 'Điểm Trong thang máy' Tầng {floorNum}: '{pointName}' tại ({x:F2}m, {y:F2}m).");
+            // Interactive Remote Picking dialog:
+            var result = CyberElevatorSourceDialog.Show(
+                "🛗 THIẾT LẬP ĐIỂM TRONG THANG MÁY (TỪ XA)",
+                $"Bản đồ: {CurrentMap}  |  Tầng: {floorNum}  |  Chọn cách lấy tọa độ không cần đẩy Robot:",
+                defaultName,
+                PoseX,
+                PoseY);
 
-            if (_robotService.IsConnected)
-            {
-                await _robotService.SendCommandAsync(new AddPlaceCommand
-                {
-                    MapName = CurrentMap,
-                    Name = pointName,
-                    X = x,
-                    Y = y,
-                    Theta = theta
-                });
-            }
-            else
-            {
-                AddLog("ℹ️ [LƯU Ý] Chưa kết nối tới Robot. Điểm đã lưu cục bộ trên giao diện.");
-            }
+            if (result.Choice == ElevatorSourceChoice.Cancel) return;
 
-            NewPlaceName = "";
+            if (result.Choice == ElevatorSourceChoice.ClickOnMap)
+            {
+                _pendingElevatorMode = PendingElevatorMode.InsidePoint;
+                NewPlaceName = result.PointName;
+                IsAddPointMode = true;
+                IsStationMakerExpanded = true;
+                AddLog($"🎯 [TRONG THANG MÁY TỪ XA] Hãy click vào vị trí buồng cabin thang máy trên bản đồ để đặt điểm '{result.PointName}'!");
+            }
+            else if (result.Choice == ElevatorSourceChoice.RobotPose || result.Choice == ElevatorSourceChoice.ManualCoords)
+            {
+                await SaveAndApplyElevatorPointAsync(result.PointName, result.X, result.Y, isInside: true);
+            }
         }
 
         [RelayCommand]
@@ -2453,14 +2483,7 @@ namespace LeHoangControlCenter.ViewModels
                 return;
             }
 
-            double normX = Math.Clamp(canvasX / MapDisplayWidth, 0.0, 1.0);
-            double normY = Math.Clamp(canvasY / MapDisplayHeight, 0.0, 1.0);
-
-            double spanX = Math.Max(0.1, MapMaxX - MapMinX);
-            double spanY = Math.Max(0.1, MapMaxY - MapMinY);
-
-            double worldX = Math.Round(MapMinX + normX * spanX, 2);
-            double worldY = Math.Round(MapMaxY - normY * spanY, 2);
+            var (worldX, worldY) = CanvasToWorld(canvasX, canvasY);
 
             // Check if clicking near an existing station (within 0.6m)
             var nearby = MapStations.FirstOrDefault(s => Math.Sqrt(Math.Pow(s.X - worldX, 2) + Math.Pow(s.Y - worldY, 2)) < 0.6);
@@ -2488,14 +2511,7 @@ namespace LeHoangControlCenter.ViewModels
         {
             if (MapDisplayWidth <= 0 || MapDisplayHeight <= 0) return;
 
-            double normX = Math.Clamp(canvasX / MapDisplayWidth, 0.0, 1.0);
-            double normY = Math.Clamp(canvasY / MapDisplayHeight, 0.0, 1.0);
-
-            double spanX = Math.Max(0.1, MapMaxX - MapMinX);
-            double spanY = Math.Max(0.1, MapMaxY - MapMinY);
-
-            double worldX = Math.Round(MapMinX + normX * spanX, 2);
-            double worldY = Math.Round(MapMaxY - normY * spanY, 2);
+            var (worldX, worldY) = CanvasToWorld(canvasX, canvasY);
 
             var nearby = MapStations.FirstOrDefault(s => Math.Sqrt(Math.Pow(s.X - worldX, 2) + Math.Pow(s.Y - worldY, 2)) < 0.6);
             if (nearby != null)
@@ -3476,8 +3492,20 @@ namespace LeHoangControlCenter.ViewModels
             }
         }
 
+        public class MapCalibration
+        {
+            public double MinX { get; set; } = -5.0;
+            public double MaxX { get; set; } = 8.0;
+            public double MinY { get; set; } = -6.0;
+            public double MaxY { get; set; } = 13.0;
+        }
+
+        private readonly Dictionary<string, MapCalibration> _mapCalibrations = new(StringComparer.OrdinalIgnoreCase);
+
         public void UpdateMapBounds(IList<MapPlaceItem>? places, string? mapName = null, double? res = null, double? originX = null, double? originY = null, int? imgW = null, int? imgH = null)
         {
+            string normKey = NormalizeMapKey(mapName ?? "");
+
             if (res.HasValue && res.Value > 0.001 && originX.HasValue && originY.HasValue && imgW.HasValue && imgH.HasValue && imgW.Value > 0 && imgH.Value > 0)
             {
                 double resolution = res.Value;
@@ -3487,11 +3515,28 @@ namespace LeHoangControlCenter.ViewModels
                 MapMaxX = MapMinX + (w * resolution);
                 MapMinY = originY.Value;
                 MapMaxY = MapMinY + (h * resolution);
+
+                if (!string.IsNullOrEmpty(normKey))
+                {
+                    _mapCalibrations[normKey] = new MapCalibration
+                    {
+                        MinX = MapMinX,
+                        MaxX = MapMaxX,
+                        MinY = MapMinY,
+                        MaxY = MapMaxY
+                    };
+                }
             }
-            else if (!string.IsNullOrEmpty(mapName) && (mapName.Contains("1110154527") || mapName.Contains("tăng 2") || mapName.Contains("tang 2")))
+            else if (!string.IsNullOrEmpty(normKey) && _mapCalibrations.TryGetValue(normKey, out var cal))
             {
-                // Exact calibrated bounds for default OrionStar building floor (260x380, res=0.05, origin=(-5.0, -6.0)):
-                // map.pgm: origin_x = -5.0, origin_y = -6.0, res = 0.05, 260x380
+                MapMinX = cal.MinX;
+                MapMaxX = cal.MaxX;
+                MapMinY = cal.MinY;
+                MapMaxY = cal.MaxY;
+            }
+            else
+            {
+                // Standard calibrated bounds for OrionStar building floor (260x380, res=0.05, origin=(-5.0, -6.0)):
                 // X range: [-5.0, +8.0] (span = 13.0m)
                 // Y range: [-6.0, +13.0] (span = 19.0m)
                 MapMinX = -5.0;
@@ -3499,37 +3544,27 @@ namespace LeHoangControlCenter.ViewModels
                 MapMinY = -6.0;
                 MapMaxY = 13.0;
             }
-            else if (places != null && places.Count > 0)
-            {
-                double minX = places.Min(p => p.X);
-                double maxX = places.Max(p => p.X);
-                double minY = places.Min(p => p.Y);
-                double maxY = places.Max(p => p.Y);
 
-                double centerX = (minX + maxX) / 2.0;
-                double centerY = (minY + maxY) / 2.0;
-                double spanY = Math.Max(12.0, (maxY - minY) * 1.55);
-                double aspect = (imgW.HasValue && imgH.HasValue && imgW.Value > 0 && imgH.Value > 0) ? ((double)imgW.Value / imgH.Value) : (52.0 / 76.0);
-                double spanX = spanY * aspect;
-
-                MapMinX = Math.Round(centerX - spanX / 2.0, 2);
-                MapMaxX = Math.Round(centerX + spanX / 2.0, 2);
-                MapMinY = Math.Round(centerY - spanY / 2.0, 2);
-                MapMaxY = Math.Round(centerY + spanY / 2.0, 2);
-            }
-            else
+            // Safety check: if any places are outside current bounds, extend bounds smoothly
+            if (places != null && places.Count > 0)
             {
-                MapMinX = -5.0;
-                MapMaxX = 8.0;
-                MapMinY = -6.0;
-                MapMaxY = 13.0;
+                double pMinX = places.Min(p => p.X);
+                double pMaxX = places.Max(p => p.X);
+                double pMinY = places.Min(p => p.Y);
+                double pMaxY = places.Max(p => p.Y);
+
+                if (pMinX < MapMinX) MapMinX = Math.Floor(pMinX - 0.5);
+                if (pMaxX > MapMaxX) MapMaxX = Math.Ceiling(pMaxX + 0.5);
+                if (pMinY < MapMinY) MapMinY = Math.Floor(pMinY - 0.5);
+                if (pMaxY > MapMaxY) MapMaxY = Math.Ceiling(pMaxY + 0.5);
             }
 
             foreach (var p in places ?? Enumerable.Empty<MapPlaceItem>())
             {
                 p.CanvasX = WorldToCanvasX(p.X);
                 p.CanvasY = WorldToCanvasY(p.Y);
-                p.Icon = (p.Name.ToLowerInvariant().Contains("charge") || p.Name.ToLowerInvariant().Contains("sạc")) ? "⚡" : "📍";
+                p.Icon = (p.Name.ToLowerInvariant().Contains("charge") || p.Name.ToLowerInvariant().Contains("sạc")) ? "⚡" : 
+                         (p.Name.ToLowerInvariant().Contains("thang") ? (p.Name.ToLowerInvariant().Contains("trong") ? "🛗" : "🚪") : "📍");
             }
         }
 

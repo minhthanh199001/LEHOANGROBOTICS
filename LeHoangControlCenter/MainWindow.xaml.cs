@@ -232,11 +232,20 @@ public partial class MainWindow : Window
                 Canvas? canvas = null;
                 if (sender is FrameworkElement fe)
                 {
-                    canvas = fe.FindName("MapTransformCanvas") as Canvas 
-                          ?? fe.FindName("MapStudioTransformCanvas") as Canvas;
+                    if (fe.Name == "MapStudioViewport")
+                    {
+                        canvas = FindVisualChildByName<Canvas>(fe, "MapStudioTransformCanvas") 
+                              ?? fe.FindName("MapStudioTransformCanvas") as Canvas;
+                    }
+                    else if (fe.Name == "MapViewport")
+                    {
+                        canvas = FindVisualChildByName<Canvas>(fe, "MapTransformCanvas") 
+                              ?? fe.FindName("MapTransformCanvas") as Canvas;
+                    }
+                    canvas ??= FindVisualChild<Canvas>(fe);
                 }
-                canvas ??= FindName("MapTransformCanvas") as Canvas 
-                       ?? FindName("MapStudioTransformCanvas") as Canvas;
+                canvas ??= FindName("MapStudioTransformCanvas") as Canvas 
+                       ?? FindName("MapTransformCanvas") as Canvas;
 
                 if (canvas != null)
                 {
@@ -256,6 +265,34 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+
+    private static T? FindVisualChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
+    {
+        if (parent == null) return null;
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed && typed.Name == name) return typed;
+            var found = FindVisualChildByName<T>(child, name);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null) return null;
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed) return typed;
+            var found = FindVisualChild<T>(child);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
